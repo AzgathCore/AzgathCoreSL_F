@@ -1940,7 +1940,7 @@ void Player::SetObjectScale(float scale)
     SetBoundingRadius(scale * DEFAULT_WORLD_OBJECT_SIZE);
     SetCombatReach(scale * DEFAULT_COMBAT_REACH);
     if (IsInWorld())
-        SendMovementSetCollisionHeight(scale * GetCollisionHeight(IsMounted()));
+        SendMovementSetCollisionHeight(scale * GetCollisionHeight(IsMounted()), WorldPackets::Movement::UpdateCollisionHeightReason::Scale);
 }
 
 bool Player::IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index, Unit* caster) const
@@ -29996,7 +29996,7 @@ void Player::SendShipmentCrafterUI(ObjectGuid guid, uint32 shipmentContainerID)
     SendDirectMessage(shipmentNpc.Write());
 }
 
-void Player::SendMovementSetCollisionHeight(float height)
+void Player::SendMovementSetCollisionHeight(float height, WorldPackets::Movement::UpdateCollisionHeightReason reason)
 {
     WorldPackets::Movement::MoveSetCollisionHeight setCollisionHeight;
     setCollisionHeight.MoverGUID = GetGUID();
@@ -30005,7 +30005,7 @@ void Player::SendMovementSetCollisionHeight(float height)
     setCollisionHeight.Scale = GetObjectScale();
     setCollisionHeight.MountDisplayID = GetMountDisplayId();
     setCollisionHeight.ScaleDuration = m_unitData->ScaleDuration;
-    setCollisionHeight.Reason = WorldPackets::Movement::UPDATE_COLLISION_HEIGHT_MOUNT;
+    setCollisionHeight.Reason = reason;
     SendDirectMessage(setCollisionHeight.Write());
 
     WorldPackets::Movement::MoveUpdateCollisionHeight updateCollisionHeight;
