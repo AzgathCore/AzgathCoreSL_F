@@ -1549,6 +1549,10 @@ bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth, boo
         if (Player const* player = this->ToPlayer())
             viewpoint = player->GetViewpoint();
 
+        if (Creature const* creature = obj->ToCreature())
+            if (TempSummon::IsPersonalSummonOfAnotherPlayer(creature, GetGUID()))
+                    return false;
+
         if (!viewpoint)
             viewpoint = this;
 

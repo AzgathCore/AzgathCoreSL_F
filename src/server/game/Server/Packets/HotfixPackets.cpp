@@ -21,91 +21,91 @@
 
 namespace WorldPackets
 {
-namespace Hotfix
-{
-ByteBuffer& operator>>(ByteBuffer& data, DB2Manager::HotfixRecord& hotfixRecord)
-{
-    data >> hotfixRecord.TableHash;
-    data >> hotfixRecord.RecordID;
-    data >> hotfixRecord.HotfixID;
-    return data;
-}
+    namespace Hotfix
+    {
+        ByteBuffer& operator>>(ByteBuffer& data, DB2Manager::HotfixRecord& hotfixRecord)
+        {
+            data >> hotfixRecord.TableHash;
+            data >> hotfixRecord.RecordID;
+            data >> hotfixRecord.HotfixID;
+            return data;
+        }
 
-ByteBuffer& operator<<(ByteBuffer& data, DB2Manager::HotfixRecord const& hotfixRecord)
-{
-    data << uint32(hotfixRecord.TableHash);
-    data << int32(hotfixRecord.RecordID);
-    data << int32(hotfixRecord.HotfixID);
-    return data;
-}
+        ByteBuffer& operator<<(ByteBuffer& data, DB2Manager::HotfixRecord const& hotfixRecord)
+        {
+            data << uint32(hotfixRecord.TableHash);
+            data << int32(hotfixRecord.RecordID);
+            data << int32(hotfixRecord.HotfixID);
+            return data;
+        }
 
-void DBQueryBulk::Read()
-{
-    _worldPacket >> TableHash;
+        void DBQueryBulk::Read()
+        {
+            _worldPacket >> TableHash;
 
-    uint32 count = _worldPacket.ReadBits(13);
+            uint32 count = _worldPacket.ReadBits(13);
 
-    Queries.resize(count);
-    for (uint32 i = 0; i < count; ++i)
-        _worldPacket >> Queries[i].RecordID;
-}
+            Queries.resize(count);
+            for (uint32 i = 0; i < count; ++i)
+                _worldPacket >> Queries[i].RecordID;
+        }
 
-WorldPacket const* DBReply::Write()
-{
-    _worldPacket << uint32(TableHash);
-    _worldPacket << uint32(RecordID);
-    _worldPacket << uint32(Timestamp);
-    _worldPacket.WriteBits(AsUnderlyingType(Status), 2);
-    _worldPacket << uint32(Data.size());
-    _worldPacket.append(Data);
+        WorldPacket const* DBReply::Write()
+        {
+            _worldPacket << uint32(TableHash);
+            _worldPacket << uint32(RecordID);
+            _worldPacket << uint32(Timestamp);
+            _worldPacket.WriteBits(AsUnderlyingType(Status), 2);
+            _worldPacket << uint32(Data.size());
+            _worldPacket.append(Data);
 
-    return &_worldPacket;
-}
+            return &_worldPacket;
+        }
 
-WorldPacket const* AvailableHotfixes::Write()
-{
-    _worldPacket << int32(VirtualRealmAddress);
-    _worldPacket << uint32(Hotfixes.size());
-    for (DB2Manager::HotfixContainer::value_type const& hotfixRecord : Hotfixes)
-        _worldPacket << int32(hotfixRecord.first);
+        WorldPacket const* AvailableHotfixes::Write()
+        {
+            _worldPacket << int32(VirtualRealmAddress);
+            _worldPacket << uint32(HotfixCount);
+            for (DB2Manager::HotfixRecord const& hotfixRecord : Hotfixes)
+                _worldPacket << hotfixRecord;
 
-    return &_worldPacket;
-}
+            return &_worldPacket;
+        }
 
-void HotfixRequest::Read()
-{
-    _worldPacket >> ClientBuild;
-    _worldPacket >> DataBuild;
+        void HotfixRequest::Read()
+        {
+            _worldPacket >> ClientBuild;
+            _worldPacket >> DataBuild;
 
-    uint32 hotfixCount = _worldPacket.read<uint32>();
-    if (hotfixCount > sDB2Manager.GetHotfixCount())
-        throw PacketArrayMaxCapacityException(hotfixCount, sDB2Manager.GetHotfixCount());
+            uint32 hotfixCount = _worldPacket.read<uint32>();
+            if (hotfixCount > sDB2Manager.GetHotfixCount())
+                throw PacketArrayMaxCapacityException(hotfixCount, sDB2Manager.GetHotfixCount());
 
-    Hotfixes.resize(hotfixCount);
-    for (int32& hotfixId : Hotfixes)
-        _worldPacket >> hotfixId;
-}
+            Hotfixes.resize(hotfixCount);
+            for (DB2Manager::HotfixRecord& hotfixRecord : Hotfixes)
+                _worldPacket >> hotfixRecord;
+        }
 
-ByteBuffer& operator<<(ByteBuffer& data, HotfixConnect::HotfixData const& hotfixData)
-{
-    data << hotfixData.Record;
-    data << uint32(hotfixData.Size);
-    data.WriteBits(AsUnderlyingType(hotfixData.Record.HotfixStatus), 2);
-    data.FlushBits();
+        ByteBuffer& operator<<(ByteBuffer& data, HotfixConnect::HotfixData const& hotfixData)
+        {
+            data << hotfixData.Record;
+            data << uint32(hotfixData.Size);
+            data.WriteBits(AsUnderlyingType(hotfixData.Record.HotfixStatus), 2);
+            data.FlushBits();
 
-    return data;
-}
+            return data;
+        }
 
-WorldPacket const* HotfixConnect::Write()
-{
-    _worldPacket << uint32(Hotfixes.size());
-    for (HotfixData const& hotfix : Hotfixes)
-        _worldPacket << hotfix;
+        WorldPacket const* HotfixConnect::Write()
+        {
+            _worldPacket << uint32(Hotfixes.size());
+            for (HotfixData const& hotfix : Hotfixes)
+                _worldPacket << hotfix;
 
-    _worldPacket << uint32(HotfixContent.size());
-    _worldPacket.append(HotfixContent);
+            _worldPacket << uint32(HotfixContent.size());
+            _worldPacket.append(HotfixContent);
 
-    return &_worldPacket;
-}
-}
+            return &_worldPacket;
+        }
+    }
 }
