@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
+# Copyright 2023 AzgathCore
 # Author: leak
 # Date: 2010-12-06
 # Note: Based on conf file format of rev 10507

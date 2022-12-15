@@ -2,7 +2,7 @@ from re import compile, MULTILINE
 from os import walk, getcwd
 
 notice = ('''/*
- * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
+ * Copyright 2023 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
