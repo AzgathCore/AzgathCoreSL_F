@@ -321,7 +321,7 @@ namespace UF
 
     void ItemData::WriteUpdate(ByteBuffer& data, EnumFlag<UpdateFieldFlag> fieldVisibilityFlags, Item const* owner, Player const* receiver) const
     {
-        Mask allowedMaskForTarget({ 0xFC04E4FFu, 0x000000FFu });
+        Mask allowedMaskForTarget({ 0xF804E4FFu, 0x000001FFu });
         AppendAllowedFieldsMaskForFlag(allowedMaskForTarget, fieldVisibilityFlags);
         WriteUpdate(data, _changesMask & allowedMaskForTarget, false, owner, receiver);
     }
@@ -329,12 +329,12 @@ namespace UF
     void ItemData::AppendAllowedFieldsMaskForFlag(Mask& allowedMaskForTarget, EnumFlag<UpdateFieldFlag> fieldVisibilityFlags) const
     {
         if (fieldVisibilityFlags.HasFlag(UpdateFieldFlag::Owner))
-            allowedMaskForTarget |= { 0x03FB1B00u, 0x00000000u };
+            allowedMaskForTarget |= { 0x07FB1B00u, 0x00000000u };
     }
 
     void ItemData::FilterDisallowedFieldsMaskForFlag(Mask& changesMask, EnumFlag<UpdateFieldFlag> fieldVisibilityFlags) const
     {
-        Mask allowedMaskForTarget({ 0xFC04E4FFu, 0x000000FFu });
+        Mask allowedMaskForTarget({ 0xF804E4FFu, 0x000001FFu });
         AppendAllowedFieldsMaskForFlag(allowedMaskForTarget, fieldVisibilityFlags);
         changesMask &= allowedMaskForTarget;
     }
@@ -457,27 +457,32 @@ namespace UF
             if (changesMask[19])
             {
                 data << uint32(DynamicFlags2);
+                data << uint16(DEBUGItemLevel);
+            }
+            if (changesMask[20])
+            {
+                data << uint16(DEBUGItemLevel);
             }
             if (changesMask[18])
             {
                 Modifiers->WriteUpdate(data, ignoreNestedChangesMask, owner, receiver);
             }
         }
-        if (changesMask[20])
+        if (changesMask[21])
         {
             for (std::size_t i = 0; i < 5; ++i)
             {
-                if (changesMask[21 + i])
+                if (changesMask[22 + i])
                 {
                     data << int32(SpellCharges[i]);
                 }
             }
         }
-        if (changesMask[26])
+        if (changesMask[27])
         {
             for (std::size_t i = 0; i < 13; ++i)
             {
-                if (changesMask[27 + i])
+                if (changesMask[28 + i])
                 {
                     Enchantment[i].WriteUpdate(data, ignoreNestedChangesMask, owner, receiver);
                 }
@@ -506,6 +511,7 @@ namespace UF
         Base::ClearChangesMask(ItemAppearanceModID);
         Base::ClearChangesMask(Modifiers);
         Base::ClearChangesMask(DynamicFlags2);
+        Base::ClearChangesMask(DEBUGItemLevel);
         Base::ClearChangesMask(SpellCharges);
         Base::ClearChangesMask(Enchantment);
         _changesMask.ResetAll();

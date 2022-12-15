@@ -6515,6 +6515,15 @@ uint32 Player::GetBgQueueTeam() const
     return GetTeam();
 }
 
+uint8 Player::GetFactionGroupForRace(uint8 race)
+{
+    if (ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(race))
+        if (FactionTemplateEntry const* faction = sFactionTemplateStore.LookupEntry(rEntry->FactionID))
+            return faction->FactionGroup;
+
+    return 1;
+}
+
 void Player::setFactionForRace(uint8 race)
 {
     m_team = TeamForRace(race);

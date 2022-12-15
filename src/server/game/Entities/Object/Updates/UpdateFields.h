@@ -109,7 +109,7 @@ namespace UF
         void ClearChangesMask();
     };
 
-    struct ItemData : public IsUpdateFieldStructureTag, public HasChangesMask<40>
+    struct ItemData : public IsUpdateFieldStructureTag, public HasChangesMask<41>
     {
         UpdateField<std::vector<int32>, 0, 1> BonusListIDs;
         DynamicUpdateField<UF::ArtifactPower, 0, 2> ArtifactPowers;
@@ -130,8 +130,9 @@ namespace UF
         UpdateField<uint8, 0, 17> ItemAppearanceModID;
         UpdateField<UF::ItemModList, 0, 18> Modifiers;
         UpdateField<uint32, 0, 19> DynamicFlags2;
-        UpdateFieldArray<int32, 5, 20, 21> SpellCharges;
-        UpdateFieldArray<UF::ItemEnchantment, 13, 26, 27> Enchantment;
+        UpdateField<uint16, 0, 20> DEBUGItemLevel;
+        UpdateFieldArray<int32, 5, 21, 22> SpellCharges;
+        UpdateFieldArray<UF::ItemEnchantment, 13, 27, 28> Enchantment;
 
         void WriteCreate(ByteBuffer& data, EnumFlag<UpdateFieldFlag> fieldVisibilityFlags, Item const* owner, Player const* receiver) const;
         void WriteUpdate(ByteBuffer& data, EnumFlag<UpdateFieldFlag> fieldVisibilityFlags, Item const* owner, Player const* receiver) const;

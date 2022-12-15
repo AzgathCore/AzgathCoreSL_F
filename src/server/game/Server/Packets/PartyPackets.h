@@ -507,6 +507,7 @@ namespace WorldPackets
             uint8 Subgroup = 0u;
             uint8 Flags = 0u;
             uint8 RolesAssigned = 0u;
+            uint8 FactionGroup = 0u;
             bool FromSocialQueue = false;
             bool VoiceChatSilenced = false;
         };
@@ -552,6 +553,7 @@ namespace WorldPackets
 
             ObjectGuid PartyGUID;
             ObjectGuid LeaderGUID;
+            uint8 LeaderFactionGroup = 0;
 
             int32 MyIndex = 0;
             int32 SequenceNum = 0;

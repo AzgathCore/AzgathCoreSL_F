@@ -22,6 +22,7 @@
 #include "Common.h"
 #include "AppenderDB.h"
 #include "AsyncAcceptor.h"
+#include "AuthenticationPackets.h"
 #include "Banner.h"
 #include "BattlegroundMgr.h"
 #include "BigNumber.h"
@@ -212,6 +213,8 @@ extern int main(int argc, char** argv)
     for (int i = 0; i < numThreads; ++i)
         threadPool->push_back(std::thread([ioContext]() { ioContext->run(); }));
 
+    std::shared_ptr<void> ioContextStopHandle(nullptr, [ioContext](void*) { ioContext->stop(); });
+
     // Set process priority according to configuration settings
     SetProcessPriority("server.worldserver", sConfigMgr->GetIntDefault(CONFIG_PROCESSOR_AFFINITY, 0), sConfigMgr->GetBoolDefault(CONFIG_HIGH_PRIORITY, false));
 
@@ -353,6 +356,11 @@ extern int main(int argc, char** argv)
     WorldUpdateLoop();
 
     // Shutdown starts here
+    WorldPackets::Auth::ConnectTo::ShutdownEncryption();
+    WorldPackets::Auth::EnterEncryptedMode::ShutdownEncryption();
+
+    ioContextStopHandle.reset();
+
     threadPool.reset();
 
     sLog->SetSynchronous();

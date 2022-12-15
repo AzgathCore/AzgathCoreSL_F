@@ -439,6 +439,7 @@ void AuctionRemoveItem::Read()
 {
     _worldPacket >> Auctioneer;
     _worldPacket >> AuctionID;
+    _worldPacket >> ItemID;
     if (_worldPacket.ReadBit())
     {
         TaintedBy.emplace();
@@ -574,6 +575,7 @@ WorldPacket const* AuctionFavoriteList::Write()
 WorldPacket const* AuctionHelloResponse::Write()
 {
     _worldPacket << Guid;
+    _worldPacket << uint32(DeliveryDelay);
     _worldPacket.WriteBit(OpenForBusiness);
     _worldPacket.FlushBits();
 

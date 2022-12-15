@@ -168,7 +168,8 @@ namespace WorldPackets
             _worldPacket.WriteBit(LiveRegionAccountCopyEnabled);
             _worldPacket.WriteBit(LiveRegionKeyBindingsCopyEnabled);
             _worldPacket.WriteBit(Unknown901CheckoutRelated);
-            _worldPacket.WriteBit(EuropaTicketSystemStatus.is_initialized());
+            _worldPacket.WriteBit(EuropaTicketSystemStatus.has_value());
+            _worldPacket.WriteBit(LaunchETA.has_value());
             _worldPacket.FlushBits();
 
             if (EuropaTicketSystemStatus)
@@ -184,6 +185,9 @@ namespace WorldPackets
             _worldPacket << int32(ActiveClassTrialBoostType);
             _worldPacket << int32(MinimumExpansionLevel);
             _worldPacket << int32(MaximumExpansionLevel);
+            _worldPacket << int32(ActiveSeason);
+            _worldPacket << int16(MaxPlayerNameQueriesPerPacket);
+            _worldPacket << int16(PlayerNameQueryTelemetryInterval);
 
             if (!LiveRegionCharacterCopySourceRegions.empty())
                 _worldPacket.append(LiveRegionCharacterCopySourceRegions.data(), LiveRegionCharacterCopySourceRegions.size());
