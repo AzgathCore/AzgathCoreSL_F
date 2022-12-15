@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 #include "Creature.h"
 #include "CreatureAIImpl.h"
 #include "Log.h"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -31,11 +32,11 @@
 // AggressorAI
 /////////////////
 
-int AggressorAI::Permissible(const Creature* creature)
+int32 AggressorAI::Permissible(Creature const* creature)
 {
     // have some hostile factions, it will be selected by IsHostileTo check at MoveInLineOfSight
     if (!creature->IsCivilian() && !creature->IsNeutralToAll())
-        return PERMIT_BASE_PROACTIVE;
+        return PERMIT_BASE_REACTIVE;
 
     return PERMIT_BASE_NO;
 }
@@ -54,39 +55,38 @@ void AggressorAI::UpdateAI(uint32 /*diff*/)
 
 void CombatAI::InitializeAI()
 {
-    for (uint32 i = 0; i < MAX_CREATURE_SPELLS; ++i)
-        if (me->m_spells[i] && sSpellMgr->GetSpellInfo(me->m_spells[i], me->GetMap()->GetDifficultyID()))
-            spells.push_back(me->m_spells[i]);
+    for (uint32 spell : me->m_spells)
+        if (spell && sSpellMgr->GetSpellInfo(spell, me->GetMap()->GetDifficultyID()))
+            _spells.push_back(spell);
 
     CreatureAI::InitializeAI();
 }
 
 void CombatAI::Reset()
 {
-    events.Reset();
-    spellEvents.Reset();
-
-    events.ScheduleEvent(EVENT_UPDATE_VICTIM, 0ms, 500ms);
+    _events.Reset();
 }
 
 void CombatAI::JustDied(Unit* killer)
 {
-    for (SpellVct::iterator i = spells.begin(); i != spells.end(); ++i)
-        if (AISpellInfoType const* info = GetAISpellInfo(*i, me->GetMap()->GetDifficultyID()))
+    for (uint32 spell : _spells)
+    {
+        if (AISpellInfoType const* info = GetAISpellInfo(spell, me->GetMap()->GetDifficultyID()))
             if (info->condition == AICOND_DIE)
-                me->CastSpell(killer, *i, true);
+                me->CastSpell(killer, spell, true);
+    }
 }
 
-void CombatAI::EnterCombat(Unit* who)
+void CombatAI::JustEngagedWith(Unit* who)
 {
-    for (SpellVct::iterator i = spells.begin(); i != spells.end(); ++i)
+    for (uint32 spell : _spells)
     {
-        if (AISpellInfoType const* info = GetAISpellInfo(*i, me->GetMap()->GetDifficultyID()))
+        if (AISpellInfoType const* info = GetAISpellInfo(spell, me->GetMap()->GetDifficultyID()))
         {
             if (info->condition == AICOND_AGGRO)
-                me->CastSpell(who, *i, false);
+                me->CastSpell(who, spell, false);
             else if (info->condition == AICOND_COMBAT)
-                events.ScheduleEvent(*i, info->cooldown + rand32() % info->cooldown);
+                _events.ScheduleEvent(spell, info->cooldown, info->cooldown * 2);
         }
     }
 }
@@ -96,95 +96,24 @@ void CombatAI::UpdateAI(uint32 diff)
     if (!UpdateVictim())
         return;
 
-    events.Update(diff);
-
-    if (events.ExecuteEvent() == EVENT_UPDATE_VICTIM)
-    {
-        if (!UpdateVictim())
-        {
-            events.Repeat(500ms);
-            return;
-        }
-    }
+    _events.Update(diff);
 
     if (me->HasUnitState(UNIT_STATE_CASTING))
         return;
 
-    if (uint32 spellId = events.ExecuteEvent())
+    if (uint32 spellId = _events.ExecuteEvent())
     {
         DoCast(spellId);
         if (AISpellInfoType const* info = GetAISpellInfo(spellId, me->GetMap()->GetDifficultyID()))
-            events.ScheduleEvent(spellId, info->cooldown + rand32() % info->cooldown);
+            _events.ScheduleEvent(spellId, info->cooldown, info->cooldown * 2);
     }
     else
         DoMeleeAttackIfReady();
 }
 
-bool CombatAI::UpdateVictim()
-{
-    if (!me->HasReactState(REACT_PASSIVE))
-    {
-        if (Unit* victim = me->SelectVictim(false))
-        {
-            if (!me->IsFocusing(nullptr, true))
-                AttackStart(victim);
-        }
-        else if (me->IsInCombat())
-            EnterEvadeMode(CreatureAI::EVADE_REASON_NO_HOSTILES);
-
-        return me->GetVictim() != nullptr;
-    }
-    else if (me->getThreatManager().isThreatListEmpty())
-    {
-        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
-        return false;
-    }
-
-    return true;
-}
-
 void CombatAI::SpellInterrupted(uint32 spellId, uint32 unTimeMs)
 {
-    spellEvents.RescheduleEvent(spellId, unTimeMs);
-}
-
-void CombatAI::MoveCombat(Position destination)
-{
-    me->GetMotionMaster()->MovePoint(POINT_ID_COMBAT_MOVEMENT, destination);
-    combatMoveDest = destination;
-}
-
-void CombatAI::MovementInform(uint32 type, uint32 id)
-{
-    if (type == POINT_MOTION_TYPE && id == POINT_ID_COMBAT_MOVEMENT)
-        combatMoveDest.reset();
-}
-
-void CombatAI::EnterEvadeMode(EvadeReason why)
-{
-    if (!_EnterEvadeMode(why))
-        return;
-
-    if (combatMoveDest.is_initialized())
-        MoveCombat(*combatMoveDest);
-    else
-    {
-        if (!me->GetVehicle()) // otherwise me will be in evade mode forever
-        {
-            if (Unit* owner = me->GetCharmerOrOwner())
-            {
-                me->GetMotionMaster()->Clear(false);
-                me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, me->GetFollowAngle(), MOTION_SLOT_ACTIVE);
-            }
-            else
-            {
-                // Required to prevent attacking creatures that are evading and cause them to reenter combat
-                // Does not apply to MoveFollow
-                me->AddUnitState(UNIT_STATE_EVADE);
-                me->GetMotionMaster()->MoveTargetedHome();
-            }
-        }
-    }
+    _events.RescheduleEvent(spellId, Milliseconds(unTimeMs));
 }
 
 /////////////////
@@ -195,24 +124,27 @@ void CasterAI::InitializeAI()
 {
     CombatAI::InitializeAI();
 
-    m_attackDist = 30.0f;
-    for (SpellVct::iterator itr = spells.begin(); itr != spells.end(); ++itr)
-        if (AISpellInfoType const* info = GetAISpellInfo(*itr, me->GetMap()->GetDifficultyID()))
-            if (info->condition == AICOND_COMBAT && m_attackDist > info->maxRange)
-                m_attackDist = info->maxRange;
+    _attackDistance = 30.0f;
 
-    if (m_attackDist == 30.0f)
-        m_attackDist = MELEE_RANGE;
+    for (uint32 spell : _spells)
+    {
+        if (AISpellInfoType const* info = GetAISpellInfo(spell, me->GetMap()->GetDifficultyID()))
+            if (info->condition == AICOND_COMBAT && _attackDistance > info->maxRange)
+                _attackDistance = info->maxRange;
+    }
+
+    if (_attackDistance == 30.0f)
+        _attackDistance = MELEE_RANGE;
 }
 
-void CasterAI::EnterCombat(Unit* who)
+void CasterAI::JustEngagedWith(Unit* who)
 {
-    if (spells.empty())
+    if (_spells.empty())
         return;
 
-    uint32 spell = rand32() % spells.size();
+    uint32 spell = rand32() % _spells.size();
     uint32 count = 0;
-    for (SpellVct::iterator itr = spells.begin(); itr != spells.end(); ++itr, ++count)
+    for (auto itr = _spells.begin(); itr != _spells.end(); ++itr, ++count)
     {
         if (AISpellInfoType const* info = GetAISpellInfo(*itr, me->GetMap()->GetDifficultyID()))
         {
@@ -220,13 +152,13 @@ void CasterAI::EnterCombat(Unit* who)
                 me->CastSpell(who, *itr, false);
             else if (info->condition == AICOND_COMBAT)
             {
-                uint32 cooldown = info->realCooldown;
+                Milliseconds cooldown = info->realCooldown;
                 if (count == spell)
                 {
-                    DoCast(spells[spell]);
-                    cooldown += me->GetCurrentSpellCastTime(*itr);
+                    DoCast(_spells[spell]);
+                    cooldown += Milliseconds(me->GetCurrentSpellCastTime(*itr));
                 }
-                events.ScheduleEvent(*itr, cooldown);
+                _events.ScheduleEvent(*itr, cooldown);
             }
         }
     }
@@ -237,7 +169,7 @@ void CasterAI::UpdateAI(uint32 diff)
     if (!UpdateVictim())
         return;
 
-    events.Update(diff);
+    _events.Update(diff);
 
     if (me->GetVictim() && me->EnsureVictim()->HasBreakableByDamageCrowdControlAura(me))
     {
@@ -248,12 +180,12 @@ void CasterAI::UpdateAI(uint32 diff)
     if (me->HasUnitState(UNIT_STATE_CASTING))
         return;
 
-    if (uint32 spellId = events.ExecuteEvent())
+    if (uint32 spellId = _events.ExecuteEvent())
     {
         DoCast(spellId);
         uint32 casttime = me->GetCurrentSpellCastTime(spellId);
         if (AISpellInfoType const* info = GetAISpellInfo(spellId, me->GetMap()->GetDifficultyID()))
-            events.ScheduleEvent(spellId, (casttime ? casttime : 500) + info->realCooldown);
+            _events.ScheduleEvent(spellId, Milliseconds(casttime ? casttime : 500) + info->realCooldown);
     }
 }
 
@@ -261,18 +193,18 @@ void CasterAI::UpdateAI(uint32 diff)
 // ArcherAI
 //////////////
 
-ArcherAI::ArcherAI(Creature* c) : CreatureAI(c)
+ArcherAI::ArcherAI(Creature* creature, uint32 scriptId) : CreatureAI(creature, scriptId)
 {
-    if (!me->m_spells[0])
-        TC_LOG_ERROR("misc", "ArcherAI set for creature (entry = %u) with spell1=0. AI will do nothing", me->GetEntry());
+    if (!creature->m_spells[0])
+        TC_LOG_ERROR("scripts.ai", "ArcherAI set for creature with spell1 = 0. AI will do nothing (%s)", creature->GetGUID().ToString().c_str());
 
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(me->m_spells[0], me->GetMap()->GetDifficultyID());
-    m_minRange = spellInfo ? spellInfo->GetMinRange(false) : 0;
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(creature->m_spells[0], creature->GetMap()->GetDifficultyID());
+    _minimumRange = spellInfo ? spellInfo->GetMinRange(false) : 0;
 
-    if (!m_minRange)
-        m_minRange = MELEE_RANGE;
-    me->m_CombatDistance = spellInfo ? spellInfo->GetMaxRange(false) : 0;
-    me->m_SightDistance = me->m_CombatDistance;
+    if (!_minimumRange)
+        _minimumRange = MELEE_RANGE;
+    creature->m_CombatDistance = spellInfo ? spellInfo->GetMaxRange(false) : 0;
+    creature->m_SightDistance = creature->m_CombatDistance;
 }
 
 void ArcherAI::AttackStart(Unit* who)
@@ -280,7 +212,7 @@ void ArcherAI::AttackStart(Unit* who)
     if (!who)
         return;
 
-    if (me->IsWithinCombatRange(who, m_minRange))
+    if (me->IsWithinCombatRange(who, _minimumRange))
     {
         if (me->Attack(who, true) && !who->IsFlying())
             me->GetMotionMaster()->MoveChase(who);
@@ -300,7 +232,7 @@ void ArcherAI::UpdateAI(uint32 /*diff*/)
     if (!UpdateVictim())
         return;
 
-    if (!me->IsWithinCombatRange(me->GetVictim(), m_minRange))
+    if (!me->IsWithinCombatRange(me->GetVictim(), _minimumRange))
         DoSpellAttackIfReady(me->m_spells[0]);
     else
         DoMeleeAttackIfReady();
@@ -310,22 +242,21 @@ void ArcherAI::UpdateAI(uint32 /*diff*/)
 // TurretAI
 //////////////
 
-TurretAI::TurretAI(Creature* c) : CreatureAI(c)
+TurretAI::TurretAI(Creature* creature, uint32 scriptId) : CreatureAI(creature, scriptId)
 {
-    if (!me->m_spells[0])
-        TC_LOG_ERROR("misc", "TurretAI set for creature (entry = %u) with spell1=0. AI will do nothing", me->GetEntry());
+    if (!creature->m_spells[0])
+        TC_LOG_ERROR("scripts.ai", "TurretAI set for creature with spell1 = 0. AI will do nothing (%s)", creature->GetGUID().ToString().c_str());
 
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(me->m_spells[0], me->GetMap()->GetDifficultyID());
-    m_minRange = spellInfo ? spellInfo->GetMinRange(false) : 0;
-    me->m_CombatDistance = spellInfo ? spellInfo->GetMaxRange(false) : 0;
-    me->m_SightDistance = me->m_CombatDistance;
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(creature->m_spells[0], creature->GetMap()->GetDifficultyID());
+    _minimumRange = spellInfo ? spellInfo->GetMinRange(false) : 0;
+    creature->m_CombatDistance = spellInfo ? spellInfo->GetMaxRange(false) : 0;
+    creature->m_SightDistance = creature->m_CombatDistance;
 }
 
-bool TurretAI::CanAIAttack(const Unit* /*who*/) const
+bool TurretAI::CanAIAttack(Unit const* who) const
 {
     /// @todo use one function to replace it
-    if (!me->IsWithinCombatRange(me->GetVictim(), me->m_CombatDistance)
-        || (m_minRange && me->IsWithinCombatRange(me->GetVictim(), m_minRange)))
+    if (!me->IsWithinCombatRange(who, me->m_CombatDistance) || (_minimumRange && me->IsWithinCombatRange(who, _minimumRange)))
         return false;
     return true;
 }
@@ -348,11 +279,11 @@ void TurretAI::UpdateAI(uint32 /*diff*/)
 // VehicleAI
 //////////////
 
-VehicleAI::VehicleAI(Creature* creature) : CreatureAI(creature), m_HasConditions(false), m_ConditionsTimer(VEHICLE_CONDITION_CHECK_TIME)
+VehicleAI::VehicleAI(Creature* creature, uint32 scriptId) : CreatureAI(creature, scriptId), _hasConditions(false), _conditionsTimer(VEHICLE_CONDITION_CHECK_TIME)
 {
     LoadConditions();
-    m_DoDismiss = false;
-    m_DismissTimer = VEHICLE_DISMISS_TIME;
+    _dismiss = false;
+    _dismissTimer = VEHICLE_DISMISS_TIME;
 }
 
 // NOTE: VehicleAI::UpdateAI runs even while the vehicle is mounted
@@ -360,46 +291,48 @@ void VehicleAI::UpdateAI(uint32 diff)
 {
     CheckConditions(diff);
 
-    if (m_DoDismiss)
+    if (_dismiss)
     {
-        if (m_DismissTimer < diff)
+        if (_dismissTimer < diff)
         {
-            m_DoDismiss = false;
+            _dismiss = false;
             me->DespawnOrUnsummon();
         }
         else
-            m_DismissTimer -= diff;
+            _dismissTimer -= diff;
     }
 }
 
-void VehicleAI::OnCharmed(bool apply)
+void VehicleAI::OnCharmed(bool /*isNew*/)
 {
-    if (!me->GetVehicleKit()->IsVehicleInUse() && !apply && m_HasConditions) // was used and has conditions
+    bool const charmed = me->IsCharmed();
+    if (!me->GetVehicleKit()->IsVehicleInUse() && !charmed && _hasConditions) // was used and has conditions
     {
-        m_DoDismiss = true; // needs reset
+        _dismiss = true; // needs reset
     }
-    else if (apply)
-        m_DoDismiss = false; // in use again
+    else if (charmed)
+        _dismiss = false; // in use again
 
-    m_DismissTimer = VEHICLE_DISMISS_TIME; // reset timer
+    _dismissTimer = VEHICLE_DISMISS_TIME; // reset timer
 }
 
 void VehicleAI::LoadConditions()
 {
-    m_HasConditions = sConditionMgr->HasConditionsForNotGroupedEntry(CONDITION_SOURCE_TYPE_CREATURE_TEMPLATE_VEHICLE, me->GetEntry());
+    _hasConditions = sConditionMgr->HasConditionsForNotGroupedEntry(CONDITION_SOURCE_TYPE_CREATURE_TEMPLATE_VEHICLE, me->GetEntry());
 }
 
 void VehicleAI::CheckConditions(uint32 diff)
 {
-    if (!m_HasConditions)
+    if (!_hasConditions)
         return;
 
-    if (m_ConditionsTimer <= diff)
+    if (_conditionsTimer <= diff)
     {
         if (Vehicle * vehicleKit = me->GetVehicleKit())
         {
-            for (SeatMap::iterator itr = vehicleKit->Seats.begin(); itr != vehicleKit->Seats.end(); ++itr)
-                if (Unit * passenger = ObjectAccessor::GetUnit(*me, itr->second.Passenger.Guid))
+            for (auto const& [i, vehicleSeat] : vehicleKit->Seats)
+            {
+                if (Unit* passenger = ObjectAccessor::GetUnit(*me, vehicleSeat.Passenger.Guid))
                 {
                     if (Player * player = passenger->ToPlayer())
                     {
@@ -410,46 +343,19 @@ void VehicleAI::CheckConditions(uint32 diff)
                         }
                     }
                 }
+            }
         }
 
-        m_ConditionsTimer = VEHICLE_CONDITION_CHECK_TIME;
+        _conditionsTimer = VEHICLE_CONDITION_CHECK_TIME;
     }
     else
-        m_ConditionsTimer -= diff;
+        _conditionsTimer -= diff;
 }
 
-int BattlePetAI::Permissible(const Creature* creature)
+int32 VehicleAI::Permissible(Creature const* creature)
 {
+    if (creature->IsVehicle())
+        return PERMIT_BASE_SPECIAL;
+
     return PERMIT_BASE_NO;
-}
-
-void BattlePetAI::InitializeAI()
-{
-}
-
-void BattlePetAI::UpdateAI(uint32 diff)
-{
-    if (!me->IsInWorld() || !me->IsAlive())
-        return;
-
-    Unit* owner = me->GetCharmerOrOwner();
-    if (owner && !me->HasUnitState(UNIT_STATE_FOLLOW))
-        me->GetMotionMaster()->MoveFollow(owner, me->GetFollowDistance(), me->GetFollowAngle());
-}
-
-void BattlePetAI::MovementInform(uint32 moveType, uint32 data)
-{
-    switch (moveType)
-    {
-    case POINT_MOTION_TYPE:
-    {
-        me->GetMotionMaster()->Clear();
-        me->GetMotionMaster()->MoveIdle();
-        if (me->GetCharmerOrOwner())
-            me->GetMotionMaster()->MoveFollow(me->GetCharmerOrOwner(), me->GetFollowDistance(), me->GetFollowAngle());
-        break;
-    }
-    default:
-        break;
-    }
 }

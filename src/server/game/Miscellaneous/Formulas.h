@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,80 +30,20 @@ namespace Trinity
 {
     inline uint32 GetExpansionForLevel(uint32 level)
     {
-        /*if (level < 30)
+        if (level < 60)
             return EXPANSION_CLASSIC;
-        else if (level < 30)
+        else if (level < 70)
             return EXPANSION_THE_BURNING_CRUSADE;
-        else*/ if (level < 30)
+        else if (level < 80)
             return EXPANSION_WRATH_OF_THE_LICH_KING;
-        /*else if (level < 35)
-            return EXPANSION_CATACLYSM;*/
-        else if (level < 35)
+        else if (level < 85)
+            return EXPANSION_CATACLYSM;
+        else if (level < 90)
             return EXPANSION_MISTS_OF_PANDARIA;
-        else if (level < 40)
+        else if (level < 100)
             return EXPANSION_WARLORDS_OF_DRAENOR;
-        else if (level < 45)
-            return EXPANSION_LEGION;
-        else if (level < 50)
-            return EXPANSION_BATTLE_FOR_AZEROTH;
-        else if (level < 60)
-            return EXPANSION_SHADOWLANDS;
         else
             return CURRENT_EXPANSION;
-    }
-
-    inline float GetDamageMultiplierForExpansion(uint32 playerLevel, uint32 creatureLevel)
-    {
-        uint32 expansion = GetExpansionForLevel(creatureLevel);
-        if (playerLevel > GetMaxLevelForExpansion(expansion))
-        {
-            switch (expansion)
-            {
-                case EXPANSION_CLASSIC:
-                case EXPANSION_THE_BURNING_CRUSADE:
-                case EXPANSION_WRATH_OF_THE_LICH_KING:
-                    return 32.0f;
-                    break;
-                case EXPANSION_CATACLYSM:
-                case EXPANSION_MISTS_OF_PANDARIA:
-                    return 16.0f;
-                    break;
-                case EXPANSION_WARLORDS_OF_DRAENOR:
-                    return 8.0f;
-                    break;
-                case EXPANSION_LEGION:
-                    return 4.0f;
-                    break;
-                case EXPANSION_BATTLE_FOR_AZEROTH:
-                    return 2.0f;
-                    break;
-                case EXPANSION_SHADOWLANDS:
-                    return 1.0f;
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        return 1.0f;
-    }
-
-    inline uint32 GetNumberMultipleOfFive(uint32 averageItemLevel)
-    {
-        uint8 difference = averageItemLevel % 5;
-        uint32 average_new = averageItemLevel - difference;
-        if (difference >= 3)
-        {
-            for (uint8 i = 1; i < 4; ++i)
-            {
-                if (((averageItemLevel + i) % 5) == 0)
-                {
-                    average_new = averageItemLevel + i;
-                    break;
-                }
-            }
-        }
-        return average_new;
     }
 
     namespace Honor
@@ -223,6 +163,13 @@ namespace Trinity
                     baseGain = 0;
             }
 
+            if (sWorld->getIntConfig(CONFIG_MIN_CREATURE_SCALED_XP_RATIO) && pl_level != mob_level)
+            {
+                // Use mob level instead of player level to avoid overscaling on gain in a min is enforced
+                uint32 baseGainMin = BaseGain(pl_level, pl_level) * sWorld->getIntConfig(CONFIG_MIN_CREATURE_SCALED_XP_RATIO) / 100;
+                baseGain = std::max(baseGainMin, baseGain);
+            }
+
             sScriptMgr->OnBaseGainCalculation(baseGain, pl_level, mob_level);
             return baseGain;
         }
@@ -236,12 +183,12 @@ namespace Trinity
             {
                 float xpMod = 1.0f;
 
-                gain = BaseGain(player->getLevel(), u->GetLevelForTarget(player));
+                gain = BaseGain(player->GetLevel(), u->GetLevelForTarget(player));
 
                 if (gain && creature)
                 {
                     // Players get only 10% xp for killing creatures of lower expansion levels than himself
-                    if ((uint32(creature->GetCreatureTemplate()->GetHealthScalingExpansion()) < GetExpansionForLevel(player->getLevel())))
+                    if ((uint32(creature->GetCreatureTemplate()->GetHealthScalingExpansion()) < GetExpansionForLevel(player->GetLevel())))
                         gain = uint32(round(gain / 10.0f));
 
                     if (creature->isElite())
@@ -256,8 +203,7 @@ namespace Trinity
                     xpMod *= creature->GetCreatureTemplate()->ModExperience;
                 }
 
-                float killXpRate = player->GetPersonnalXpRate() ? player->GetPersonnalXpRate() : sWorld->getRate(RATE_XP_QUEST);
-                xpMod *= isBattleGround ? sWorld->getRate(RATE_XP_BG_KILL) : killXpRate;
+                xpMod *= isBattleGround ? sWorld->getRate(RATE_XP_BG_KILL) : sWorld->getRate(RATE_XP_KILL);
                 if (creature && creature->m_PlayerDamageReq) // if players dealt less than 50% of the damage and were credited anyway (due to CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ), scale XP gained appropriately (linear scaling)
                     xpMod *= 1.0f - 2.0f * creature->m_PlayerDamageReq / creature->GetMaxHealth();
 

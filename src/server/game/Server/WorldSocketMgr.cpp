@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -92,13 +92,13 @@ bool WorldSocketMgr::StartWorldNetwork(Trinity::Asio::IoContext& ioContext, std:
     if (!instanceAcceptor->Bind())
     {
         TC_LOG_ERROR("network", "StartNetwork failed to bind instance socket acceptor");
+        delete instanceAcceptor;
         return false;
     }
 
     _instanceAcceptor = instanceAcceptor;
 
-    _acceptor->SetSocketFactory(std::bind(&BaseSocketMgr::GetSocketForAccept, this));
-    _instanceAcceptor->SetSocketFactory(std::bind(&BaseSocketMgr::GetSocketForAccept, this));
+    _instanceAcceptor->SetSocketFactory([this]() { return GetSocketForAccept(); });
 
     _acceptor->AsyncAcceptWithCallback<&OnSocketAccept>();
     _instanceAcceptor->AsyncAcceptWithCallback<&OnSocketAccept>();

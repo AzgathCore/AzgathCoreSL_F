@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +24,6 @@
 #include "Grid.h"
 #include "GridReference.h"
 #include "Timer.h"
-#include "Util.h"
 
 #define DEFAULT_VISIBILITY_NOTIFY_PERIOD      1000
 
@@ -89,7 +88,6 @@ class NGrid
         }
 
         uint32 GetGridId(void) const { return i_gridId; }
-        void SetGridId(const uint32 id) const { i_gridId = id; }
         grid_state_t GetGridState(void) const { return i_cellstate; }
         void SetGridState(grid_state_t s) { i_cellstate = s; }
         int32 getX() const { return i_x; }

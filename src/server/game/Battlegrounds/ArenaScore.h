@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -38,14 +38,14 @@ struct TC_GAME_API ArenaScore : public BattlegroundScore
         uint32 PostMatchMMR = 0;
 };
 
-struct TC_GAME_API ArenaGroupScore
+struct TC_GAME_API ArenaTeamScore
 {
     friend class Arena;
     friend class Battleground;
 
     protected:
-        ArenaGroupScore();
-        virtual ~ArenaGroupScore();
+        ArenaTeamScore();
+        virtual ~ArenaTeamScore();
 
         void Assign(uint32 preMatchRating, uint32 postMatchRating, uint32 preMatchMMR, uint32 postMatchMMR);
 

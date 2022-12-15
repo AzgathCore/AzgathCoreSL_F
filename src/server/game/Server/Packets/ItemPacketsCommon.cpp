@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,6 +17,7 @@
 
 #include "ItemPacketsCommon.h"
 #include "Item.h"
+#include "Loot.h"
 #include "Player.h"
 
 namespace WorldPackets
@@ -53,7 +54,7 @@ void ItemInstance::Initialize(::Item const* item)
     std::vector<int32> const& bonusListIds = item->m_itemData->BonusListIDs;
     if (!bonusListIds.empty())
     {
-        ItemBonus = boost::in_place();
+        ItemBonus.emplace();
         ItemBonus->BonusListIDs.insert(ItemBonus->BonusListIDs.end(), bonusListIds.begin(), bonusListIds.end());
         ItemBonus->Context = item->GetContext();
     }
@@ -78,11 +79,11 @@ void ItemInstance::Initialize(UF::SocketedGem const* gem)
 
 void ItemInstance::Initialize(::LootItem const& lootItem)
 {
-    ItemID               = lootItem.itemid;
+    ItemID = lootItem.itemid;
 
     if (!lootItem.BonusListIDs.empty() || lootItem.randomBonusListId)
     {
-        ItemBonus = boost::in_place();
+        ItemBonus.emplace();
         ItemBonus->BonusListIDs = lootItem.BonusListIDs;
         ItemBonus->Context = lootItem.context;
         if (lootItem.randomBonusListId)
@@ -102,7 +103,7 @@ void ItemInstance::Initialize(::VoidStorageItem const* voidItem)
 
     if (!voidItem->BonusListIDs.empty())
     {
-        ItemBonus = boost::in_place();
+        ItemBonus.emplace();
         ItemBonus->Context = voidItem->Context;
         ItemBonus->BonusListIDs = voidItem->BonusListIDs;
     }
@@ -113,13 +114,13 @@ bool ItemInstance::operator==(ItemInstance const& r) const
     if (ItemID != r.ItemID)
         return false;
 
-    if (ItemBonus.is_initialized() != r.ItemBonus.is_initialized())
+    if (ItemBonus.has_value() != r.ItemBonus.has_value())
         return false;
 
     if (Modifications != r.Modifications)
         return false;
 
-    if (ItemBonus.is_initialized() && *ItemBonus != *r.ItemBonus)
+    if (ItemBonus.has_value() && *ItemBonus != *r.ItemBonus)
         return false;
 
     return true;
@@ -194,7 +195,7 @@ ByteBuffer& operator<<(ByteBuffer& data, ItemInstance const& itemInstance)
 {
     data << int32(itemInstance.ItemID);
 
-    data.WriteBit(itemInstance.ItemBonus.is_initialized());
+    data.WriteBit(itemInstance.ItemBonus.has_value());
     data.FlushBits();
 
     data << itemInstance.Modifications;
@@ -216,7 +217,7 @@ ByteBuffer& operator>>(ByteBuffer& data, ItemInstance& itemInstance)
 
     if (hasItemBonus)
     {
-        itemInstance.ItemBonus = boost::in_place();
+        itemInstance.ItemBonus.emplace();
         data >> *itemInstance.ItemBonus;
     }
 

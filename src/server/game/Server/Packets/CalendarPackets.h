@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -174,7 +174,7 @@ namespace WorldPackets
             uint64 InstanceID = 0;
             int32 MapID = 0;
             uint32 DifficultyID = 0;
-            time_t ExpireTime = time_t(0);
+            int32 ExpireTime = 0;
         };
 
         struct CalendarSendCalendarEventInfo
@@ -508,11 +508,11 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-            int32 MapID = 0;
-            int32 OldTimeRemaining = 0;
             time_t ServerTime = 0;
+            int32 MapID = 0;
             uint32 DifficultyID = 0;
             int32 NewTimeRemaining = 0;
+            int32 OldTimeRemaining = 0;
         };
 
         struct CalendarEventInitialInviteInfo

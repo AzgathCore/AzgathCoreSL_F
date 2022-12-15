@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,8 +25,6 @@
 #include "CombatAI.h"
 #include "GridNotifiersImpl.h"
 #include "MotionMaster.h"
-#include "ScriptedCreature.h"
-#include "SpellInfo.h"
 
 enum DeathKnightSpells
 {
@@ -36,79 +34,70 @@ enum DeathKnightSpells
     SPELL_DK_SANCTUARY              = 54661
 };
 
-class npc_pet_dk_ebon_gargoyle : public CreatureScript
+struct npc_pet_dk_ebon_gargoyle : CasterAI
 {
-    public:
-        npc_pet_dk_ebon_gargoyle() : CreatureScript("npc_pet_dk_ebon_gargoyle") { }
+    npc_pet_dk_ebon_gargoyle(Creature* creature) : CasterAI(creature) { }
 
-        struct npc_pet_dk_ebon_gargoyleAI : CasterAI
+    void InitializeAI() override
+    {
+        CasterAI::InitializeAI();
+        ObjectGuid ownerGuid = me->GetOwnerGUID();
+        if (!ownerGuid)
+            return;
+
+        // Find victim of Summon Gargoyle spell
+        std::list<Unit*> targets;
+        Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(me, me, 30.0f);
+        Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(me, targets, u_check);
+        Cell::VisitAllObjects(me, searcher, 30.0f);
+        for (Unit* target : targets)
         {
-            npc_pet_dk_ebon_gargoyleAI(Creature* creature) : CasterAI(creature) { }
-
-            void InitializeAI() override
+            if (target->HasAura(SPELL_DK_SUMMON_GARGOYLE_1, ownerGuid))
             {
-                CasterAI::InitializeAI();
-                ObjectGuid ownerGuid = me->GetOwnerGUID();
-                if (!ownerGuid)
-                    return;
-
-                // Find victim of Summon Gargoyle spell
-                std::list<Unit*> targets;
-                Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(me, me, 30.0f);
-                Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(me, targets, u_check);
-                Cell::VisitAllObjects(me, searcher, 30.0f);
-                for (std::list<Unit*>::const_iterator iter = targets.begin(); iter != targets.end(); ++iter)
-                    if ((*iter)->HasAura(SPELL_DK_SUMMON_GARGOYLE_1, ownerGuid))
-                    {
-                        me->Attack((*iter), false);
-                        break;
-                    }
+                me->Attack(target, false);
+                break;
             }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                // Stop Feeding Gargoyle when it dies
-                if (Unit* owner = me->GetOwner())
-                    owner->RemoveAurasDueToSpell(SPELL_DK_SUMMON_GARGOYLE_2);
-            }
-
-            // Fly away when dismissed
-            void SpellHit(Unit* source, SpellInfo const* spell) override
-            {
-                if (spell->Id != SPELL_DK_DISMISS_GARGOYLE || !me->IsAlive())
-                    return;
-
-                Unit* owner = me->GetOwner();
-                if (!owner || owner != source)
-                    return;
-
-                // Stop Fighting
-                me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-
-                // Sanctuary
-                me->CastSpell(me, SPELL_DK_SANCTUARY, true);
-                me->SetReactState(REACT_PASSIVE);
-
-                //! HACK: Creature's can't have MOVEMENTFLAG_FLYING
-                // Fly Away
-                me->SetCanFly(true);
-                me->SetSpeedRate(MOVE_FLIGHT, 0.75f);
-                me->SetSpeedRate(MOVE_RUN, 0.75f);
-                float x = me->GetPositionX() + 20 * std::cos(me->GetOrientation());
-                float y = me->GetPositionY() + 20 * std::sin(me->GetOrientation());
-                float z = me->GetPositionZ() + 40;
-                me->GetMotionMaster()->Clear(false);
-                me->GetMotionMaster()->MovePoint(0, x, y, z);
-
-                // Despawn as soon as possible
-                me->DespawnOrUnsummon(Seconds(4));
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_pet_dk_ebon_gargoyleAI(creature);
         }
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        // Stop Feeding Gargoyle when it dies
+        if (Unit* owner = me->GetOwner())
+            owner->RemoveAurasDueToSpell(SPELL_DK_SUMMON_GARGOYLE_2);
+    }
+
+    // Fly away when dismissed
+    void SpellHit(WorldObject* caster, SpellInfo const* spellInfo) override
+    {
+        if (spellInfo->Id != SPELL_DK_DISMISS_GARGOYLE || !me->IsAlive())
+            return;
+
+        Unit* owner = me->GetOwner();
+        if (!owner || owner != caster)
+            return;
+
+        // Stop Fighting
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+
+        // Sanctuary
+        me->CastSpell(me, SPELL_DK_SANCTUARY, true);
+        me->SetReactState(REACT_PASSIVE);
+
+        //! HACK: Creature's can't have MOVEMENTFLAG_FLYING
+        // Fly Away
+        me->SetCanFly(true);
+        me->SetSpeedRate(MOVE_FLIGHT, 0.75f);
+        me->SetSpeedRate(MOVE_RUN, 0.75f);
+        float x = me->GetPositionX() + 20 * std::cos(me->GetOrientation());
+        float y = me->GetPositionY() + 20 * std::sin(me->GetOrientation());
+        float z = me->GetPositionZ() + 40;
+        me->GetMotionMaster()->Clear();
+        me->GetMotionMaster()->MovePoint(0, x, y, z);
+
+        // Despawn as soon as possible
+        me->DespawnOrUnsummon(Seconds(4));
+    }
 };
 
 struct npc_pet_dk_guardian : public AggressorAI
@@ -121,35 +110,13 @@ struct npc_pet_dk_guardian : public AggressorAI
             return false;
         Unit* owner = me->GetOwner();
         if (owner && !target->IsInCombatWith(owner))
-        return false;
-
+            return false;
         return AggressorAI::CanAIAttack(target);
-    }
-};
-
-//51963
-class spell_dk_gargoyle_strike : public SpellScript
-{
-    PrepareSpellScript(spell_dk_gargoyle_strike);
-
-    void HandleOnHit()
-    {
-        if (Unit* owner = GetCaster()->GetOwner())
-        {
-            int32 damage = GetCaster()->GetOwner()->m_unitData->AttackPower / 100 * 15.0f;
-            SetHitDamage(damage);
-        }
-    }
-
-    void Register() override
-    {
-        OnHit += SpellHitFn(spell_dk_gargoyle_strike::HandleOnHit);
     }
 };
 
 void AddSC_deathknight_pet_scripts()
 {
-    new npc_pet_dk_ebon_gargoyle();
+    RegisterCreatureAI(npc_pet_dk_ebon_gargoyle);
     RegisterCreatureAI(npc_pet_dk_guardian);
-    RegisterSpellScript(spell_dk_gargoyle_strike);
 }

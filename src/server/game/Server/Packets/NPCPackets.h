@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,9 +24,9 @@
 #include "Position.h"
 #include <array>
 
+enum class GossipOptionNpc : uint8;
 enum class GossipOptionStatus : uint8;
-enum class GossipOptionRewardType : uint8; 
-enum class TrainerFailReason : uint32;
+enum class GossipOptionRewardType : uint8;
 
 namespace WorldPackets
 {
@@ -64,9 +64,10 @@ namespace WorldPackets
         struct ClientGossipOptions
         {
             int32 ClientOption  = 0;
-            uint8 OptionNPC     = 0;
+            GossipOptionNpc OptionNPC = GossipOptionNpc(0);
             uint8 OptionFlags   = 0;
             int32 OptionCost    = 0;
+            uint32 OptionLanguage = 0;
             GossipOptionStatus Status = GossipOptionStatus(0);
             std::string Text;
             std::string Confirm;
@@ -119,7 +120,9 @@ namespace WorldPackets
         public:
             GossipComplete() : ServerPacket(SMSG_GOSSIP_COMPLETE, 0) { }
 
-            WorldPacket const* Write() override { return &_worldPacket; }
+            WorldPacket const* Write() override;
+
+            bool SuppressSound = false;
         };
 
         struct VendorItem
@@ -204,10 +207,10 @@ namespace WorldPackets
 
             int32 ID            = 0;
             uint32 Flags        = 0;
-            TaggedPosition<Position::XY> Pos;
+            TaggedPosition<Position::XYZ> Pos;
             int32 Icon          = 0;
             int32 Importance    = 0;
-            int32 Unknown905    = 0;
+            int32 WMOGroupID    = 0;
             std::string Name;
         };
 
@@ -251,8 +254,8 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             ObjectGuid TrainerGUID;
-            int32 SpellID = 0;
-            TrainerFailReason TrainerFailedReason   = TrainerFailReason(0);
+            int32 SpellID               = 0;
+            int32 TrainerFailedReason   = 0;
         };
 
         class RequestStabledPets final : public ClientPacket
@@ -272,22 +275,10 @@ namespace WorldPackets
 
             void Read() override;
 
+            ObjectGuid StableMaster;
             uint32 PetNumber = 0;
             uint8 DestSlot = 0;
-            ObjectGuid StableMaster;
         };
-
-        class OpenAlliedRaceDetails final : public ServerPacket
-        {
-        public:
-            OpenAlliedRaceDetails() : ServerPacket(SMSG_ALLIED_RACE_DETAILS, 12) { }
-
-            WorldPacket const* Write() override;
-
-            ObjectGuid Guid;
-            uint32 RaceId = 0;
-        };
-
     }
 }
 

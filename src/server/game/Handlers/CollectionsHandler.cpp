@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,7 +18,6 @@
 #include "WorldSession.h"
 #include "CollectionMgr.h"
 #include "CollectionPackets.h"
-#include "PetBattle.h"
 
 void WorldSession::HandleCollectionItemSetFavorite(WorldPackets::Collections::CollectionItemSetFavorite& collectionItemSetFavorite)
 {
@@ -41,14 +40,5 @@ void WorldSession::HandleCollectionItemSetFavorite(WorldPackets::Collections::Co
             break;
         default:
             break;
-    }
-}
-
-void WorldSession::HandleBattlePetClearFanfare(WorldPackets::Collections::BattlePetClearFanfare& packet)
-{
-    if (auto battlePet = _player->GetBattlePet(packet.BattlePetGUID))
-    {
-        battlePet->Flags = battlePet->Flags & ~BATTLE_PET_FLAG_GIFT;;
-        battlePet->needSave = true;
     }
 }

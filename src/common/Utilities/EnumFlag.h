@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,7 +28,7 @@ constexpr bool IsEnumFlag(T) { return false; }
 namespace EnumTraits
 {
     template<typename T>
-    using IsFlag = std::integral_constant<bool, IsEnumFlag(T{})>;
+    using IsFlag = std::conjunction<std::is_enum<T>, std::integral_constant<bool, IsEnumFlag(T{})>>;
 }
 
 template<typename T, std::enable_if_t<EnumTraits::IsFlag<T>::value, std::nullptr_t> = nullptr>
@@ -64,7 +64,7 @@ inline constexpr T operator~(T value)
 template<typename T>
 class EnumFlag
 {
-    static_assert(EnumTraits::IsFlag<T>::value, "EnumFlag must be used only with enums that are specify EnumFlag::IsFlag");
+    static_assert(EnumTraits::IsFlag<T>::value, "EnumFlag must be used only with enums that are marked as flags by DEFINE_ENUM_FLAG macro");
 
 public:
     /*implicit*/ constexpr EnumFlag(T value) : _value(value)

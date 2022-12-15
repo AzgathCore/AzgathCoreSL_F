@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -35,12 +35,6 @@ void UpdateData::AddOutOfRangeGUID(GuidSet& guids)
 void UpdateData::AddOutOfRangeGUID(ObjectGuid guid)
 {
     m_outOfRangeGUIDs.insert(guid);
-}
-
-void UpdateData::AddUpdateBlock(const ByteBuffer &block)
-{
-    m_data.append(block);
-    ++m_blockCount;
 }
 
 bool UpdateData::BuildPacket(WorldPacket* packet)

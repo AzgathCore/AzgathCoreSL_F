@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,7 +23,7 @@
 
 using GameAccountMgr = AccountMgr;
 
-AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email, std::string password, std::string* gameAccountName)
+AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email, std::string password, bool withGameAccount, std::string* gameAccountName)
 {
     if (utf8length(email) > MAX_BNET_EMAIL_STR)
         return AccountOpResult::AOR_NAME_TOO_LONG;
@@ -37,7 +37,6 @@ AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email,
     if (GetId(email))
         return AccountOpResult::AOR_NAME_ALREADY_EXIST;
 
-    /* create bnet account */
     LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_BNET_ACCOUNT);
     stmt->setString(0, email);
     stmt->setString(1, CalculateShaPassHash(email, password));
@@ -46,9 +45,11 @@ AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email,
     uint32 newAccountId = GetId(email);
     ASSERT(newAccountId);
 
-    /* create game account */
-    *gameAccountName = std::to_string(newAccountId) + "#1";
-    GameAccountMgr::instance()->CreateAccount(*gameAccountName, password, email, newAccountId, 1);
+    if (withGameAccount)
+    {
+        *gameAccountName = std::to_string(newAccountId) + "#1";
+        GameAccountMgr::instance()->CreateAccount(*gameAccountName, password, email, newAccountId, 1);
+    }
 
     return AccountOpResult::AOR_OK;
 }
@@ -89,7 +90,7 @@ bool Battlenet::AccountMgr::CheckPassword(uint32 accountId, std::string password
     return LoginDatabase.Query(stmt) != nullptr;
 }
 
-AccountOpResult Battlenet::AccountMgr::LinkWithGameAccount(std::string const& email, std::string const& gameAccountName)
+AccountOpResult Battlenet::AccountMgr::LinkWithGameAccount(std::string_view email, std::string_view gameAccountName)
 {
     uint32 bnetAccountId = GetId(email);
     if (!bnetAccountId)
@@ -110,7 +111,7 @@ AccountOpResult Battlenet::AccountMgr::LinkWithGameAccount(std::string const& em
     return AccountOpResult::AOR_OK;
 }
 
-AccountOpResult Battlenet::AccountMgr::UnlinkGameAccount(std::string const& gameAccountName)
+AccountOpResult Battlenet::AccountMgr::UnlinkGameAccount(std::string_view gameAccountName)
 {
     uint32 gameAccountId = GameAccountMgr::GetId(gameAccountName);
     if (!gameAccountId)
@@ -127,10 +128,10 @@ AccountOpResult Battlenet::AccountMgr::UnlinkGameAccount(std::string const& game
     return AccountOpResult::AOR_OK;
 }
 
-uint32 Battlenet::AccountMgr::GetId(std::string const& username)
+uint32 Battlenet::AccountMgr::GetId(std::string_view username)
 {
     LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_BNET_ACCOUNT_ID_BY_EMAIL);
-    stmt->setString(0, username);
+    stmt->setStringView(0, username);
     if (PreparedQueryResult result = LoginDatabase.Query(stmt))
         return (*result)[0].GetUInt32();
 
@@ -160,6 +161,13 @@ uint32 Battlenet::AccountMgr::GetIdByGameAccount(uint32 gameAccountId)
     return 0;
 }
 
+QueryCallback Battlenet::AccountMgr::GetIdByGameAccountAsync(uint32 gameAccountId)
+{
+    LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_BNET_ACCOUNT_ID_BY_GAME_ACCOUNT);
+    stmt->setUInt32(0, gameAccountId);
+    return LoginDatabase.AsyncQuery(stmt);
+}
+
 uint8 Battlenet::AccountMgr::GetMaxIndex(uint32 accountId)
 {
     LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_BNET_MAX_ACCOUNT_INDEX);
@@ -171,7 +179,7 @@ uint8 Battlenet::AccountMgr::GetMaxIndex(uint32 accountId)
     return 0;
 }
 
-std::string Battlenet::AccountMgr::CalculateShaPassHash(std::string const& name, std::string const& password)
+std::string Battlenet::AccountMgr::CalculateShaPassHash(std::string_view name, std::string_view password)
 {
     Trinity::Crypto::SHA256 email;
     email.UpdateData(name);

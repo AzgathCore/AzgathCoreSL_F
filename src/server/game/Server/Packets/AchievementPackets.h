@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,7 @@
 #include "Packet.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
+#include "PacketUtilities.h"
 
 namespace WorldPackets
 {
@@ -42,8 +43,8 @@ namespace WorldPackets
             ObjectGuid Player;
             uint32 Flags = 0;
             time_t Date = time_t(0);
-            uint32 TimeFromStart = 0;
-            uint32 TimeFromCreate = 0;
+            Duration<Seconds> TimeFromStart;
+            Duration<Seconds> TimeFromCreate;
             Optional<uint64> RafAcceptanceID;
         };
 
@@ -61,6 +62,16 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             AllAchievements Data;
+        };
+
+        class AllAccountCriteria final : public ServerPacket
+        {
+        public:
+            AllAccountCriteria() : ServerPacket(SMSG_ALL_ACCOUNT_CRITERIA) { }
+
+            WorldPacket const* Write() override;
+
+            std::vector<CriteriaProgress> Progress;
         };
 
         class RespondInspectAchievements final : public ServerPacket
@@ -86,8 +97,19 @@ namespace WorldPackets
             ObjectGuid PlayerGUID;
             uint32 Flags = 0;
             time_t CurrentTime = time_t(0);
-            uint32 ElapsedTime = 0;
-            uint32 CreationTime = 0;
+            Duration<Seconds> ElapsedTime;
+            Timestamp<> CreationTime;
+            Optional<uint64> RafAcceptanceID;
+        };
+
+        class AccountCriteriaUpdate final : public ServerPacket
+        {
+        public:
+            AccountCriteriaUpdate() : ServerPacket(SMSG_ACCOUNT_CRITERIA_UPDATE) { }
+
+            WorldPacket const* Write() override;
+
+            CriteriaProgress Progress;
         };
 
         class CriteriaDeleted final : public ServerPacket
@@ -143,8 +165,8 @@ namespace WorldPackets
         struct GuildCriteriaProgress
         {
             int32 CriteriaID = 0;
-            uint32 DateCreated = 0;
-            uint32 DateStarted = 0;
+            Timestamp<> DateCreated;
+            Timestamp<> DateStarted;
             time_t DateUpdated = 0;
             uint64 Quantity = 0;
             ObjectGuid PlayerGUID;

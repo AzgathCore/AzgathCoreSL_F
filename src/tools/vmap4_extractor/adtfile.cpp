@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,7 +18,6 @@
 #include "vmapexport.h"
 #include "adtfile.h"
 #include "StringFormat.h"
-#include <algorithm>
 #include <cstdio>
 #include "Errors.h"
 
@@ -250,10 +249,10 @@ bool ADTFile::initFromCache(uint32 map_num, uint32 originalMapId)
     for (ADTOutputCache const& cached : *dirfileCache)
     {
         fwrite(&map_num, sizeof(uint32), 1, dirfile);
-        uint32 flags = cached.Flags;
+        uint8 flags = cached.Flags;
         if (map_num != originalMapId)
             flags |= MOD_PARENT_SPAWN;
-        fwrite(&flags, sizeof(uint32), 1, dirfile);
+        fwrite(&flags, sizeof(uint8), 1, dirfile);
         fwrite(cached.Data.data(), cached.Data.size(), 1, dirfile);
     }
 

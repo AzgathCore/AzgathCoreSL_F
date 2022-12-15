@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,7 +28,7 @@ void MySQL::Library_End()
     mysql_library_end();
 }
 
-char const* MySQL::GetLibraryVersion()
+uint32 MySQL::GetLibraryVersion()
 {
-    return MYSQL_SERVER_VERSION;
+    return MYSQL_VERSION_ID;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,7 +34,6 @@ struct UpdateFetcher::DirectoryEntry
     DirectoryEntry(Path const& path_, State state_) : path(path_), state(state_) { }
 
     Path const path;
-
     State const state;
 };
 
@@ -307,7 +306,7 @@ UpdateResult UpdateFetcher::Update(bool const redundancyChecks,
         {
             case MODE_APPLY:
                 speed = Apply(availableQuery.first);
-                /* fallthrough */
+                [[fallthrough]];
             case MODE_REHASH:
                 UpdateEntry(file, speed);
                 break;

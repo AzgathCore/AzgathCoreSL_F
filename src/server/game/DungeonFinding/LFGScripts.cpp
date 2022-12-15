@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,6 +27,7 @@
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "QueryPackets.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "WorldSession.h"
@@ -44,7 +45,7 @@ void LFGPlayerScript::OnLogout(Player* player)
     if (!player->GetGroup())
         sLFGMgr->LeaveLfg(player->GetGUID());
     else if (player->GetSession()->PlayerDisconnected())
-        sLFGMgr->LeaveLfg(player->GetGUID(), {}, true);
+        sLFGMgr->LeaveLfg(player->GetGUID(), true);
 }
 
 void LFGPlayerScript::OnLogin(Player* player, bool /*loginFirst*/)
@@ -67,7 +68,7 @@ void LFGPlayerScript::OnLogin(Player* player, bool /*loginFirst*/)
         }
     }
 
-    sLFGMgr->SetTeam(player->GetGUID(), player->GetTeamId());
+    sLFGMgr->SetTeam(player->GetGUID(), player->GetTeam());
     /// @todo - Restore LfgPlayerData and send proper status to player if it was in a group
 }
 
@@ -84,32 +85,27 @@ void LFGPlayerScript::OnMapChanged(Player* player)
         // crashes or other undefined behaviour
         if (!group)
         {
-            sLFGMgr->KickPlayer(player);
-            TC_LOG_ERROR("lfg", "LFGPlayerScript::OnMapChanged, Player %s (%s) is in LFG dungeon map but does not have a valid group! "
+            sLFGMgr->LeaveLfg(player->GetGUID());
+            player->RemoveAurasDueToSpell(LFG_SPELL_LUCK_OF_THE_DRAW);
+            player->TeleportTo(player->m_homebind);
+            TC_LOG_ERROR("lfg", "LFGPlayerScript::OnMapChanged, Player %s %s is in LFG dungeon map but does not have a valid group! "
                 "Teleporting to homebind.", player->GetName().c_str(), player->GetGUID().ToString().c_str());
             return;
         }
 
-        LFGDungeonsEntry const* dungeonEntry = sLFGDungeonsStore.LookupEntry(sLFGMgr->GetDungeon(group->GetGUID()));
-        if (!dungeonEntry)
-        {
-            sLFGMgr->KickPlayer(player);
-            return;
-        }
+        WorldPackets::Query::QueryPlayerNamesResponse response;
+        for (Group::MemberSlot const& memberSlot : group->GetMemberSlots())
+            player->GetSession()->BuildNameQueryData(memberSlot.guid, response.Players.emplace_back());
 
-        for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
-            if (Player* member = itr->GetSource())
-                player->GetSession()->SendNameQueryOpcode(member->GetGUID());
+        player->SendDirectMessage(response.Write());
 
         if (sLFGMgr->selectedRandomLfgDungeon(player->GetGUID()))
             player->CastSpell(player, LFG_SPELL_LUCK_OF_THE_DRAW, true);
-
-        player->SetEffectiveLevelAndMaxItemLevel(dungeonEntry->MentorCharLevel, dungeonEntry->MentorItemLevel);
     }
     else
     {
         Group* group = player->GetGroup();
-        if (!sLFGMgr->IsTesting() && group && group->GetMembersCount() == 1)
+        if (group && group->GetMembersCount() == 1)
         {
             sLFGMgr->LeaveLfg(group->GetGUID());
             group->Disband();
@@ -117,7 +113,6 @@ void LFGPlayerScript::OnMapChanged(Player* player)
                 player->GetName().c_str(), player->GetGUID().ToString().c_str());
         }
         player->RemoveAurasDueToSpell(LFG_SPELL_LUCK_OF_THE_DRAW);
-        player->SetEffectiveLevelAndMaxItemLevel(0, 0);
     }
 }
 
@@ -194,6 +189,8 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
         if (method == GROUP_REMOVEMETHOD_LEAVE && state == LFG_STATE_DUNGEON &&
             players >= LFG_GROUP_KICK_VOTES_NEEDED)
             player->CastSpell(player, LFG_SPELL_DUNGEON_DESERTER, true);
+        else if (method == GROUP_REMOVEMETHOD_KICK_LFG)
+            player->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
         //else if (state == LFG_STATE_BOOT)
             // Update internal kick cooldown of kicked
 

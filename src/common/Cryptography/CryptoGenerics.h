@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,9 +25,7 @@
 #include <iterator>
 #include <vector>
 
-namespace Trinity
-{
-namespace Impl
+namespace Trinity::Impl
 {
     struct CryptoGenericsImpl
     {
@@ -57,11 +55,8 @@ namespace Impl
         }
     };
 }
-}
 
-namespace Trinity
-{
-namespace Crypto
+namespace Trinity::Crypto
 {
     template <typename Cipher>
     void AEEncryptWithRandomIV(std::vector<uint8>& data, typename Cipher::Key const& key)
@@ -111,7 +106,6 @@ namespace Crypto
     {
         return AEDecrypt<Cipher>(data, key.ToByteArray<Cipher::KEY_SIZE_BYTES>());
     }
-}
 }
 
 #endif

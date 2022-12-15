@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,6 +17,7 @@
 
 #include "PacketLog.h"
 #include "Config.h"
+#include "GameTime.h"
 #include "IpAddress.h"
 #include "Realm.h"
 #include "Timer.h"
@@ -100,7 +101,7 @@ void PacketLog::Initialize()
             header.Build = realm.Build;
             header.Locale[0] = 'e'; header.Locale[1] = 'n'; header.Locale[2] = 'U'; header.Locale[3] = 'S';
             std::memset(header.SessionKey, 0, sizeof(header.SessionKey));
-            header.SniffStartUnixtime = time(nullptr);
+            header.SniffStartUnixtime = GameTime::GetGameTime();
             header.SniffStartTicks = getMSTime();
             header.OptionalDataSize = 0;
 

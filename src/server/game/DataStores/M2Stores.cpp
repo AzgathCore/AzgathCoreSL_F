@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,16 +16,14 @@
  */
 
 #include "M2Stores.h"
-#include "Common.h"
 #include "Containers.h"
 #include "DB2Stores.h"
 #include "Log.h"
 #include "M2Structure.h"
-#include "World.h"
+#include "Timer.h"
 #include <boost/filesystem/path.hpp>
+#include <G3D/Vector4.h>
 #include <fstream>
-#include <iostream>
-#include <iomanip>
 
 typedef std::vector<FlyByCamera> FlyByCameraCollection;
 std::unordered_map<uint32, FlyByCameraCollection> sFlyByCameraStore;
@@ -147,7 +145,6 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
 
                 float x = lastTarget.locations.GetPositionX();
                 float y = lastTarget.locations.GetPositionY();
-                float z = lastTarget.locations.GetPositionZ();
 
                 // Now, the timestamps for target cam and position can be different. So, if they differ we interpolate
                 if (lastTarget.timeStamp != posTimestamps[i])
@@ -156,10 +153,8 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
                     uint32 timeDiffThis = posTimestamps[i] - lastTarget.timeStamp;
                     float xDiff = nextTarget.locations.GetPositionX() - lastTarget.locations.GetPositionX();
                     float yDiff = nextTarget.locations.GetPositionY() - lastTarget.locations.GetPositionY();
-                    float zDiff = nextTarget.locations.GetPositionZ() - lastTarget.locations.GetPositionZ();
                     x = lastTarget.locations.GetPositionX() + (xDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                     y = lastTarget.locations.GetPositionY() + (yDiff * (float(timeDiffThis) / float(timeDiffTarget)));
-                    z = lastTarget.locations.GetPositionZ() + (zDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                 }
                 float xDiff = x - thisCam.locations.GetPositionX();
                 float yDiff = y - thisCam.locations.GetPositionY();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -126,7 +126,7 @@ namespace WorldPackets
         class AzeriteRespecNPC final : public ServerPacket
         {
         public:
-            AzeriteRespecNPC(ObjectGuid npcGuid) : ServerPacket(SMSG_AZERITE_RESPEC_NPC, 1), NpcGUID(npcGuid) { }
+            AzeriteRespecNPC(ObjectGuid npcGuid) : ServerPacket(SMSG_AZERITE_RESPEC_NPC, 16), NpcGUID(npcGuid) { }
 
             WorldPacket const* Write() override;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,8 +18,8 @@
 #ifndef LFGPacketsCommon_h__
 #define LFGPacketsCommon_h__
 
-#include "Packet.h"
 #include "ObjectGuid.h"
+#include "PacketUtilities.h"
 
 namespace WorldPackets
 {
@@ -27,13 +27,9 @@ namespace WorldPackets
     {
         enum class RideType : uint32
         {
-            None                = 0,
-            Battlegrounds       = 1,
-            Lfg                 = 2,
-            PvPPetBattle        = 3,
-            LfgListApplication  = 4, // LFGListParty
-            PetBattle           = 5,
-            LfgListApplicant    = 6, // LFGListPlayer
+            None = 0,
+            Battlegrounds = 1,
+            Lfg = 2
         };
 
         struct RideTicket
@@ -41,7 +37,8 @@ namespace WorldPackets
             ObjectGuid RequesterGuid;
             uint32 Id = 0;
             RideType Type = RideType::None;
-            int32 Time = 0;
+            Timestamp<> Time;
+            bool Unknown925 = false;
         };
     }
 }

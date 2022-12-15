@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -398,9 +398,7 @@ namespace VMAP
             vertices(vert.begin()), triangles(tris.begin()), hit(false) { }
         bool operator()(G3D::Ray const& ray, uint32 entry, float& distance, bool /*pStopAtFirstHit*/)
         {
-            bool result = IntersectTriangle(triangles[entry], vertices, ray, distance);
-            if (result)
-                hit = true;
+            hit = IntersectTriangle(triangles[entry], vertices, ray, distance) || hit;
             return hit;
         }
         std::vector<Vector3>::const_iterator vertices;
@@ -422,7 +420,6 @@ namespace VMAP
     {
         if (triangles.empty() || !iBound.contains(pos))
             return false;
-        GModelRayCallback callback(triangles, vertices);
         Vector3 rPos = pos - 0.1f * down;
         float dist = G3D::finf();
         G3D::Ray ray(rPos, down);

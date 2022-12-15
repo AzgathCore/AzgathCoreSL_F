@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,18 +61,13 @@ namespace WorldPackets
             uint8 Class           = CLASS_NONE;
             uint8 Sex             = GENDER_NONE;
             Array<ChrCustomizationChoice, 50> Customizations;
-            uint8 OutfitId        = 0;
             Optional<int32> TemplateSet;
-            bool IsTrialBoost = false;
-            bool UseNPE = false;
+            bool IsTrialBoost     = false;
+            bool UseNPE           = false;
             std::string Name;
 
-            uint32 customOptionID = 0;
-            uint32 customValue = 0;
-
             /// Server side data
-            uint8 CharCount = 0;
-            bool withStartOutfit = true;
+            uint8 CharCount  = 0;
         };
 
         struct CharacterRenameInfo
@@ -140,35 +135,29 @@ namespace WorldPackets
                 uint32 Flags2            = 0; ///< Character customization flags @see enum CharacterCustomizeFlags
                 uint32 Flags3            = 0; ///< Character flags 3 @todo research
                 uint32 Flags4            = 0;
-                bool FirstLogin          = false;
+                bool FirstLogin      = false;
                 uint8 unkWod61x          = 0;
-                uint32 LastPlayedTime    = 0;
+                Timestamp<> LastPlayedTime;
                 uint16 SpecID            = 0;
                 uint32 Unknown703        = 0;
                 uint32 LastLoginVersion  = 0;
+                uint32 OverrideSelectScreenFileDataID = 0;
+
                 uint32 PetCreatureDisplayID = 0;
                 uint32 PetExperienceLevel   = 0;
                 uint32 PetCreatureFamilyID  = 0;
-                uint32 OverrideSelectScreenFileDataID = 0;
 
                 bool BoostInProgress = false; ///< @todo
                 int32 ProfessionIds[2] = { }; ///< @todo
 
                 struct VisualItemInfo
                 {
-                    uint32 DisplayID                = 0;
-                    uint32 DisplayEnchantID         = 0;
-                    int32 ItemModifiedAppearanceID  = 0;
-                    uint8 InvType                   = 0;
-                    uint8 Subclass                  = 0;
+                    uint32 DisplayID        = 0;
+                    uint32 DisplayEnchantID = 0;
+                    int32 SecondaryItemModifiedAppearanceID = 0; // also -1 is some special value
+                    uint8 InvType           = 0;
+                    uint8 Subclass          = 0;
                 };
-
-                // Commented out to fix compilation on Linux
-                // struct ChrCustomizationChoice
-                // {
-                //     uint32 ChrCustomizationOptionID = 0;
-                //     uint32 ChrCustomizationChoiceID = 0;
-                // };
 
                 std::array<VisualItemInfo, 23> VisualItems = { };
                 std::vector<std::string> MailSenders;
@@ -193,19 +182,44 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-            bool Success                            = false; ///<
-            bool IsDeletedCharacters                = false; ///< used for character undelete list
-            bool IsNewPlayerRestrictionSkipped      = false;
-            bool IsNewPlayerRestricted              = false;
-            bool IsNewPlayer                        = false;
-            bool IsAlliedRacesCreationAllowed       = false;
+            bool Success                          = false; ///<
+            bool IsDeletedCharacters              = false; ///< used for character undelete list
+            bool IsNewPlayerRestrictionSkipped    = false; ///< allows client to skip new player restrictions
+            bool IsNewPlayerRestricted            = false; ///< forbids using level boost and class trials
+            bool IsNewPlayer                      = false; ///< forbids hero classes and allied races
+            bool IsAlliedRacesCreationAllowed     = false;
 
-            int32 MaxCharacterLevel                 = 1;
+            int32 MaxCharacterLevel     = 1;
             Optional<uint32> DisabledClassesMask;
 
             std::vector<CharacterInfo> Characters; ///< all characters on the list
             std::vector<RaceUnlock> RaceUnlockData; ///<
             std::vector<UnlockedConditionalAppearance> UnlockedConditionalAppearances;
+        };
+
+        class CheckCharacterNameAvailability final : public ClientPacket
+        {
+        public:
+            CheckCharacterNameAvailability(WorldPacket&& packet) : ClientPacket(CMSG_CHECK_CHARACTER_NAME_AVAILABILITY, std::move(packet)) { }
+
+            void Read() override;
+
+            uint32 SequenceIndex = 0;
+            std::string Name;
+        };
+
+        class CheckCharacterNameAvailabilityResult final : public ServerPacket
+        {
+        public:
+            CheckCharacterNameAvailabilityResult(uint32 sequenceIndex, uint32 result) : ServerPacket(SMSG_CHECK_CHARACTER_NAME_AVAILABILITY_RESULT, 4 + 4),
+                SequenceIndex(sequenceIndex), Result(result)
+            {
+            }
+
+            WorldPacket const* Write() override;
+
+            uint32 SequenceIndex;
+            uint32 Result;
         };
 
         class CreateCharacter final : public ClientPacket
@@ -332,17 +346,17 @@ namespace WorldPackets
             std::shared_ptr<CharRaceOrFactionChangeInfo> RaceOrFactionChangeInfo;
         };
 
+        struct CharFactionChangeDisplayInfo
+        {
+            std::string Name;
+            uint8 SexID             = 0;
+            uint8 RaceID            = RACE_NONE;
+            Array<ChrCustomizationChoice, 50> const* Customizations = nullptr;
+        };
+
         class CharFactionChangeResult final : public ServerPacket
         {
         public:
-            struct CharFactionChangeDisplayInfo
-            {
-                std::string Name;
-                uint8 SexID             = 0;
-                uint8 RaceID            = RACE_NONE;
-                Array<ChrCustomizationChoice, 50> const* Customizations = nullptr;
-            };
-
             CharFactionChangeResult() : ServerPacket(SMSG_CHAR_FACTION_CHANGE_RESULT, 20 + sizeof(CharFactionChangeDisplayInfo)) { }
 
             WorldPacket const* Write() override;
@@ -475,7 +489,10 @@ namespace WorldPackets
             LockedByMobileAH                = 8,
             TemporaryGMLock                 = 9,
             LockedByCharacterUpgrade        = 10,
-            LockedByRevokedCharacterUpgrade = 11
+            LockedByRevokedCharacterUpgrade = 11,
+            LockedByRevokedVASTransaction   = 17,
+            LockedByRestriction             = 19,
+            LockedForRealmPlaytype          = 23
         };
 
         class CharacterLoginFailed  final : public ServerPacket
@@ -701,17 +718,6 @@ namespace WorldPackets
 
             uint32 FactionIndex = 0;
         };
-        
-        class NeutralPlayerFactionSelectResult final : public ServerPacket
-        {
-        public:
-            NeutralPlayerFactionSelectResult() : ServerPacket(SMSG_NEUTRAL_PLAYER_FACTION_SELECT_RESULT, 4 + 1) { }
-
-            WorldPacket const* Write() override;
-
-            uint32 NewRaceID = 0;
-            bool Success = false;
-        };
 
         class CharCustomizeSuccess final : public ServerPacket
         {
@@ -758,43 +764,6 @@ namespace WorldPackets
             ObjectGuid Player;
             int32 ResultCode = 0;
         };
-
-        class CheckCharacterNameAvailability final : public ClientPacket
-        {
-        public:
-            CheckCharacterNameAvailability(WorldPacket&& packet) : ClientPacket(CMSG_CHECK_CHARACTER_NAME_AVAILABILITY, std::move(packet)) { }
-
-            void Read() override;
-
-            uint32 SequenceIndex = 0;
-            std::string Name;
-        };
-
-        class CheckCharacterNameAvailabilityResult final : public ServerPacket
-        {
-        public:
-            CheckCharacterNameAvailabilityResult(uint32 sequenceIndex, uint32 result) : ServerPacket(SMSG_CHECK_CHARACTER_NAME_AVAILABILITY_RESULT, 4 + 4),
-                SequenceIndex(sequenceIndex), Result(result)
-            {
-            }
-
-            WorldPacket const* Write() override;
-
-            uint32 SequenceIndex;
-            uint32 Result;
-        };
-
-        class SetCurrencyFlags final : public ClientPacket
-        {
-        public:
-            SetCurrencyFlags(WorldPacket&& packet) : ClientPacket(CMSG_SET_CURRENCY_FLAGS, std::move(packet)) { }
-
-            void Read() override;
-
-            uint32 CurrencyID = 0;
-            uint32 Flags = 0;
-        };
-
     }
 }
 

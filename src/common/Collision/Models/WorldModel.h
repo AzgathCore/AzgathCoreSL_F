@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,7 +18,6 @@
 #ifndef _WORLDMODEL_H
 #define _WORLDMODEL_H
 
-#include <G3D/HashTrait.h>
 #include <G3D/Vector3.h>
 #include <G3D/AABox.h>
 #include <G3D/Ray.h>
@@ -117,11 +116,14 @@ namespace VMAP
             bool writeFile(const std::string &filename);
             bool readFile(const std::string &filename);
             void getGroupModels(std::vector<GroupModel>& outGroupModels);
+            std::string const& GetName() const { return name; }
+            void SetName(std::string newName) { name = std::move(newName); }
             uint32 Flags;
         protected:
             uint32 RootWMOID;
             std::vector<GroupModel> groupModels;
             BIH groupTree;
+            std::string name;
     };
 } // namespace VMAP
 

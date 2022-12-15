@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,15 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Define.h"
-#include "Errors.h"
-#include "Field.h"
+#include "DatabaseEnv.h"
 #include "Log.h"
-#include "MySQLConnection.h"
-#include "MySQLWorkaround.h"
-#include "PreparedStatement.h"
-#include "QueryResult.h"
-#include "SQLOperation.h"
-#include "Transaction.h"
-#include <string>
-#include <vector>
+#include "MySQLHacks.h"

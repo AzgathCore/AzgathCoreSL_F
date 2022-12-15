@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,7 +47,7 @@ void WorldPackets::Azerite::AzeriteEssenceActivateEssence::Read()
 WorldPacket const* WorldPackets::Azerite::ActivateEssenceFailed::Write()
 {
     _worldPacket.WriteBits(AsUnderlyingType(Reason), 4);
-    _worldPacket.WriteBit(Slot.is_initialized());
+    _worldPacket.WriteBit(Slot.has_value());
     _worldPacket << int32(Arg);
     _worldPacket << int32(AzeriteEssenceID);
     if (Slot)

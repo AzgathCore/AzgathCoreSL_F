@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,15 +17,15 @@
 
 #ifndef _VMAPDEFINITIONS_H
 #define _VMAPDEFINITIONS_H
-#include <cstring>
+
 #include <cstdio>
 
 #define LIQUID_TILE_SIZE (533.333f / 128.f)
 
 namespace VMAP
 {
-    const char VMAP_MAGIC[] = "VMAP_4.9";
-    const char RAW_VMAP_MAGIC[] = "VMAP049";                // used in extracted vmap files with raw data
+    const char VMAP_MAGIC[] = "VMAP_4.B";
+    const char RAW_VMAP_MAGIC[] = "VMAP04B";                // used in extracted vmap files with raw data
     const char GAMEOBJECT_MODELS[] = "GameObjectModels.dtree";
 
     // defined in VMapManager2.cpp currently...

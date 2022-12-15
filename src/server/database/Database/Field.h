@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,8 @@
 #include "Define.h"
 #include "DatabaseEnvFwd.h"
 #include <array>
+#include <string>
+#include <string_view>
 #include <vector>
 
 enum class DatabaseFieldTypes : uint8
@@ -104,6 +106,7 @@ class TC_DATABASE_API Field
         double GetDouble() const;
         char const* GetCString() const;
         std::string GetString() const;
+        std::string_view GetStringView() const;
         std::vector<uint8> GetBinary() const;
         template <size_t S>
         std::array<uint8, S> GetBinary() const
@@ -112,7 +115,6 @@ class TC_DATABASE_API Field
             GetBinarySizeChecked(buf.data(), S);
             return buf;
         }
-
 
         bool IsNull() const
         {

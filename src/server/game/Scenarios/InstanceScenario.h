@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,29 +20,20 @@
 
 #include "Scenario.h"
 
-class Map;
-
-typedef std::unordered_map<uint8, CriteriaProgressMap> StepCriteriaProgressMap;
+class InstanceMap;
 
 class TC_GAME_API InstanceScenario : public Scenario
 {
     public:
-        InstanceScenario(Map* map, ScenarioData const* scenarioData);
+        InstanceScenario(InstanceMap const* map, ScenarioData const* scenarioData);
 
-        void SaveToDB();
-        void LoadInstanceData(uint32 instanceId);
-
-        void CompleteScenario() override;
-
-        Map* GetMap() const { return _map; }
+        void LoadInstanceData();
 
     protected:
         std::string GetOwnerInfo() const override;
         void SendPacket(WorldPacket const* data) const override;
 
-        Map* _map;
-        ScenarioData const* _data;
-        StepCriteriaProgressMap _stepCriteriaProgress;
+        InstanceMap const* _map;
 };
 
 #endif // InstanceScenario_h__

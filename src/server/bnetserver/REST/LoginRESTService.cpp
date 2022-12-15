@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,9 +23,7 @@
 #include "Errors.h"
 #include "IpNetwork.h"
 #include "ProtobufJSON.h"
-#include "Realm.h"
 #include "Resolver.h"
-#include "SessionManager.h"
 #include "SslContext.h"
 #include "Util.h"
 #include "httpget.h"
@@ -555,7 +553,7 @@ void LoginRESTService::ResponseCodePlugin::Destroy(soap* s, soap_plugin* p)
     delete data;
 }
 
-int32 LoginRESTService::ResponseCodePlugin::ChangeResponse(soap* s, int32 originalResponse, size_t contentLength)
+int32 LoginRESTService::ResponseCodePlugin::ChangeResponse(soap* s, int32 originalResponse, uint64 contentLength)
 {
     ResponseCodePlugin* self = reinterpret_cast<ResponseCodePlugin*>(soap_lookup_plugin(s, PluginId));
     return self->fresponse(s, self->ErrorCode && originalResponse == SOAP_FILE ? self->ErrorCode : originalResponse, contentLength);

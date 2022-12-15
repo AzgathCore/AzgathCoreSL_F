@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,7 +23,7 @@
 
 #if TRINITY_COMPILER == TRINITY_COMPILER_MICROSOFT && BOOST_VERSION == 107400
 #define BOOST_1_74_FIBONACCI_HEAP_MSVC_COMPILE_FIX(T)                                           \
-namespace boost::heap::detail                                                                   \
+namespace boost { namespace heap { namespace detail                                             \
 {                                                                                               \
     template<class Node>                                                                        \
     void destroy_node(Node& node)                                                               \
@@ -53,7 +53,7 @@ namespace boost::heap::detail                                                   
                                                                                                 \
         allocator& _alloc;                                                                      \
     };                                                                                          \
-}
+} } }
 #else
 #define BOOST_1_74_FIBONACCI_HEAP_MSVC_COMPILE_FIX(T)
 #endif

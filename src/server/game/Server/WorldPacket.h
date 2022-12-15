@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 
 #include "ByteBuffer.h"
 #include "Opcodes.h"
+#include "Duration.h"
 
 class WorldPacket : public ByteBuffer
 {
@@ -40,7 +41,7 @@ class WorldPacket : public ByteBuffer
 
         WorldPacket(uint32 opcode, size_t res, ConnectionType connection = CONNECTION_TYPE_DEFAULT) : WorldPacket(opcode, res, Reserve{}, connection) { }
 
-        WorldPacket(WorldPacket&& packet) noexcept : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode), _connection(packet._connection)
+        WorldPacket(WorldPacket&& packet) noexcept : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode), _connection(packet._connection), m_receivedTime(packet.m_receivedTime)
         {
         }
 
@@ -85,9 +86,13 @@ class WorldPacket : public ByteBuffer
 
         ConnectionType GetConnection() const { return _connection; }
 
+        TimePoint GetReceivedTime() const { return m_receivedTime; }
+        void SetReceiveTime(TimePoint receivedTime) { m_receivedTime = receivedTime; }
+
     protected:
         uint32 m_opcode;
         ConnectionType _connection;
+        TimePoint m_receivedTime; // only set for a specific set of opcodes, for performance reasons.
 };
 
 #endif

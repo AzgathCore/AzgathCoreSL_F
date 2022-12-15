@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,17 +16,25 @@
  */
 
 #include "TemporarySummon.h"
+#include "CellImpl.h"
 #include "CreatureAI.h"
 #include "DB2Structure.h"
+#include "GameObject.h"
+#include "GameObjectAI.h"
+#include "GridNotifiers.h"
 #include "Log.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Pet.h"
 #include "Player.h"
+#include "SmoothPhasing.h"
+#include <boost/container/small_vector.hpp>
+#include <sstream>
 
-TempSummon::TempSummon(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject) :
+TempSummon::TempSummon(SummonPropertiesEntry const* properties, WorldObject* owner, bool isWorldObject) :
 Creature(isWorldObject), m_Properties(properties), m_type(TEMPSUMMON_MANUAL_DESPAWN),
-m_timer(0), m_lifetime(0), m_visibleBySummonerOnly(false), m_summonerSpecificEntry(0), m_summonerSpecificDisplayID(0)
+m_timer(0), m_lifetime(0), m_canFollowOwner(true)
 {
     if (owner)
         m_summonerGUID = owner->GetGUID();
@@ -34,14 +42,28 @@ m_timer(0), m_lifetime(0), m_visibleBySummonerOnly(false), m_summonerSpecificEnt
     m_unitTypeMask |= UNIT_MASK_SUMMON;
 }
 
-Unit* TempSummon::GetSummoner() const
+WorldObject* TempSummon::GetSummoner() const
 {
-    return !m_summonerGUID.IsEmpty() ? ObjectAccessor::GetUnit(*this, m_summonerGUID) : nullptr;
+    return !m_summonerGUID.IsEmpty() ? ObjectAccessor::GetWorldObject(*this, m_summonerGUID) : nullptr;
+}
+
+Unit* TempSummon::GetSummonerUnit() const
+{
+    if (WorldObject* summoner = GetSummoner())
+        return summoner->ToUnit();
+    return nullptr;
 }
 
 Creature* TempSummon::GetSummonerCreatureBase() const
 {
     return !m_summonerGUID.IsEmpty() ? ObjectAccessor::GetCreature(*this, m_summonerGUID) : nullptr;
+}
+
+GameObject* TempSummon::GetSummonerGameObject() const
+{
+    if (WorldObject* summoner = GetSummoner())
+        return summoner->ToGameObject();
+    return nullptr;
 }
 
 void TempSummon::Update(uint32 diff)
@@ -56,6 +78,7 @@ void TempSummon::Update(uint32 diff)
     switch (m_type)
     {
         case TEMPSUMMON_MANUAL_DESPAWN:
+        case TEMPSUMMON_DEAD_DESPAWN:
             break;
         case TEMPSUMMON_TIMED_DESPAWN:
         {
@@ -103,7 +126,7 @@ void TempSummon::Update(uint32 diff)
         case TEMPSUMMON_CORPSE_DESPAWN:
         {
             // if m_deathState is DEAD, CORPSE was skipped
-            if (m_deathState == CORPSE || m_deathState == DEAD)
+            if (m_deathState == CORPSE)
             {
                 UnSummon();
                 return;
@@ -111,19 +134,9 @@ void TempSummon::Update(uint32 diff)
 
             break;
         }
-        case TEMPSUMMON_DEAD_DESPAWN:
-        {
-            if (m_deathState == DEAD)
-            {
-                UnSummon();
-                return;
-            }
-            break;
-        }
         case TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN:
         {
-            // if m_deathState is DEAD, CORPSE was skipped
-            if (m_deathState == CORPSE || m_deathState == DEAD)
+            if (m_deathState == CORPSE)
             {
                 UnSummon();
                 return;
@@ -145,13 +158,6 @@ void TempSummon::Update(uint32 diff)
         }
         case TEMPSUMMON_TIMED_OR_DEAD_DESPAWN:
         {
-            // if m_deathState is DEAD, CORPSE was skipped
-            if (m_deathState == DEAD)
-            {
-                UnSummon();
-                return;
-            }
-
             if (!IsInCombat() && IsAlive())
             {
                 if (m_timer <= diff)
@@ -173,18 +179,6 @@ void TempSummon::Update(uint32 diff)
     }
 }
 
-void TempSummon::SetSummonerSpecificEntry(uint32 entry)
-{
-    if (CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(entry))
-    {
-        if (CreatureModel const* model = ObjectMgr::ChooseDisplayId(cinfo))
-        {
-            m_summonerSpecificEntry = entry;
-            m_summonerSpecificDisplayID = model->CreatureDisplayID;
-        }
-    }
-}
-
 void TempSummon::InitStats(uint32 duration)
 {
     ASSERT(!IsPet());
@@ -195,18 +189,24 @@ void TempSummon::InitStats(uint32 duration)
     if (m_type == TEMPSUMMON_MANUAL_DESPAWN)
         m_type = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_DESPAWN;
 
-    Unit* owner = GetSummoner();
+    Unit* owner = GetSummonerUnit();
 
     if (owner && IsTrigger() && m_spells[0])
-    {
-        SetFaction(owner->GetFaction());
-        SetLevel(owner->getLevel());
         if (owner->GetTypeId() == TYPEID_PLAYER)
             m_ControlledByPlayer = true;
-    }
 
-    if (uint32 summonerSpecificEntry = sObjectMgr->GetCreatureSummonerSpecificEntry(GetEntry()))
-        SetSummonerSpecificEntry(summonerSpecificEntry);
+    if (owner && owner->IsPlayer())
+    {
+        if (CreatureSummonedData const* summonedData = sObjectMgr->GetCreatureSummonedData(GetEntry()))
+        {
+            m_creatureIdVisibleToSummoner = summonedData->CreatureIDVisibleToSummoner;
+            if (summonedData->CreatureIDVisibleToSummoner)
+            {
+                CreatureTemplate const* creatureTemplateVisibleToSummoner = ASSERT_NOTNULL(sObjectMgr->GetCreatureTemplate(*summonedData->CreatureIDVisibleToSummoner));
+                m_displayIdVisibleToSummoner = ObjectMgr::ChooseDisplayId(creatureTemplateVisibleToSummoner, nullptr)->CreatureDisplayID;
+            }
+        }
+    }
 
     if (!m_Properties)
         return;
@@ -224,36 +224,87 @@ void TempSummon::InitStats(uint32 duration)
             }
             owner->m_SummonSlot[slot] = GetGUID();
         }
+
+        if (!m_Properties->GetFlags().HasFlag(SummonPropertiesFlags::UseCreatureLevel))
+            SetLevel(owner->GetLevel());
     }
 
-    if (m_Properties->Faction)
-        SetFaction(m_Properties->Faction);
-    else if (IsVehicle() && owner) // properties should be vehicle
-        SetFaction(owner->GetFaction());
+    uint32 faction = m_Properties->Faction;
+    if (owner && m_Properties->GetFlags().HasFlag(SummonPropertiesFlags::UseSummonerFaction)) // TODO: Determine priority between faction and flag
+        faction = owner->GetFaction();
+
+    if (faction)
+        SetFaction(faction);
+
+    if (m_Properties->GetFlags().HasFlag(SummonPropertiesFlags::SummonFromBattlePetJournal))
+        RemoveNpcFlag(UNIT_NPC_FLAG_WILD_BATTLE_PET);
 }
 
-void TempSummon::InitSummon(Spell const* summonSpell /*= nullptr*/)
+void TempSummon::InitSummon()
 {
-    Unit* owner = GetSummoner();
+    WorldObject* owner = GetSummoner();
     if (owner)
     {
-        owner->AddSummonedCreature(GetGUID(), GetEntry());
-
-        if (owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsAIEnabled)
-            owner->ToCreature()->AI()->JustSummoned(this);
-        if (IsAIEnabled)
+        if (owner->GetTypeId() == TYPEID_UNIT)
         {
-            AI()->IsSummonedBy(owner);
-
-            if (summonSpell)
-                AI()->IsSummonedBy(summonSpell);
+            if (owner->ToCreature()->IsAIEnabled())
+                owner->ToCreature()->AI()->JustSummoned(this);
         }
+        else if (owner->GetTypeId() == TYPEID_GAMEOBJECT)
+        {
+            if (owner->ToGameObject()->AI())
+                owner->ToGameObject()->AI()->JustSummoned(this);
+        }
+        if (IsAIEnabled())
+            AI()->IsSummonedBy(owner);
     }
 }
 
 void TempSummon::UpdateObjectVisibilityOnCreate()
 {
-    WorldObject::UpdateObjectVisibility(true);
+    boost::container::small_vector<WorldObject*, 2> objectsToUpdate;
+    objectsToUpdate.push_back(this);
+
+    if (SmoothPhasing const* smoothPhasing = GetSmoothPhasing())
+    {
+        SmoothPhasingInfo const* infoForSeer = smoothPhasing->GetInfoForSeer(GetDemonCreatorGUID());
+        if (infoForSeer && infoForSeer->ReplaceObject && smoothPhasing->IsReplacing(*infoForSeer->ReplaceObject))
+            if (WorldObject* original = ObjectAccessor::GetWorldObject(*this, *infoForSeer->ReplaceObject))
+                objectsToUpdate.push_back(original);
+    }
+
+    Trinity::VisibleChangesNotifier notifier({ objectsToUpdate.data(), objectsToUpdate.data() + objectsToUpdate.size() });
+    Cell::VisitWorldObjects(this, notifier, GetVisibilityRange());
+}
+
+void TempSummon::UpdateObjectVisibilityOnDestroy()
+{
+    boost::container::small_vector<WorldObject*, 2> objectsToUpdate;
+    objectsToUpdate.push_back(this);
+
+    WorldObject* original = nullptr;
+    if (SmoothPhasing const* smoothPhasing = GetSmoothPhasing())
+    {
+        SmoothPhasingInfo const* infoForSeer = smoothPhasing->GetInfoForSeer(GetDemonCreatorGUID());
+        if (infoForSeer && infoForSeer->ReplaceObject && smoothPhasing->IsReplacing(*infoForSeer->ReplaceObject))
+            original = ObjectAccessor::GetWorldObject(*this, *infoForSeer->ReplaceObject);
+
+        if (original)
+        {
+            objectsToUpdate.push_back(original);
+
+            // disable replacement without removing - it is still needed for next step (visibility update)
+            if (SmoothPhasing* originalSmoothPhasing = original->GetSmoothPhasing())
+                originalSmoothPhasing->DisableReplacementForSeer(GetDemonCreatorGUID());
+        }
+    }
+
+    Trinity::VisibleChangesNotifier notifier({ objectsToUpdate.data(), objectsToUpdate.data() + objectsToUpdate.size() });
+    Cell::VisitWorldObjects(this, notifier, GetVisibilityRange());
+
+    if (original) // original is only != nullptr when it was replaced
+        if (SmoothPhasing* originalSmoothPhasing = original->GetSmoothPhasing())
+            originalSmoothPhasing->ClearViewerDependentInfo(GetDemonCreatorGUID());
 }
 
 void TempSummon::SetTempSummonType(TempSummonType type)
@@ -267,24 +318,24 @@ void TempSummon::UnSummon(uint32 msTime)
     {
         ForcedUnsummonDelayEvent* pEvent = new ForcedUnsummonDelayEvent(*this);
 
-        m_Events.AddEvent(pEvent, m_Events.CalculateTime(msTime));
+        m_Events.AddEvent(pEvent, m_Events.CalculateTime(Milliseconds(msTime)));
         return;
     }
 
     //ASSERT(!IsPet());
     if (IsPet())
     {
-        ToPet()->Remove(PET_SAVE_DISMISS);
+        ToPet()->Remove(PET_SAVE_NOT_IN_SLOT);
         ASSERT(!IsInWorld());
         return;
     }
 
-    if (Unit* owner = GetSummoner())
+    if (WorldObject * owner = GetSummoner())
     {
-        owner->RemoveSummonedCreature(GetGUID());
-
-        if (owner->IsCreature() && owner->ToCreature()->IsAIEnabled)
+        if (owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsAIEnabled())
             owner->ToCreature()->AI()->SummonedCreatureDespawn(this);
+        else if (owner->GetTypeId() == TYPEID_GAMEOBJECT && owner->ToGameObject()->AI())
+            owner->ToGameObject()->AI()->SummonedCreatureDespawn(this);
     }
 
     AddObjectToRemoveList();
@@ -305,7 +356,7 @@ void TempSummon::RemoveFromWorld()
     {
         int32 slot = m_Properties->Slot;
         if (slot > 0)
-            if (Unit* owner = GetSummoner())
+            if (Unit* owner = GetSummonerUnit())
                 if (owner->m_SummonSlot[slot] == GetGUID())
                     owner->m_SummonSlot[slot].Clear();
     }
@@ -316,6 +367,16 @@ void TempSummon::RemoveFromWorld()
     Creature::RemoveFromWorld();
 }
 
+std::string TempSummon::GetDebugInfo() const
+{
+    std::stringstream sstr;
+    sstr << Creature::GetDebugInfo() << "\n"
+        << std::boolalpha
+        << "TempSummonType: " << std::to_string(GetSummonType()) << " Summoner: " << GetSummonerGUID().ToString()
+        << "Timer: " << GetTimer();
+    return sstr.str();
+}
+
 Minion::Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject)
     : TempSummon(properties, owner, isWorldObject), m_owner(owner)
 {
@@ -323,7 +384,7 @@ Minion::Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorl
     m_unitTypeMask |= UNIT_MASK_MINION;
     m_followAngle = PET_FOLLOW_ANGLE;
     /// @todo: Find correct way
-    //InitCharmInfo();
+    InitCharmInfo();
 }
 
 void Minion::InitStats(uint32 duration)
@@ -333,7 +394,7 @@ void Minion::InitStats(uint32 duration)
     SetReactState(REACT_PASSIVE);
 
     SetCreatorGUID(GetOwner()->GetGUID());
-    SetFaction(GetOwner()->GetFaction());
+    SetFaction(GetOwner()->GetFaction()); // TODO: Is this correct? Overwrite the use of SummonPropertiesFlags::UseSummonerFaction
 
     GetOwner()->SetMinion(this, true);
 }
@@ -347,43 +408,40 @@ void Minion::RemoveFromWorld()
     TempSummon::RemoveFromWorld();
 }
 
+void Minion::setDeathState(DeathState s)
+{
+    Creature::setDeathState(s);
+    if (s != JUST_DIED || !IsGuardianPet())
+        return;
+
+    Unit* owner = GetOwner();
+    if (!owner || owner->GetTypeId() != TYPEID_PLAYER || owner->GetMinionGUID() != GetGUID())
+        return;
+
+    for (Unit* controlled : owner->m_Controlled)
+    {
+        if (controlled->GetEntry() == GetEntry() && controlled->IsAlive())
+        {
+            owner->SetMinionGUID(controlled->GetGUID());
+            owner->SetPetGUID(controlled->GetGUID());
+            owner->ToPlayer()->CharmSpellInitialize();
+            break;
+        }
+    }
+}
+
 bool Minion::IsGuardianPet() const
 {
     return IsPet() || (m_Properties && m_Properties->Control == SUMMON_CATEGORY_PET);
 }
 
-bool Minion::IsWarlockMinion() const
+std::string Minion::GetDebugInfo() const
 {
-    switch (GetEntry())
-    {
-        case ENTRY_IMP:
-        case ENTRY_VOIDWALKER:
-        case ENTRY_SUCCUBUS:
-        case ENTRY_FELHUNTER:
-        case ENTRY_FELGUARD:
-        case ENTRY_DOOMGUARD:
-        case ENTRY_DOOMGUARD_PET:
-        case ENTRY_INFERNAL:
-        case ENTRY_INFERNAL_LORD_OF_FLAMES:
-        case ENTRY_INFERNAL_PET:
-        case ENTRY_WILD_IMP:
-        case ENTRY_WILD_IMP_DREADSTALKER:
-        case ENTRY_DREADSTALKER:
-        case ENTRY_DARKGLARE:
-        case ENTRY_CHAOS_TEAR:
-        case ENTRY_UNSTABLE_TEAR:
-        case ENTRY_SHADOWY_TEAR:
-            return true;
-        default:
-            return false;
-    }
-}
-
-// WL & mage pets/minions get 100% of owners SP
-// need some more proofs which are affected and which arent
-bool Minion::HasSameSpellPowerAsOwner() const
-{
-    return IsWarlockMinion() || GetEntry() == ENTRY_WATER_ELEMENTAL;
+    std::stringstream sstr;
+    sstr << TempSummon::GetDebugInfo() << "\n"
+        << std::boolalpha
+        << "Owner: " << (GetOwner() ? GetOwner()->GetGUID().ToString() : "");
+    return sstr.str();
 }
 
 Guardian::Guardian(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject) : Minion(properties, owner, isWorldObject)
@@ -402,7 +460,7 @@ void Guardian::InitStats(uint32 duration)
 {
     Minion::InitStats(duration);
 
-    InitStatsForLevel(GetOwner()->getLevel());
+    InitStatsForLevel(GetOwner()->GetLevel());
 
     if (GetOwner()->GetTypeId() == TYPEID_PLAYER && HasUnitTypeMask(UNIT_MASK_CONTROLABLE_GUARDIAN))
         m_charmInfo->InitCharmCreateSpells();
@@ -410,16 +468,23 @@ void Guardian::InitStats(uint32 duration)
     SetReactState(REACT_AGGRESSIVE);
 }
 
-void Guardian::InitSummon(Spell const* summonSpell /*= nullptr*/)
+void Guardian::InitSummon()
 {
-    TempSummon::InitSummon(summonSpell);
+    TempSummon::InitSummon();
 
     if (GetOwner()->GetTypeId() == TYPEID_PLAYER
             && GetOwner()->GetMinionGUID() == GetGUID()
-            && !GetOwner()->GetCharmGUID())
+            && !GetOwner()->GetCharmedGUID())
     {
         GetOwner()->ToPlayer()->CharmSpellInitialize();
     }
+}
+
+std::string Guardian::GetDebugInfo() const
+{
+    std::stringstream sstr;
+    sstr << Minion::GetDebugInfo();
+    return sstr.str();
 }
 
 Puppet::Puppet(SummonPropertiesEntry const* properties, Unit* owner)
@@ -432,13 +497,12 @@ Puppet::Puppet(SummonPropertiesEntry const* properties, Unit* owner)
 void Puppet::InitStats(uint32 duration)
 {
     Minion::InitStats(duration);
-    SetLevel(GetOwner()->getLevel());
     SetReactState(REACT_PASSIVE);
 }
 
-void Puppet::InitSummon(Spell const* summonSpell /*= nullptr*/)
+void Puppet::InitSummon()
 {
-    Minion::InitSummon(summonSpell);
+    Minion::InitSummon();
     if (!SetCharmedBy(GetOwner(), CHARM_TYPE_POSSESS))
         ABORT();
 }
@@ -455,13 +519,4 @@ void Puppet::Update(uint32 time)
             /// @todo why long distance .die does not remove it
         }
     }
-}
-
-void Puppet::RemoveFromWorld()
-{
-    if (!IsInWorld())
-        return;
-
-    RemoveCharmedBy(nullptr);
-    Minion::RemoveFromWorld();
 }

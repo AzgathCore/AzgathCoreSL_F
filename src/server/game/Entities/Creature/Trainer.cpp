@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,11 +16,15 @@
  */
 
 #include "Trainer.h"
+#include "BattlePetMgr.h"
+#include "ConditionMgr.h"
 #include "Creature.h"
+#include "Log.h"
 #include "NPCPackets.h"
 #include "Player.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "WorldSession.h"
 
 namespace Trainer
 {
@@ -34,7 +38,7 @@ namespace Trainer
         _greeting[DEFAULT_LOCALE] = std::move(greeting);
     }
 
-    void Trainer::SendSpells(Creature const* npc, Player const* player, LocaleConstant locale) const
+    void Trainer::SendSpells(Creature const* npc, Player* player, LocaleConstant locale) const
     {
         float reputationDiscount = player->GetReputationPriceDiscount(npc);
 
@@ -48,6 +52,12 @@ namespace Trainer
         {
             if (!player->IsSpellFitByClassAndRace(trainerSpell.SpellId))
                 continue;
+
+            if (!sConditionMgr->IsObjectMeetingTrainerSpellConditions(_id, trainerSpell.SpellId, player))
+            {
+                TC_LOG_DEBUG("condition", "SendSpells: conditions not met for trainer id %u spell %u player '%s' (%s)", _id, trainerSpell.SpellId, player->GetName().c_str(), player->GetGUID().ToString().c_str());
+                continue;
+            }
 
             trainerList.Spells.emplace_back();
             WorldPackets::NPC::TrainerListSpell& trainerListSpell = trainerList.Spells.back();
@@ -72,6 +82,19 @@ namespace Trainer
             return;
         }
 
+        bool sendSpellVisual = true;
+        BattlePetSpeciesEntry const* speciesEntry = BattlePets::BattlePetMgr::GetBattlePetSpeciesBySpell(trainerSpell->SpellId);
+        if (speciesEntry)
+        {
+            if (player->GetSession()->GetBattlePetMgr()->HasMaxPetCount(speciesEntry, player->GetGUID()))
+            {
+                // Don't send any error to client (intended)
+                return;
+            }
+
+            sendSpellVisual = false;
+        }
+
         float reputationDiscount = player->GetReputationPriceDiscount(npc);
         int64 moneyCost = int64(trainerSpell->MoneyCost * reputationDiscount);
         if (!player->HasEnoughMoney(moneyCost))
@@ -82,14 +105,32 @@ namespace Trainer
 
         player->ModifyMoney(-moneyCost);
 
-        npc->SendPlaySpellVisualKit(179, 0, 0);     // 53 SpellCastDirected
-        player->SendPlaySpellVisualKit(362, 1, 0);  // 113 EmoteSalute
+        if (sendSpellVisual)
+        {
+            npc->SendPlaySpellVisualKit(179, 0, 0);     // 53 SpellCastDirected
+            player->SendPlaySpellVisualKit(362, 1, 0);  // 113 EmoteSalute
+        }
 
         // learn explicitly or cast explicitly
         if (trainerSpell->IsCastable())
+        {
             player->CastSpell(player, trainerSpell->SpellId, true);
+        }
         else
-            player->LearnSpell(trainerSpell->SpellId, false);
+        {
+            bool dependent = false;
+
+            if (speciesEntry)
+            {
+                player->GetSession()->GetBattlePetMgr()->AddPet(speciesEntry->ID, BattlePets::BattlePetMgr::SelectPetDisplay(speciesEntry),
+                    BattlePets::BattlePetMgr::RollPetBreed(speciesEntry->ID), BattlePets::BattlePetMgr::GetDefaultPetQuality(speciesEntry->ID));
+                // If the spell summons a battle pet, we fake that it has been learned and the battle pet is added
+                // marking as dependent prevents saving the spell to database (intended)
+                dependent = true;
+            }
+
+            player->LearnSpell(trainerSpell->SpellId, dependent);
+        }
     }
 
     Spell const* Trainer::GetSpell(uint32 spellId) const
@@ -115,6 +156,16 @@ namespace Trainer
         if (trainerSpellInfo->IsPrimaryProfessionFirstRank() && !player->GetFreePrimaryProfessionPoints())
             return false;
 
+        for (SpellEffectInfo const& effect : trainerSpellInfo->GetEffects())
+        {
+            if (!effect.IsEffect(SPELL_EFFECT_LEARN_SPELL))
+                continue;
+
+            SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(effect.TriggerSpell, DIFFICULTY_NONE);
+            if (learnedSpellInfo && learnedSpellInfo->IsPrimaryProfessionFirstRank() && !player->GetFreePrimaryProfessionPoints())
+                return false;
+        }
+
         return true;
     }
 
@@ -136,21 +187,20 @@ namespace Trainer
                 return SpellState::Unavailable;
 
         // check level requirement
-        if (player->getLevel() < trainerSpell->ReqLevel)
+        if (player->GetLevel() < trainerSpell->ReqLevel)
             return SpellState::Unavailable;
 
         // check ranks
         bool hasLearnSpellEffect = false;
         bool knowsAllLearnedSpells = true;
-        for (SpellEffectInfo const* spellEffect : sSpellMgr->AssertSpellInfo(trainerSpell->SpellId, DIFFICULTY_NONE)->GetEffects())
+        for (SpellEffectInfo const& spellEffectInfo : sSpellMgr->AssertSpellInfo(trainerSpell->SpellId, DIFFICULTY_NONE)->GetEffects())
         {
-            if (!spellEffect || !spellEffect->IsEffect(SPELL_EFFECT_LEARN_SPELL))
+            if (!spellEffectInfo.IsEffect(SPELL_EFFECT_LEARN_SPELL))
                 continue;
 
             hasLearnSpellEffect = true;
-            if (!player->HasSpell(spellEffect->TriggerSpell))
+            if (!player->HasSpell(spellEffectInfo.TriggerSpell))
                 knowsAllLearnedSpells = false;
-
         }
 
         if (hasLearnSpellEffect && knowsAllLearnedSpells)
@@ -164,7 +214,7 @@ namespace Trainer
         WorldPackets::NPC::TrainerBuyFailed trainerBuyFailed;
         trainerBuyFailed.TrainerGUID = npc->GetGUID();
         trainerBuyFailed.SpellID = spellId;
-        //trainerBuyFailed.TrainerFailedReason = AsUnderlyingType(reason); // Delete this
+        trainerBuyFailed.TrainerFailedReason = AsUnderlyingType(reason);
         player->SendDirectMessage(trainerBuyFailed.Write());
     }
 

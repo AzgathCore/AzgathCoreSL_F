@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,15 +18,18 @@
 #ifndef SpellPackets_h__
 #define SpellPackets_h__
 
-#include "CharacterPackets.h"
 #include "CombatLogPacketsCommon.h"
 #include "MovementInfo.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
 #include "PacketUtilities.h"
 #include "Position.h"
-#include "SharedDefines.h"
 #include <array>
+
+namespace UF
+{
+    struct ChrCustomizationChoice;
+}
 
 namespace WorldPackets
 {
@@ -59,7 +62,7 @@ namespace WorldPackets
             void Read() override;
 
             int32 ChannelSpell = 0;
-            int32 Reason = 0;       // 40 = /run SpellStopCasting(), 16 = movement/AURA_INTERRUPT_FLAG_MOVE, 41 = turning/AURA_INTERRUPT_FLAG_TURNING
+            int32 Reason = 0;       // 40 = /run SpellStopCasting(), 16 = movement/SpellAuraInterruptFlags::Moving, 41 = turning/SpellAuraInterruptFlags::Turning
                                     // does not match SpellCastResult enum
         };
 
@@ -77,6 +80,16 @@ namespace WorldPackets
             CancelMountAura(WorldPacket&& packet) : ClientPacket(CMSG_CANCEL_MOUNT_AURA, std::move(packet)) { }
 
             void Read() override { }
+        };
+
+        class CancelModSpeedNoControlAuras final : public ClientPacket
+        {
+        public:
+            CancelModSpeedNoControlAuras(WorldPacket&& packet) : ClientPacket(CMSG_CANCEL_MOD_SPEED_NO_CONTROL_AURAS, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid TargetGUID;
         };
 
         class PetCancelAura final : public ClientPacket
@@ -158,7 +171,7 @@ namespace WorldPackets
 
             void Read() override;
 
-            uint64 Action = 0; ///< two packed uint32 (action and type)
+            uint64 Action = 0; ///< two packed values (action and type)
             uint8 Index = 0;
         };
 
@@ -177,7 +190,6 @@ namespace WorldPackets
             ObjectGuid CastID;
             int32 SpellID = 0;
             SpellCastVisual Visual;
-            int32 ScriptVisualID = 0;
             uint16 Flags = 0;
             uint32 ActiveFlags = 0;
             uint16 CastLevel = 1;
@@ -245,7 +257,6 @@ namespace WorldPackets
         {
             int32 ItemID = 0;
             int32 Slot = 0;
-            int32 Count = 0;
         };
 
         struct SpellExtraCurrencyCost
@@ -574,6 +585,7 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             bool IsPet = false;
+            bool WithoutCategoryCooldown = false;
             int32 DeltaTime = 0;
             int32 SpellID = 0;
         };
@@ -588,7 +600,7 @@ namespace WorldPackets
             float ModRate = 1.0f;
         };
 
-        class SpellCooldown : public ServerPacket
+        class TC_GAME_API SpellCooldown : public ServerPacket
         {
         public:
             SpellCooldown() : ServerPacket(SMSG_SPELL_COOLDOWN, 4 + 16 + 1) { }
@@ -745,9 +757,9 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             ObjectGuid Source;
-            ObjectGuid Target; // Exclusive with TargetPosition
+            ObjectGuid Target;
             ObjectGuid Transport; // Used when Target = Empty && (SpellVisual::Flags & 0x400) == 0
-            TaggedPosition<Position::XYZ> TargetPosition; // Exclusive with Target
+            TaggedPosition<Position::XYZ> TargetPosition; // Overrides missile destination for SpellVisual::SpellVisualMissileSetID
             uint32 SpellVisualID = 0;
             float TravelSpeed = 0.0f;
             uint16 HitReason = 0;
@@ -770,6 +782,18 @@ namespace WorldPackets
             int32 KitType = 0;
             uint32 Duration = 0;
             bool MountedVisual = false;
+        };
+
+        class SpellVisualLoadScreen final : public ServerPacket
+        {
+        public:
+            SpellVisualLoadScreen(int32 spellVisualKitId, int32 delay) : ServerPacket(SMSG_SPELL_VISUAL_LOAD_SCREEN, 4 + 4),
+                SpellVisualKitID(spellVisualKitId), Delay(delay) { }
+
+            WorldPacket const* Write() override;
+
+            int32 SpellVisualKitID = 0;
+            int32 Delay = 0;
         };
 
         class CancelCast final : public ClientPacket
@@ -882,7 +906,8 @@ namespace WorldPackets
         class MirrorImageComponentedData final : public ServerPacket
         {
         public:
-            MirrorImageComponentedData() : ServerPacket(SMSG_MIRROR_IMAGE_COMPONENTED_DATA, 8 + 4 + 8 * 1 + 8 + 11 * 4) { }
+            MirrorImageComponentedData();
+            ~MirrorImageComponentedData();
 
             WorldPacket const* Write() override;
 
@@ -892,7 +917,7 @@ namespace WorldPackets
             uint8 RaceID = 0;
             uint8 Gender = 0;
             uint8 ClassID = 0;
-            std::vector<Character::ChrCustomizationChoice> Customizations;
+            std::vector<UF::ChrCustomizationChoice> Customizations;
             ObjectGuid GuildGUID;
 
             std::vector<int32> ItemDisplayID;
@@ -974,6 +999,7 @@ namespace WorldPackets
             void Read() override;
 
             ObjectGuid Guid;
+            ObjectGuid CastID;
             uint16 MoveMsgID = 0;
             int32 SpellID = 0;
             float Pitch = 0.0f;
@@ -1007,7 +1033,7 @@ namespace WorldPackets
             std::vector<int32> FailedSpells;
         };
 
-        class TC_GAME_API CustomLoadScreen final : public ServerPacket
+        class CustomLoadScreen final : public ServerPacket
         {
         public:
             CustomLoadScreen(uint32 teleportSpellId, uint32 loadingScreenId) : ServerPacket(SMSG_CUSTOM_LOAD_SCREEN), TeleportSpellID(teleportSpellId), LoadingScreenID(loadingScreenId) { }
@@ -1028,16 +1054,16 @@ namespace WorldPackets
             uint32 Result = 0;
         };
 
-        class UpdateSpellVisual final : public ClientPacket
+        class MissileCancel final : public ServerPacket
         {
         public:
-            UpdateSpellVisual(WorldPacket&& packet) : ClientPacket(CMSG_UPDATE_SPELL_VISUAL, std::move(packet)) { }
+            MissileCancel() : ServerPacket(SMSG_MISSILE_CANCEL, 21) { }
 
-            void Read() override;
+            WorldPacket const* Write() override;
 
+            ObjectGuid OwnerGUID;
+            bool Reverse = false;
             int32 SpellID = 0;
-            int32 SpellXSpellVisualId = 0;
-            ObjectGuid TargetGUID;
         };
     }
 }

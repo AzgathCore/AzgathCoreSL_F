@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +21,6 @@
 #include "Common.h"
 #include <exception>
 #include <string>
-#include <vector>
 
 class DB2FileLoaderImpl;
 struct DB2FieldMeta;
@@ -67,10 +66,8 @@ struct DB2SectionHeader
 
 #pragma pack(pop)
 
-struct TC_COMMON_API DB2FieldMeta
+struct DB2FieldMeta
 {
-    DB2FieldMeta(bool isSigned, DBCFormer type, char const* name);
-
     bool IsSigned;
     DBCFormer Type;
     char const* Name;

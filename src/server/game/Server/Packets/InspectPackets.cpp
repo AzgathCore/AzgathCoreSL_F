@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -77,10 +77,10 @@ void WorldPackets::Inspect::PlayerModelDisplayInfo::Initialize(Player const* pla
     GUID = player->GetGUID();
     SpecializationID = player->GetPrimarySpecialization();
     Name = player->GetName();
-    GenderID = player->GetNativeSex();
-    Race = player->getRace();
-    ClassID = player->getClass();
-    
+    GenderID = player->GetNativeGender();
+    Race = player->GetRace();
+    ClassID = player->GetClass();
+
     for (UF::ChrCustomizationChoice const& customization : player->m_playerData->Customizations)
         Customizations.push_back(customization);
 
@@ -129,9 +129,12 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Inspect::PVPBracketData c
     data << int32(bracket.SeasonPlayed);
     data << int32(bracket.SeasonWon);
     data << int32(bracket.WeeklyBestRating);
-    data << int32(bracket.Unk710);
-    data << int32(bracket.Unk801_1);
-    data.WriteBit(bracket.Unk801_2);
+    data << int32(bracket.SeasonBestRating);
+    data << int32(bracket.PvpTierID);
+    data << int32(bracket.WeeklyBestWinPvpTierID);
+    data << int32(bracket.Unused1);
+    data << int32(bracket.Unused2);
+    data.WriteBit(bracket.Disqualified);
     data.FlushBits();
 
     return data;
@@ -205,8 +208,8 @@ WorldPacket const* WorldPackets::Inspect::InspectResult::Write()
     if (!PvpTalents.empty())
         _worldPacket.append(PvpTalents.data(), PvpTalents.size());
 
-    _worldPacket.WriteBit(GuildData.is_initialized());
-    _worldPacket.WriteBit(AzeriteLevel.is_initialized());
+    _worldPacket.WriteBit(GuildData.has_value());
+    _worldPacket.WriteBit(AzeriteLevel.has_value());
     _worldPacket.FlushBits();
 
     for (PVPBracketData const& bracket : Bracket)

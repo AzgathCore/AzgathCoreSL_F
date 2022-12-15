@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,11 +25,12 @@
 #include "LogMessage.h"
 #include "MapTree.h"
 #include "ModelInstance.h"
+#include "StringConvert.h"
 #include "Util.h"
 #include "VMapDefinitions.h"
 #include "WorldModel.h"
 #include <G3D/Ray.h>
-#include <G3D/Vector3.h>
+#include <G3D/Vector4.h>
 #include <algorithm>
 #include <cstring>
 #include <memory>

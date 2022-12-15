@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,6 +59,7 @@ namespace WorldPackets
             std::vector<BonusObjectiveData> BonusObjectives;
             std::vector<uint32> PickedSteps;
             std::vector<ScenarioSpellUpdate> Spells;
+            ObjectGuid PlayerGUID;
             bool ScenarioComplete = false;
         };
 
@@ -106,7 +107,7 @@ namespace WorldPackets
 
         struct ScenarioPOIData
         {
-            int32 Criteriatreeid = 0;
+            int32 CriteriaTreeID = 0;
             std::vector<ScenarioPOI> const* ScenarioPOIs = nullptr;
         };
 

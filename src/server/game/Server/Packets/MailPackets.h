@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -159,7 +159,6 @@ namespace WorldPackets
 
             ObjectGuid Mailbox;
             int32 MailID = 0;
-            bool BiReceipt = false;
         };
 
         class MailDelete final : public ClientPacket

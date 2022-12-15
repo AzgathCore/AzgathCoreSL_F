@@ -1,5 +1,6 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -27,7 +28,7 @@ void WorldSession::HandleAzeriteEssenceUnlockMilestone(WorldPackets::Azerite::Az
     if (!AzeriteItem::FindHeartForge(_player))
         return;
 
-    Item* item = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ITEM_SEARCH_EVERYWHERE);
+    Item* item = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ItemSearchLocation::Everywhere);
     if (!item)
         return;
 
@@ -58,7 +59,7 @@ void WorldSession::HandleAzeriteEssenceActivateEssence(WorldPackets::Azerite::Az
 {
     WorldPackets::Azerite::ActivateEssenceFailed activateEssenceResult;
     activateEssenceResult.AzeriteEssenceID = azeriteEssenceActivateEssence.AzeriteEssenceID;
-    Item* item = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ITEM_SEARCH_IN_EQUIPMENT);
+    Item* item = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ItemSearchLocation::Equipment);
     if (!item)
     {
         activateEssenceResult.Reason = AzeriteEssenceActivateResult::NotEquipped;
@@ -175,7 +176,7 @@ void WorldSession::HandleAzeriteEmpoweredItemViewed(WorldPackets::Azerite::Azeri
     if (!item || !item->IsAzeriteEmpoweredItem())
         return;
 
-    item->AddItemFlag(ITEM_FIELD_FLAG_AZERITE_EMPOWERED_ITEM_VIEWED);
+    item->SetItemFlag(ITEM_FIELD_FLAG_AZERITE_EMPOWERED_ITEM_VIEWED);
     item->SetState(ITEM_CHANGED, _player);
 }
 
@@ -194,12 +195,12 @@ void WorldSession::HandleAzeriteEmpoweredItemSelectPower(WorldPackets::Azerite::
         return;
 
     // Validate tier
-    int32 actualTier = azeriteEmpoweredItem->GetTierForAzeritePower(Classes(_player->getClass()), azeriteEmpoweredItemSelectPower.AzeritePowerID);
+    int32 actualTier = azeriteEmpoweredItem->GetTierForAzeritePower(Classes(_player->GetClass()), azeriteEmpoweredItemSelectPower.AzeritePowerID);
     if (azeriteEmpoweredItemSelectPower.Tier > MAX_AZERITE_EMPOWERED_TIER || azeriteEmpoweredItemSelectPower.Tier != actualTier)
         return;
 
     uint32 azeriteLevel = 0;
-    Item const* heartOfAzeroth = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ITEM_SEARCH_EVERYWHERE);
+    Item const* heartOfAzeroth = _player->GetItemByEntry(ITEM_ID_HEART_OF_AZEROTH, ItemSearchLocation::Everywhere);
     if (!heartOfAzeroth)
         return;
 
@@ -231,4 +232,9 @@ void WorldSession::HandleAzeriteEmpoweredItemSelectPower(WorldPackets::Azerite::
     }
 
     azeriteEmpoweredItem->SetState(ITEM_CHANGED, _player);
+}
+
+void WorldSession::SendAzeriteRespecNPC(ObjectGuid npc)
+{
+    SendPacket(WorldPackets::Azerite::AzeriteRespecNPC(npc).Write());
 }

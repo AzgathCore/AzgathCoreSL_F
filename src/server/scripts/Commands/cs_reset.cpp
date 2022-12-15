@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,19 +25,21 @@ EndScriptData */
 #include "ScriptMgr.h"
 #include "AchievementMgr.h"
 #include "Chat.h"
+#include "ChatCommand.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
 #include "Language.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
-#include "ObjectMgr.h"
 #include "Pet.h"
 #include "Player.h"
 #include "RBAC.h"
 #include "World.h"
 #include "WorldSession.h"
-#include <boost/thread/shared_mutex.hpp>
-#include <boost/thread/locks.hpp>
+
+#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 class reset_commandscript : public CommandScript
 {
@@ -85,17 +87,17 @@ public:
             return false;
 
         target->ResetHonorStats();
-        target->UpdateCriteria(CRITERIA_TYPE_EARN_HONORABLE_KILL);
+        target->UpdateCriteria(CriteriaType::HonorableKills);
 
         return true;
     }
 
     static bool HandleResetStatsOrLevelHelper(Player* player)
     {
-        ChrClassesEntry const* classEntry = sChrClassesStore.LookupEntry(player->getClass());
+        ChrClassesEntry const* classEntry = sChrClassesStore.LookupEntry(player->GetClass());
         if (!classEntry)
         {
-            TC_LOG_ERROR("misc", "Class %u not found in DBC (Wrong DBC files?)", player->getClass());
+            TC_LOG_ERROR("misc", "Class %u not found in DBC (Wrong DBC files?)", player->GetClass());
             return false;
         }
 
@@ -105,16 +107,16 @@ public:
         if (!player->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
             player->SetShapeshiftForm(FORM_NONE);
 
-        player->setFactionForRace(player->getRace());
+        player->SetFactionForRace(player->GetRace());
         player->SetPowerType(Powers(powerType));
 
         // reset only if player not in some form;
         if (player->GetShapeshiftForm() == FORM_NONE)
             player->InitDisplayIds();
 
-        player->SetPvpFlags(UNIT_BYTE2_FLAG_PVP);
+        player->ReplaceAllPvpFlags(UNIT_BYTE2_FLAG_PVP);
 
-        player->SetUnitFlags(UNIT_FLAG_PVP_ATTACKABLE);
+        player->ReplaceAllUnitFlags(UNIT_FLAG_PLAYER_CONTROLLED);
 
         //-1 is default value
         player->SetWatchedFactionIndex(-1);
@@ -130,10 +132,10 @@ public:
         if (!HandleResetStatsOrLevelHelper(target))
             return false;
 
-        uint8 oldLevel = target->getLevel();
+        uint8 oldLevel = target->GetLevel();
 
         // set starting level
-        uint8 startLevel = target->GetStartLevel(target->getRace(), target->getClass(), {});
+        uint8 startLevel = target->GetStartLevel(target->GetRace(), target->GetClass(), {});
 
         target->_ApplyAllLevelScaleItemMods(false);
         target->SetLevel(startLevel);
@@ -202,33 +204,44 @@ public:
 
     static bool HandleResetTalentsCommand(ChatHandler* handler, char const* args)
     {
-        CommandArgs::PlayerResult playerResult;
-        bool resetSpec = true;
+        Player* target;
+        ObjectGuid targetGuid;
+        std::string targetName;
 
-        CommandArgs cmdArgs = CommandArgs(handler, args, { CommandArgs::ARG_STRING_OPTIONAL, CommandArgs::ARG_PLAYER_OPTIONAL });
-
-        if (cmdArgs.Count() >= 1)
+        if (!handler->extractPlayerTarget((char*)args, &target, &targetGuid, &targetName))
         {
-            if (cmdArgs.GetNextArg<std::string>() == "only")
-                resetSpec = false;
+            /* TODO: 6.x remove/update pet talents
+            // Try reset talents as Hunter Pet
+            Creature* creature = handler->getSelectedCreature();
+            if (!*args && creature && creature->IsPet())
+            {
+                Unit* owner = creature->GetOwner();
+                if (owner && owner->GetTypeId() == TYPEID_PLAYER && creature->ToPet()->IsPermanentPetFor(owner->ToPlayer()))
+                {
+                    creature->ToPet()->resetTalents();
+                    owner->ToPlayer()->SendTalentsInfoData(true);
 
-            if (cmdArgs.Count() >= 2)
-                playerResult = cmdArgs.GetNextArg<CommandArgs::PlayerResult>();
+                    ChatHandler(owner->ToPlayer()->GetSession()).SendSysMessage(LANG_RESET_PET_TALENTS);
+                    if (!handler->GetSession() || handler->GetSession()->GetPlayer() != owner->ToPlayer())
+                        handler->PSendSysMessage(LANG_RESET_PET_TALENTS_ONLINE, handler->GetNameLink(owner->ToPlayer()).c_str());
+                }
+                return true;
+            }
+            */
+
+            handler->SendSysMessage(LANG_NO_CHAR_SELECTED);
+            handler->SetSentErrorMessage(true);
+            return false;
         }
 
-        // no character name provided as argument so use our current target
-        if (!playerResult.PlayerPtr)
-            playerResult.PlayerPtr = handler->getSelectedPlayer();
-
-        if (playerResult.PlayerPtr)
+        if (target)
         {
-            playerResult.PlayerPtr->ResetTalents(true);
-            if (resetSpec)
-                playerResult.PlayerPtr->ResetTalentSpecialization();
-            playerResult.PlayerPtr->SendTalentsInfoData();
-            ChatHandler(playerResult.PlayerPtr->GetSession()).SendSysMessage(LANG_RESET_TALENTS);
-            if (!handler->GetSession() || handler->GetSession()->GetPlayer() != playerResult.PlayerPtr)
-                handler->PSendSysMessage(LANG_RESET_TALENTS_ONLINE, handler->GetNameLink(playerResult.PlayerPtr).c_str());
+            target->ResetTalents(true);
+            target->ResetTalentSpecialization();
+            target->SendTalentsInfoData();
+            ChatHandler(target->GetSession()).SendSysMessage(LANG_RESET_TALENTS);
+            if (!handler->GetSession() || handler->GetSession()->GetPlayer() != target)
+                handler->PSendSysMessage(LANG_RESET_TALENTS_ONLINE, handler->GetNameLink(target).c_str());
 
             /* TODO: 6.x remove/update pet talents
             Pet* pet = target->GetPet();
@@ -238,14 +251,14 @@ public:
             */
             return true;
         }
-        else if (!playerResult.Guid.IsEmpty())
+        else if (!targetGuid.IsEmpty())
         {
-            CharacterDatabasePreparedStatement * stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
-            stmt->setUInt16(0, uint16(AT_LOGIN_RESET_TALENTS | AT_LOGIN_RESET_PET_TALENTS));
-            stmt->setUInt64(1, playerResult.Guid.GetCounter());
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+            stmt->setUInt16(0, uint16(AT_LOGIN_NONE | AT_LOGIN_RESET_PET_TALENTS));
+            stmt->setUInt64(1, targetGuid.GetCounter());
             CharacterDatabase.Execute(stmt);
 
-            std::string nameLink = handler->playerLink(playerResult.Name);
+            std::string nameLink = handler->playerLink(targetName);
             handler->PSendSysMessage(LANG_RESET_TALENTS_OFFLINE, nameLink.c_str());
             return true;
         }
@@ -290,7 +303,7 @@ public:
         stmt->setUInt16(0, uint16(atLogin));
         CharacterDatabase.Execute(stmt);
 
-        boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
+        std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
         HashMapHolder<Player>::MapType const& plist = ObjectAccessor::GetPlayers();
         for (HashMapHolder<Player>::MapType::const_iterator itr = plist.begin(); itr != plist.end(); ++itr)
             itr->second->SetAtLoginFlag(atLogin);

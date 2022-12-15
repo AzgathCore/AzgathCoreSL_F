@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -49,15 +49,15 @@ std::string ArenaScore::ToString() const
     return stream.str();
 }
 
-ArenaGroupScore::ArenaGroupScore()
+ArenaTeamScore::ArenaTeamScore()
 {
 }
 
-ArenaGroupScore::~ArenaGroupScore()
+ArenaTeamScore::~ArenaTeamScore()
 {
 }
 
-void ArenaGroupScore::Assign(uint32 preMatchRating, uint32 postMatchRating, uint32 preMatchMMR, uint32 postMatchMMR)
+void ArenaTeamScore::Assign(uint32 preMatchRating, uint32 postMatchRating, uint32 preMatchMMR, uint32 postMatchMMR)
 {
     PreMatchRating = preMatchRating;
     PostMatchRating = postMatchRating;

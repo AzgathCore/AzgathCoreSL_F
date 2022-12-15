@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,14 +20,24 @@
 
 Trinity::Crypto::ARC4::ARC4() : _ctx(EVP_CIPHER_CTX_new())
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    _cipher = EVP_CIPHER_fetch(nullptr, "RC4", nullptr);
+#else
+    EVP_CIPHER const* _cipher = EVP_rc4();
+#endif
+
     EVP_CIPHER_CTX_init(_ctx);
-    int result = EVP_EncryptInit_ex(_ctx, EVP_rc4(), nullptr, nullptr, nullptr);
+    int result = EVP_EncryptInit_ex(_ctx, _cipher, nullptr, nullptr, nullptr);
     ASSERT(result == 1);
 }
 
 Trinity::Crypto::ARC4::~ARC4()
 {
     EVP_CIPHER_CTX_free(_ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    EVP_CIPHER_free(_cipher);
+#endif
 }
 
 void Trinity::Crypto::ARC4::Init(uint8 const* seed, size_t len)

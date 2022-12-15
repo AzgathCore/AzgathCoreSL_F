@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -82,7 +82,7 @@ struct BattlegroundScore
         virtual uint32 GetAttr5() const { return 0; }
 
         ObjectGuid PlayerGuid;
-        uint8 TeamId; // BattlegroundTeamId
+        uint8 TeamId; // PvPTeamId
 
         // Default score, present in every type
         uint32 KillingBlows;
@@ -91,9 +91,6 @@ struct BattlegroundScore
         uint32 BonusHonor;
         uint32 DamageDone;
         uint32 HealingDone;
-
-public:
-        uint32 RatingChange;
 };
 
 #endif // TRINITY_BATTLEGROUND_SCORE_H

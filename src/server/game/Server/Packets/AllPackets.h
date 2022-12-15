@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,8 @@
 
 #include "AchievementPackets.h"
 #include "AddonPackets.h"
+#include "AdventureJournalPackets.h"
+#include "AdventureMapPackets.h"
 #include "AreaTriggerPackets.h"
 #include "ArtifactPackets.h"
 #include "AuctionHousePackets.h"
@@ -27,19 +29,15 @@
 #include "AzeritePackets.h"
 #include "BankPackets.h"
 #include "BlackMarketPackets.h"
-#include "BattlefieldPackets.h"
 #include "BattlegroundPackets.h"
 #include "BattlenetPackets.h"
-#include "BattlePayPackets.h"
 #include "BattlePetPackets.h"
 #include "BlackMarketPackets.h"
 #include "CalendarPackets.h"
-#include "ChallengeModePackets.h"
 #include "ChannelPackets.h"
 #include "CharacterPackets.h"
 #include "ChatPackets.h"
 #include "ClientConfigPackets.h"
-#include "ClubFinderPackets.h"
 #include "CollectionPackets.h"
 #include "CombatLogPackets.h"
 #include "CombatPackets.h"
@@ -47,14 +45,12 @@
 #include "EquipmentSetPackets.h"
 #include "GameObjectPackets.h"
 #include "GarrisonPackets.h"
-#include "GuildFinderPackets.h"
 #include "GuildPackets.h"
 #include "HotfixPackets.h"
 #include "InspectPackets.h"
 #include "InstancePackets.h"
 #include "ItemPackets.h"
 #include "LFGPackets.h"
-#include "LfgListPackets.h"
 #include "LootPackets.h"
 #include "MailPackets.h"
 #include "MiscPackets.h"
@@ -63,7 +59,6 @@
 #include "PacketUtilities.h"
 #include "PartyPackets.h"
 #include "PetPackets.h"
-#include "PetBattlePackets.h"
 #include "PetitionPackets.h"
 #include "PetPackets.h"
 #include "QueryPackets.h"

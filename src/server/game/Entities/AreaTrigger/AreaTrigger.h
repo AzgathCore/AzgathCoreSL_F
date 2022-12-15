@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +19,7 @@
 #define TRINITYCORE_AREATRIGGER_H
 
 #include "Object.h"
+#include "GridObject.h"
 #include "MapObject.h"
 #include "AreaTriggerTemplate.h"
 
@@ -38,22 +39,31 @@ namespace Movement
     class Spline;
 }
 
-typedef std::list<AreaTrigger*> AreaTriggerList;
-
 class TC_GAME_API AreaTrigger : public WorldObject, public GridObject<AreaTrigger>, public MapObject
 {
     public:
         AreaTrigger();
         ~AreaTrigger();
-protected:
 
+    protected:
         void BuildValuesCreate(ByteBuffer* data, Player const* target) const override;
         void BuildValuesUpdate(ByteBuffer* data, Player const* target) const override;
         void ClearUpdateMask(bool remove) override;
 
-public:
-    void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
-        UF::AreaTriggerData::Mask const& requestedAreaTriggerMask, Player const* target) const;
+    public:
+        void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
+            UF::AreaTriggerData::Mask const& requestedAreaTriggerMask, Player const* target) const;
+
+        struct ValuesUpdateForPlayerWithMaskSender // sender compatible with MessageDistDeliverer
+        {
+            explicit ValuesUpdateForPlayerWithMaskSender(AreaTrigger const* owner) : Owner(owner) { }
+
+            AreaTrigger const* Owner;
+            UF::ObjectData::Base ObjectMask;
+            UF::AreaTriggerData::Base AreaTriggerMask;
+
+            void operator()(Player const* player) const;
+        };
 
         void AddToWorld() override;
         void RemoveFromWorld() override;
@@ -63,13 +73,18 @@ public:
 
         AreaTriggerAI* AI() { return _ai.get(); }
 
+        bool IsServerSide() const { return _areaTriggerTemplate->Id.IsServerSide; }
+
+        bool IsNeverVisibleFor(WorldObject const* seer) const override { return WorldObject::IsNeverVisibleFor(seer) || IsServerSide(); }
+
     private:
-        bool Create(uint32 spellMiscId, Unit* caster, Unit* target, SpellInfo const* spell, Position const& pos, int32 duration, SpellCastVisual spellVisual, ObjectGuid const& castId, AuraEffect const* aurEff, AreaTriggerOrbitInfo* customCmi = nullptr);
-        bool CreateStaticAreaTrigger(uint32 entry, ObjectGuid::LowType guidLow, Position const& p_Pos, Map* p_Map, uint32 scriptId = 0);
+        bool Create(uint32 areaTriggerCreatePropertiesId, Unit* caster, Unit* target, SpellInfo const* spell, Position const& pos, int32 duration, SpellCastVisual spellVisual, ObjectGuid const& castId, AuraEffect const* aurEff);
+        bool CreateServer(Map* map, AreaTriggerTemplate const* areaTriggerTemplate, AreaTriggerSpawn const& position);
+
     public:
-        static AreaTrigger* CreateAreaTrigger(uint32 spellMiscId, Unit* caster, Unit* target, SpellInfo const* spell, Position const& pos, int32 duration, SpellCastVisual spellVisual, ObjectGuid const& castId = ObjectGuid::Empty, AuraEffect const* aurEff = nullptr);
-        static AreaTrigger* CreateAreaTrigger(uint32 spellMiscId, Unit* caster, uint32 spellId, Position const& pos, int32 duration, float radius, float angle, uint32 timeToTarget, bool canLoop = true, bool counterClockwise = false);
-        bool LoadFromDB(ObjectGuid::LowType guid, Map* map);
+        static AreaTrigger* CreateAreaTrigger(uint32 areaTriggerCreatePropertiesId, Unit* caster, Unit* target, SpellInfo const* spell, Position const& pos, int32 duration, SpellCastVisual spellVisual, ObjectGuid const& castId = ObjectGuid::Empty, AuraEffect const* aurEff = nullptr);
+        static ObjectGuid CreateNewMovementForceId(Map* map, uint32 areaTriggerId);
+        bool LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap, bool allowDuplicate);
 
         void Update(uint32 diff) override;
         void Remove();
@@ -77,46 +92,39 @@ public:
         uint32 GetSpellId() const { return m_areaTriggerData->SpellID; }
         AuraEffect const* GetAuraEffect() const { return _aurEff; }
         uint32 GetTimeSinceCreated() const { return _timeSinceCreated; }
-
         uint32 GetTimeToTarget() const { return m_areaTriggerData->TimeToTarget; }
-        void SetTimeToTarget(uint32 timeToTarget) { SetUpdateFieldValue(m_values.ModifyValue(&AreaTrigger::m_areaTriggerData).ModifyValue(&UF::AreaTriggerData::TimeToTarget), timeToTarget); }
-
         uint32 GetTimeToTargetScale() const { return m_areaTriggerData->TimeToTargetScale; }
-        void SetTimeToTargetScale(uint32 timeToTargetScale) { SetUpdateFieldValue(m_values.ModifyValue(&AreaTrigger::m_areaTriggerData).ModifyValue(&UF::AreaTriggerData::TimeToTargetScale), timeToTargetScale); }
-
-        void UpdateTimeToTarget(uint32 timeToTarget);
         int32 GetDuration() const { return _duration; }
         int32 GetTotalDuration() const { return _totalDuration; }
         void SetDuration(int32 newDuration);
         void Delay(int32 delaytime) { SetDuration(GetDuration() - delaytime); }
-        void SetPeriodicProcTimer(uint32 periodicProctimer) { _basePeriodicProcTimer = periodicProctimer; _periodicProcTimer = periodicProctimer; }
 
         GuidUnorderedSet const& GetInsideUnits() const { return _insideUnits; }
-        GuidUnorderedSet const GetInsidePlayers() const;
 
-        AreaTriggerMiscTemplate const* GetMiscTemplate() const { return _areaTriggerMiscTemplate; }
+        AreaTriggerCreateProperties const* GetCreateProperties() const { return _areaTriggerCreateProperties; }
         AreaTriggerTemplate const* GetTemplate() const;
-        ObjectGuid::LowType GetSpawnId() const { return _spawnId; }
         uint32 GetScriptId() const;
 
+        ObjectGuid GetOwnerGUID() const override { return GetCasterGuid(); }
         ObjectGuid const& GetCasterGuid() const { return m_areaTriggerData->Caster; }
         Unit* GetCaster() const;
         Unit* GetTarget() const;
 
-        Position const& GetRollPitchYaw() const;
-        Position const& GetTargetRollPitchYaw() const;
+        uint32 GetFaction() const override;
+
+        AreaTriggerShapeInfo const& GetShape() const { return _shape; }
+        float GetMaxSearchRadius() const { return _maxSearchRadius; }
+        Position const& GetRollPitchYaw() const { return _rollPitchYaw; }
+        Position const& GetTargetRollPitchYaw() const { return _targetRollPitchYaw; }
         void InitSplineOffsets(std::vector<Position> const& offsets, uint32 timeToTarget);
         void InitSplines(std::vector<G3D::Vector3> splinePoints, uint32 timeToTarget);
         bool HasSplines() const;
-        bool SetDestination(Position const& pos, uint32 timeToTarget);
         ::Movement::Spline<int32> const& GetSpline() const { return *_spline; }
         uint32 GetElapsedTimeForMovement() const { return GetTimeSinceCreated(); } /// @todo: research the right value, in sniffs both timers are nearly identical
 
-        void InitOrbit(AreaTriggerOrbitInfo const& cmi, uint32 timeToTarget);
+        void InitOrbit(AreaTriggerOrbitInfo const& orbit, uint32 timeToTarget);
         bool HasOrbit() const;
         Optional<AreaTriggerOrbitInfo> const& GetCircularMovementInfo() const { return _orbitInfo; }
-
-        void SetDecalPropertiesID(uint32 decalPropertiesID) { SetUpdateFieldValue(m_values.ModifyValue(&AreaTrigger::m_areaTriggerData).ModifyValue(&UF::AreaTriggerData::DecalPropertiesID), decalPropertiesID); }
 
         void UpdateShape();
 
@@ -127,14 +135,14 @@ public:
         float GetProgress() const;
 
         void UpdateTargetList();
-        void SearchUnitInSphere(std::list<Unit*>& targetList);
-        void SearchUnitInBox(std::list<Unit*>& targetList);
-        void SearchUnitInPolygon(std::list<Unit*>& targetList);
-        void SearchUnitInCylinder(std::list<Unit*>& targetList);
+        void SearchUnits(std::vector<Unit*>& targetList, float radius, bool check3D);
+        void SearchUnitInSphere(std::vector<Unit*>& targetList);
+        void SearchUnitInBox(std::vector<Unit*>& targetList);
+        void SearchUnitInPolygon(std::vector<Unit*>& targetList);
+        void SearchUnitInCylinder(std::vector<Unit*>& targetList);
+        void SearchUnitInDisk(std::vector<Unit*>& targetList);
         bool CheckIsInPolygon2D(Position const* pos) const;
-        void HandleUnitEnterExit(std::list<Unit*> const& targetList);
-
-        float GetCurrentTimePercent();
+        void HandleUnitEnterExit(std::vector<Unit*> const& targetList);
 
         void DoActions(Unit* unit);
         void UndoActions(Unit* unit);
@@ -148,19 +156,22 @@ public:
 
         void DebugVisualizePosition(); // Debug purpose only
 
+        ObjectGuid::LowType _spawnId;
+
         ObjectGuid _targetGuid;
 
         AuraEffect const* _aurEff;
 
+        AreaTriggerShapeInfo _shape;
+        float _maxSearchRadius;
         int32 _duration;
         int32 _totalDuration;
         uint32 _timeSinceCreated;
-        uint32 _periodicProcTimer;
-        uint32 _basePeriodicProcTimer;
         float _previousCheckOrientation;
-        bool _isBeingRemoved;
         bool _isRemoved;
 
+        Position _rollPitchYaw;
+        Position _targetRollPitchYaw;
         std::vector<Position> _polygonVertices;
         std::unique_ptr<::Movement::Spline<int32>> _spline;
 
@@ -168,17 +179,13 @@ public:
         int32 _lastSplineIndex;
         uint32 _movementTime;
 
-        AreaTriggerTemplate const* _areaTriggerTemplate;
         Optional<AreaTriggerOrbitInfo> _orbitInfo;
-        AreaTriggerMiscTemplate const* _areaTriggerMiscTemplate;
+
+        AreaTriggerCreateProperties const* _areaTriggerCreateProperties;
+        AreaTriggerTemplate const* _areaTriggerTemplate;
         GuidUnorderedSet _insideUnits;
 
-        ObjectGuid::LowType _spawnId;
-        uint32 _guidScriptId;
         std::unique_ptr<AreaTriggerAI> _ai;
-
-        ObjectGuid _circularMovementCenterGUID;
-        Position _circularMovementCenterPosition;
 };
 
 #endif

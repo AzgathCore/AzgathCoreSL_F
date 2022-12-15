@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,8 +61,8 @@ void WhoListStorageMgr::Update()
         if (guild)
             guildGuid = guild->GetGUID();
 
-        _whoListStorage.emplace_back(itr->second->GetGUID(), itr->second->GetTeam(), itr->second->GetSession()->GetSecurity(), itr->second->getLevel(),
-            itr->second->getClass(), itr->second->getRace(), itr->second->GetZoneId(), itr->second->GetNativeSex(), itr->second->IsVisible(),
+        _whoListStorage.emplace_back(itr->second->GetGUID(), itr->second->GetTeam(), itr->second->GetSession()->GetSecurity(), itr->second->GetLevel(),
+            itr->second->GetClass(), itr->second->GetRace(), itr->second->GetZoneId(), itr->second->GetNativeGender(), itr->second->IsVisible(),
             itr->second->IsGameMaster(), widePlayerName, wideGuildName, playerName, guildName, guildGuid);
     }
 }

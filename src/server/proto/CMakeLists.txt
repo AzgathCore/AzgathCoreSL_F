@@ -1,4 +1,4 @@
-# Copyright 2023 AzgathCore
+# This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -47,12 +47,6 @@ target_link_libraries(proto
   PUBLIC
     common
     protobuf)
-
-if (MSVC)
-  target_compile_definitions(protobuf
-    PRIVATE
-      -D_SCL_SECURE_NO_WARNINGS)
-endif()
 
 set_target_properties(proto
   PROPERTIES

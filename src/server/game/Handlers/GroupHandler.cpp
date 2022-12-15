@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,22 +15,19 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "WorldSession.h"
 #include "Common.h"
-#include "Configuration/Config.h"
 #include "DatabaseEnv.h"
 #include "Group.h"
 #include "GroupMgr.h"
 #include "Log.h"
-#include "LootPackets.h"
+#include "Loot.h"
 #include "MiscPackets.h"
 #include "ObjectAccessor.h"
 #include "PartyPackets.h"
 #include "Player.h"
 #include "SocialMgr.h"
-#include "Util.h"
 #include "World.h"
-#include "WorldPacket.h"
-#include "WorldSession.h"
 
 class Aura;
 
@@ -60,78 +57,80 @@ void WorldSession::SendPartyResult(PartyOperation operation, const std::string& 
 
 void WorldSession::HandlePartyInviteOpcode(WorldPackets::Party::PartyInviteClient& packet)
 {
-    Player* player = ObjectAccessor::FindPlayerByName(packet.TargetName);
+    Player* invitingPlayer = GetPlayer();
+    Player* invitedPlayer = ObjectAccessor::FindPlayerByName(packet.TargetName);
 
     // no player
-    if (!player)
+    if (!invitedPlayer)
     {
         SendPartyResult(PARTY_OP_INVITE, packet.TargetName, ERR_BAD_PLAYER_NAME_S);
         return;
     }
 
     // player trying to invite himself (most likely cheating)
-    if (player == GetPlayer())
+    if (invitedPlayer == invitingPlayer)
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_BAD_PLAYER_NAME_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_BAD_PLAYER_NAME_S);
         return;
     }
 
     // restrict invite to GMs
-    if (!sWorld->getBoolConfig(CONFIG_ALLOW_GM_GROUP) && !GetPlayer()->IsGameMaster() && player->IsGameMaster())
+    if (!sWorld->getBoolConfig(CONFIG_ALLOW_GM_GROUP) && !invitingPlayer->IsGameMaster() && invitedPlayer->IsGameMaster())
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_BAD_PLAYER_NAME_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_BAD_PLAYER_NAME_S);
         return;
     }
 
     // can't group with
-    if (!GetPlayer()->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && GetPlayer()->GetTeam() != player->GetTeam())
+    if (!invitingPlayer->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && invitingPlayer->GetTeam() != invitedPlayer->GetTeam())
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_PLAYER_WRONG_FACTION);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_PLAYER_WRONG_FACTION);
         return;
     }
-    if (GetPlayer()->GetInstanceId() != 0 && player->GetInstanceId() != 0 && GetPlayer()->GetInstanceId() != player->GetInstanceId() && GetPlayer()->GetMapId() == player->GetMapId())
+    if (invitingPlayer->GetInstanceId() != 0 && invitedPlayer->GetInstanceId() != 0 && invitingPlayer->GetInstanceId() != invitedPlayer->GetInstanceId() && invitingPlayer->GetMapId() == invitedPlayer->GetMapId())
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_TARGET_NOT_IN_INSTANCE_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_TARGET_NOT_IN_INSTANCE_S);
         return;
     }
     // just ignore us
-    if (player->GetInstanceId() != 0 && player->GetDungeonDifficultyID() != GetPlayer()->GetDungeonDifficultyID())
+    if (invitedPlayer->GetInstanceId() != 0 && invitedPlayer->GetDungeonDifficultyID() != invitingPlayer->GetDungeonDifficultyID())
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_IGNORING_YOU_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_IGNORING_YOU_S);
         return;
     }
 
-    if (player->GetSocial()->HasIgnore(GetPlayer()->GetGUID()))
+    if (invitedPlayer->GetSocial()->HasIgnore(invitingPlayer->GetGUID(), invitingPlayer->GetSession()->GetAccountGUID()))
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_IGNORING_YOU_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_IGNORING_YOU_S);
         return;
     }
 
-    if (!player->GetSocial()->HasFriend(GetPlayer()->GetGUID()) && GetPlayer()->getLevel() < sWorld->getIntConfig(CONFIG_PARTY_LEVEL_REQ))
+    if (!invitedPlayer->GetSocial()->HasFriend(invitingPlayer->GetGUID()) && invitingPlayer->GetLevel() < sWorld->getIntConfig(CONFIG_PARTY_LEVEL_REQ))
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_INVITE_RESTRICTED);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_INVITE_RESTRICTED);
         return;
     }
 
-    Group* group = GetPlayer()->GetGroup();
+    Group* group = invitingPlayer->GetGroup();
     if (group && group->isBGGroup())
-        group = GetPlayer()->GetOriginalGroup();
+        group = invitingPlayer->GetOriginalGroup();
+    if (!group)
+        group = invitingPlayer->GetGroupInvite();
 
-    Group* group2 = player->GetGroup();
+    Group* group2 = invitedPlayer->GetGroup();
     if (group2 && group2->isBGGroup())
-        group2 = player->GetOriginalGroup();
-
+        group2 = invitedPlayer->GetOriginalGroup();
     // player already in another group or invited
-    if (group2 || player->GetGroupInvite())
+    if (group2 || invitedPlayer->GetGroupInvite())
     {
-        SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_ALREADY_IN_GROUP_S);
+        SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_ALREADY_IN_GROUP_S);
 
         if (group2)
         {
             // tell the player that they were invited but it failed as they were already in a group
             WorldPackets::Party::PartyInvite partyInvite;
-            partyInvite.Initialize(GetPlayer(), packet.ProposedRoles, false);
-            player->SendDirectMessage(partyInvite.Write());
+            partyInvite.Initialize(invitingPlayer, packet.ProposedRoles, false);
+            invitedPlayer->SendDirectMessage(partyInvite.Write());
         }
 
         return;
@@ -140,9 +139,10 @@ void WorldSession::HandlePartyInviteOpcode(WorldPackets::Party::PartyInviteClien
     if (group)
     {
         // not have permissions for invite
-        if (!group->IsLeader(GetPlayer()->GetGUID()) && !group->GetMemberFlags(GetPlayer()->GetGUID()))
+        if (!group->IsLeader(invitingPlayer->GetGUID()) && !group->IsAssistant(invitingPlayer->GetGUID()))
         {
-            SendPartyResult(PARTY_OP_INVITE, "", ERR_NOT_LEADER);
+            if (group->IsCreated())
+                SendPartyResult(PARTY_OP_INVITE, "", ERR_NOT_LEADER);
             return;
         }
         // not have place
@@ -158,14 +158,14 @@ void WorldSession::HandlePartyInviteOpcode(WorldPackets::Party::PartyInviteClien
     // at least one person joins
     if (!group)
     {
-        group = new Group;
+        group = new Group();
         // new group: if can't add then delete
-        if (!group->AddLeaderInvite(GetPlayer()))
+        if (!group->AddLeaderInvite(invitingPlayer))
         {
             delete group;
             return;
         }
-        if (!group->AddInvite(player))
+        if (!group->AddInvite(invitedPlayer))
         {
             group->RemoveAllInvites();
             delete group;
@@ -175,17 +175,17 @@ void WorldSession::HandlePartyInviteOpcode(WorldPackets::Party::PartyInviteClien
     else
     {
         // already existed group: if can't add then just leave
-        if (!group->AddInvite(player))
+        if (!group->AddInvite(invitedPlayer))
         {
             return;
         }
     }
 
     WorldPackets::Party::PartyInvite partyInvite;
-    partyInvite.Initialize(GetPlayer(), packet.ProposedRoles, true);
-    player->SendDirectMessage(partyInvite.Write());
+    partyInvite.Initialize(invitingPlayer, packet.ProposedRoles, true);
+    invitedPlayer->SendDirectMessage(partyInvite.Write());
 
-    SendPartyResult(PARTY_OP_INVITE, player->GetName(), ERR_PARTY_RESULT_OK);
+    SendPartyResult(PARTY_OP_INVITE, invitedPlayer->GetName(), ERR_PARTY_RESULT_OK);
 }
 
 void WorldSession::HandlePartyInviteResponseOpcode(WorldPackets::Party::PartyInviteResponse& packet)
@@ -202,7 +202,7 @@ void WorldSession::HandlePartyInviteResponseOpcode(WorldPackets::Party::PartyInv
 
         if (group->GetLeaderGUID() == GetPlayer()->GetGUID())
         {
-            TC_LOG_ERROR("network", "HandleGroupAcceptOpcode: player %s (%s) tried to accept an invite to his own group", GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().ToString().c_str());
+            TC_LOG_ERROR("network", "HandleGroupAcceptOpcode: player %s %s tried to accept an invite to his own group", GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().ToString().c_str());
             return;
         }
 
@@ -260,7 +260,7 @@ void WorldSession::HandlePartyUninviteOpcode(WorldPackets::Party::PartyUninvite&
     // can't uninvite yourself
     if (packet.TargetGUID == GetPlayer()->GetGUID())
     {
-        TC_LOG_ERROR("network", "WorldSession::HandleGroupUninviteGuidOpcode: leader %s (%s) tried to uninvite himself from the group.",
+        TC_LOG_ERROR("network", "WorldSession::HandleGroupUninviteGuidOpcode: leader %s %s tried to uninvite himself from the group.",
             GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().ToString().c_str());
         return;
     }
@@ -360,18 +360,18 @@ void WorldSession::HandleLeaveGroupOpcode(WorldPackets::Party::LeaveGroup& /*pac
     }
 }
 
-void WorldSession::HandleSetLootMethodOpcode(WorldPackets::Party::SetLootMethod& packet)
+void WorldSession::HandleSetLootMethodOpcode(WorldPackets::Party::SetLootMethod& /*packet*/)
 {
-    // group loot rolling might crash server. -Varjgard
-    if(!sConfigMgr->GetBoolDefault("Group.Loot.Roll.Enabled", false))
-        return; // exit function if rolling is disabled.
-
+    // not allowed to change
+    /*
     Group* group = GetPlayer()->GetGroup();
-    if (!group || group->RollIsActive())
+    if (!group)
         return;
 
-    /** error handling **/
-    if (!group->IsLeader(GetPlayer()->GetGUID()) || group->isLFGGroup())
+    if (!group->IsLeader(GetPlayer()->GetGUID()))
+        return;
+
+    if (group->isLFGGroup())
         return;
 
     switch (packet.LootMethod)
@@ -390,38 +390,13 @@ void WorldSession::HandleSetLootMethodOpcode(WorldPackets::Party::SetLootMethod&
 
     if (packet.LootMethod == MASTER_LOOT && !group->IsMember(packet.LootMasterGUID))
         return;
-    /********************/
 
     // everything's fine, do it
     group->SetLootMethod(static_cast<LootMethod>(packet.LootMethod));
     group->SetMasterLooterGuid(packet.LootMasterGUID);
     group->SetLootThreshold(static_cast<ItemQualities>(packet.LootThreshold));
     group->SendUpdate();
-}
-
-void WorldSession::HandleLootRoll(WorldPackets::Loot::LootRoll& packet)
-{
-    Player* player = GetPlayer();
-    if (!player)
-        return;
-
-    Group* group = player->GetGroup();
-    if (!group)
-        return;
-
-    group->CountRollVote(player->GetGUID(), packet.LootListID, packet.RollType);
-
-    switch (packet.RollType)
-    {
-        case ROLL_NEED:
-            player->UpdateCriteria(CRITERIA_TYPE_ROLL_NEED, 1);
-            break;
-        case ROLL_GREED:
-            player->UpdateCriteria(CRITERIA_TYPE_ROLL_GREED, 1);
-            break;
-        default:
-            break;
-    }
+    */
 }
 
 void WorldSession::HandleMinimapPingOpcode(WorldPackets::Party::MinimapPingClient& packet)
@@ -439,7 +414,7 @@ void WorldSession::HandleMinimapPingOpcode(WorldPackets::Party::MinimapPingClien
 void WorldSession::HandleRandomRollOpcode(WorldPackets::Misc::RandomRollClient& packet)
 {
     /** error handling **/
-    if (packet.Min > packet.Max || packet.Max > 10000)                // < 32768 for urand call
+    if (packet.Min > packet.Max || packet.Max > 1000000)
         return;
     /********************/
 
@@ -456,7 +431,7 @@ void WorldSession::HandleUpdateRaidTargetOpcode(WorldPackets::Party::UpdateRaidT
         group->SendTargetIconList(this, packet.PartyIndex);
     else                                        // target icon update
     {
-        if (group->isRaidGroup() && !group->IsLeader(GetPlayer()->GetGUID()) && !group->GetMemberFlags(GetPlayer()->GetGUID()))
+        if (group->isRaidGroup() && !group->IsLeader(GetPlayer()->GetGUID()) && !group->IsAssistant(GetPlayer()->GetGUID()))
             return;
 
         if (packet.Target.IsPlayer())
@@ -514,7 +489,7 @@ void WorldSession::HandleChangeSubGroupOpcode(WorldPackets::Party::ChangeSubGrou
         return;
 
     ObjectGuid senderGuid = GetPlayer()->GetGUID();
-    if (!group->IsLeader(senderGuid) && !group->GetMemberFlags(senderGuid))
+    if (!group->IsLeader(senderGuid) && !group->IsAssistant(senderGuid))
         return;
 
     if (!group->HasFreeSlotSubGroup(packet.NewSubGroup))
@@ -530,7 +505,7 @@ void WorldSession::HandleSwapSubGroupsOpcode(WorldPackets::Party::SwapSubGroups&
         return;
 
     ObjectGuid senderGuid = GetPlayer()->GetGUID();
-    if (!group->IsLeader(senderGuid) && !group->GetMemberFlags(senderGuid))
+    if (!group->IsLeader(senderGuid) && !group->IsAssistant(senderGuid))
         return;
 
     group->SwapMembersGroups(packet.FirstTarget, packet.SecondTarget);
@@ -555,7 +530,7 @@ void WorldSession::HandleSetPartyAssignment(WorldPackets::Party::SetPartyAssignm
         return;
 
     ObjectGuid senderGuid = GetPlayer()->GetGUID();
-    if (!group->IsLeader(senderGuid) && !group->GetMemberFlags(senderGuid))
+    if (!group->IsLeader(senderGuid) && !group->IsAssistant(senderGuid))
         return;
 
     switch (packet.Assignment)
@@ -567,6 +542,7 @@ void WorldSession::HandleSetPartyAssignment(WorldPackets::Party::SetPartyAssignm
         case GROUP_ASSIGN_MAINTANK:
             group->RemoveUniqueGroupMemberFlag(MEMBER_FLAG_MAINTANK);           // Remove main assist flag from current if any.
             group->SetGroupMemberFlag(packet.Target, packet.Set, MEMBER_FLAG_MAINTANK);
+            break;
         default:
             break;
     }
@@ -581,7 +557,7 @@ void WorldSession::HandleDoReadyCheckOpcode(WorldPackets::Party::DoReadyCheck& p
         return;
 
     /** error handling **/
-    if (!group->IsLeader(GetPlayer()->GetGUID()) && !group->GetMemberFlags(GetPlayer()->GetGUID()))
+    if (!group->IsLeader(GetPlayer()->GetGUID()) && !group->IsAssistant(GetPlayer()->GetGUID()))
         return;
     /********************/
 
@@ -641,7 +617,7 @@ void WorldSession::HandleInitiateRolePoll(WorldPackets::Party::InitiateRolePoll&
         return;
 
     ObjectGuid guid = GetPlayer()->GetGUID();
-    if (!group->IsLeader(guid) && !group->GetMemberFlags(guid))
+    if (!group->IsLeader(guid) && !group->IsAssistant(guid))
         return;
 
     WorldPackets::Party::RolePollInform rolePollInform;
@@ -668,7 +644,7 @@ void WorldSession::HandleClearRaidMarker(WorldPackets::Party::ClearRaidMarker& p
     if (!group)
         return;
 
-    if (group->isRaidGroup() && !group->IsLeader(GetPlayer()->GetGUID()) && !group->GetMemberFlags(GetPlayer()->GetGUID()))
+    if (group->isRaidGroup() && !group->IsLeader(GetPlayer()->GetGUID()) && !group->IsAssistant(GetPlayer()->GetGUID()))
         return;
 
     group->DeleteRaidMarker(packet.MarkerId);

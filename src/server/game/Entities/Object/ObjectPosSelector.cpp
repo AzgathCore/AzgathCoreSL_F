@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,7 +41,7 @@ ObjectPosSelector::UsedPosList::value_type const* ObjectPosSelector::nextUsedPos
     if (itr!=m_UsedPosLists[uptype].end())
         ++itr;
 
-    if (itr==m_UsedPosLists[uptype].end())
+    if (itr == m_UsedPosLists[uptype].end())
     {
         if (!m_UsedPosLists[~uptype].empty())
             return &*m_UsedPosLists[~uptype].rbegin();

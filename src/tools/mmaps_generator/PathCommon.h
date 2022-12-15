@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #ifndef _WIN32
@@ -33,6 +34,11 @@
 #ifndef _WIN32
     #include <cerrno>
 #endif
+
+namespace VMAP
+{
+    class VMapManager2;
+}
 
 namespace MMAP
 {
@@ -121,6 +127,21 @@ namespace MMAP
 
         return LISTFILE_OK;
     }
+
+    struct MapEntry
+    {
+        uint8 MapType = 0;
+        int8 InstanceType = 0;
+        int16 ParentMapID = -1;
+        int32 Flags = 0;
+    };
+
+    extern std::unordered_map<uint32, MapEntry> sMapStore;
+
+    namespace VMapFactory
+    {
+        std::unique_ptr<VMAP::VMapManager2> CreateVMapManager();
+}
 }
 
 #endif

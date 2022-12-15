@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -104,7 +104,7 @@ WorldPacket const* WorldPackets::Pet::PetNameInvalid::Write()
 
     _worldPacket << uint8(RenameData.NewName.length());
 
-    _worldPacket.WriteBit(RenameData.DeclinedNames.is_initialized());
+    _worldPacket.WriteBit(RenameData.DeclinedNames.has_value());
 
     if (RenameData.DeclinedNames)
     {
@@ -128,7 +128,7 @@ void WorldPackets::Pet::PetRename::Read()
 
     if (_worldPacket.ReadBit())
     {
-        RenameData.DeclinedNames = boost::in_place();
+        RenameData.DeclinedNames.emplace();
         int32 count[MAX_DECLINED_NAME_CASES];
         for (int32 i = 0; i < MAX_DECLINED_NAME_CASES; i++)
             count[i] = _worldPacket.ReadBits(7);
@@ -209,27 +209,9 @@ WorldPacket const* WorldPackets::Pet::PetActionSound::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Pet::PetSlotUpdated::Write()
+WorldPacket const* WorldPackets::Pet::PetTameFailure::Write()
 {
-    _worldPacket << int32(PetNumberA);
-    _worldPacket << int32(PetSlotA);
-    _worldPacket << int32(PetNumberB);
-    _worldPacket << int32(PetSlotB);
-
-    return &_worldPacket;
-}
-
-WorldPacket const* WorldPackets::Pet::PetAdded::Write()
-{
-    _worldPacket << int32(NewPet.PetSlot);
-    _worldPacket << int32(NewPet.PetNumber);
-    _worldPacket << int32(NewPet.CreatureID);
-    _worldPacket << int32(NewPet.DisplayID);
-    _worldPacket << int32(NewPet.ExperienceLevel);
-    _worldPacket << int8(NewPet.PetFlags);
-
-    _worldPacket.WriteBits(NewPet.PetName.length(), 8);
-    _worldPacket.WriteString(NewPet.PetName);
+    _worldPacket << uint8(Result);
 
     return &_worldPacket;
 }

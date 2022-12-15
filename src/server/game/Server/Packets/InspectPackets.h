@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -102,10 +102,13 @@ namespace WorldPackets
             int32 SeasonPlayed     = 0;
             int32 SeasonWon        = 0;
             int32 WeeklyBestRating = 0;
-            int32 Unk710           = 0;
-            int32 Unk801_1         = 0;
+            int32 SeasonBestRating = 0;
+            int32 PvpTierID        = 0;
+            int32 WeeklyBestWinPvpTierID = 0;
+            int32 Unused1          = 0;
+            int32 Unused2          = 0;
             uint8 Bracket          = 0;
-            bool Unk801_2          = false;
+            bool Disqualified      = false;
         };
 
         class InspectResult final : public ServerPacket

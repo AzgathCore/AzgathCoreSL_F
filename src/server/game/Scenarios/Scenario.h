@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,8 +20,6 @@
 
 #include "CriteriaHandler.h"
 #include <unordered_set>
-
-class InstanceScenario;
 
 struct ScenarioData;
 struct ScenarioEntry;
@@ -49,12 +47,6 @@ enum ScenarioStepState
     SCENARIO_STEP_DONE          = 3
 };
 
-enum ScenarioInstanceType
-{
-    SCENARIO_INSTANCE_TYPE_SCENARIO          = 1,
-    SCENARIO_INSTANCE_TYPE_INSTANCE_SCENARIO = 2,
-};
-
 class TC_GAME_API Scenario : public CriteriaHandler
 {
     public:
@@ -72,27 +64,21 @@ class TC_GAME_API Scenario : public CriteriaHandler
         virtual void Update(uint32 /*diff*/) { }
 
         bool IsComplete();
+        bool IsCompletedStep(ScenarioStepEntry const* step);
         void SetStepState(ScenarioStepEntry const* step, ScenarioStepState state) { _stepStates[step] = state; }
         ScenarioEntry const* GetEntry() const;
         ScenarioStepState GetStepState(ScenarioStepEntry const* step);
         ScenarioStepEntry const* GetStep() const { return _currentstep; }
         ScenarioStepEntry const* GetFirstStep() const;
-        void CompleteCurrStep();
+        ScenarioStepEntry const* GetLastStep() const;
 
         void SendScenarioState(Player* player);
         void SendBootPlayer(Player* player);
 
-        void SendScenarioEvent(Player* player, uint32 eventId);
-        void SendScenarioEventToPlayers(uint32 eventId);
-
-        inline bool IsInstanceScenarioo() const { return _scenarioType == SCENARIO_INSTANCE_TYPE_INSTANCE_SCENARIO; }
-        InstanceScenario* ToInstanceScenario() { if (IsInstanceScenarioo()) return reinterpret_cast<InstanceScenario*>(this); else return nullptr; }
-        InstanceScenario const* ToInstanceScenario() const { if (IsInstanceScenarioo()) return reinterpret_cast<InstanceScenario const*>(this); else return nullptr; }
-
     protected:
         GuidUnorderedSet _players;
 
-        void SendCriteriaUpdate(Criteria const* criteria, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const override;
+        void SendCriteriaUpdate(Criteria const* criteria, CriteriaProgress const* progress, Seconds timeElapsed, bool timedCompleted) const override;
         void SendCriteriaProgressRemoved(uint32 /*criteriaId*/) override { }
 
         bool CanUpdateCriteriaTree(Criteria const* criteria, CriteriaTree const* tree, Player* referencePlayer) const override;
@@ -109,11 +95,8 @@ class TC_GAME_API Scenario : public CriteriaHandler
         std::vector<WorldPackets::Scenario::BonusObjectiveData> GetBonusObjectivesData();
         std::vector<WorldPackets::Achievement::CriteriaProgress> GetCriteriasProgress();
 
-        CriteriaList const& GetCriteriaByType(CriteriaTypes type) const override;
+        CriteriaList const& GetCriteriaByType(CriteriaType type, uint32 asset) const override;
         ScenarioData const* _data;
-        AzgathCore::AnyData Variables;
-
-        ScenarioInstanceType _scenarioType;
 
     private:
         ScenarioStepEntry const* _currentstep;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -134,6 +134,7 @@ namespace WorldPackets
             void Read() override;
 
             std::string Name;
+            ObjectGuid AccountGUID;
         };
 
         class DelIgnore final : public ClientPacket
@@ -146,14 +147,22 @@ namespace WorldPackets
             QualifiedGUID Player;
         };
 
-        class QuickJoinAutoAcceptRequests final : public ClientPacket
+        class SocialContractRequest final : public ClientPacket
         {
         public:
-            QuickJoinAutoAcceptRequests(WorldPacket&& packet) : ClientPacket(CMSG_QUICK_JOIN_AUTO_ACCEPT_REQUESTS, std::move(packet)) { }
+            SocialContractRequest(WorldPacket&& packet) : ClientPacket(CMSG_SOCIAL_CONTRACT_REQUEST, std::move(packet)) { }
 
-            void Read() override;
+            void Read() override { }
+        };
 
-            bool EnableAutoAccept = false;
+        class SocialContractRequestResponse final : public ServerPacket
+        {
+        public:
+            SocialContractRequestResponse() : ServerPacket(SMSG_SOCIAL_CONTRACT_REQUEST_RESPONSE, 1) { }
+
+            WorldPacket const* Write() override;
+
+            bool ShowSocialContract = false;
         };
     }
 }

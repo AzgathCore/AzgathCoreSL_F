@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,8 +19,6 @@
 #define TRINITY_SESSIONKEYGENERATOR_HPP
 
 #include "CryptoHash.h"
-#include <cstring>
-#include "advstd.h" // for data/size
 
 template <typename Hash>
 class SessionKeyGenerator
@@ -30,8 +28,8 @@ class SessionKeyGenerator
         SessionKeyGenerator(C const& buf) :
             o0it(o0.begin())
         {
-            uint8 const* data = advstd::data(buf);
-            size_t const len = advstd::size(buf);
+            uint8 const* data = std::data(buf);
+            size_t const len = std::size(buf);
             size_t const halflen = (len / 2);
 
             o1 = Hash::GetDigestOf(data, halflen);

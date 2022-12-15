@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,13 +22,9 @@
 #include "ItemTemplate.h"
 #include "Log.h"
 #include "ObjectMgr.h"
-#include "Random.h"
 #include "Timer.h"
-#include "Util.h"
-
 #include <list>
 #include <vector>
-#include <stdlib.h>
 
 namespace
 {

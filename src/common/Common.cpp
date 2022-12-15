@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,3 +41,19 @@ LocaleConstant GetLocaleByName(std::string const& name)
 
     return TOTAL_LOCALES;
 }
+
+CascLocaleBit WowLocaleToCascLocaleBit[TOTAL_LOCALES] =
+{
+    CascLocaleBit::enUS,
+    CascLocaleBit::koKR,
+    CascLocaleBit::frFR,
+    CascLocaleBit::deDE,
+    CascLocaleBit::zhCN,
+    CascLocaleBit::zhTW,
+    CascLocaleBit::esES,
+    CascLocaleBit::esMX,
+    CascLocaleBit::ruRU,
+    CascLocaleBit::None,
+    CascLocaleBit::ptBR,
+    CascLocaleBit::itIT
+};

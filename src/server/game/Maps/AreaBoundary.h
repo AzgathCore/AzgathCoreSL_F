@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,7 +28,7 @@ class TC_GAME_API AreaBoundary
 
         virtual ~AreaBoundary() { }
 
-    //protected:
+    protected:
         explicit AreaBoundary(bool isInverted) : _isInvertedBoundary(isInverted) { }
 
         struct DoublePosition : Position
@@ -156,6 +156,7 @@ class TC_GAME_API BoundaryUnionBoundary : public AreaBoundary
         BoundaryUnionBoundary(AreaBoundary const* b1, AreaBoundary const* b2, bool isInverted = false);
 
     protected:
+        virtual ~BoundaryUnionBoundary();
         bool IsWithinBoundaryArea(Position const* pos) const override;
 
     private:

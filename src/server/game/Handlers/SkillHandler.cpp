@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 AzgathCore
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,8 +25,6 @@
 #include "Player.h"
 #include "SpellPackets.h"
 #include "TalentPackets.h"
-#include "MiscPackets.h"
-#include "SpellMgr.h"
 
 void WorldSession::HandleLearnTalentsOpcode(WorldPackets::Talent::LearnTalents& packet)
 {
@@ -94,18 +92,12 @@ void WorldSession::HandleConfirmRespecWipeOpcode(WorldPackets::Talent::ConfirmRe
     if (!unit->CanResetTalents(_player))
         return;
 
-    if (!_player->PlayerTalkClass->GetGossipMenu().HasMenuItemType(GOSSIP_OPTION_UNLEARNTALENTS))
-        return;
-
     // remove fake death
     if (GetPlayer()->HasUnitState(UNIT_STATE_DIED))
         GetPlayer()->RemoveAurasByType(SPELL_AURA_FEIGN_DEATH);
 
     if (!_player->ResetTalents())
-    {
-        GetPlayer()->SendRespecWipeConfirm(ObjectGuid::Empty, 0);
         return;
-    }
 
     _player->SendTalentsInfoData();
     unit->CastSpell(_player, 14867, true);                  //spell: "Untalent Visual Effect"
@@ -113,74 +105,9 @@ void WorldSession::HandleConfirmRespecWipeOpcode(WorldPackets::Talent::ConfirmRe
 
 void WorldSession::HandleUnlearnSkillOpcode(WorldPackets::Spells::UnlearnSkill& packet)
 {
-    SkillRaceClassInfoEntry const* rcEntry = sDB2Manager.GetSkillRaceClassInfo(packet.SkillLine, GetPlayer()->getRace(), GetPlayer()->getClass());
+    SkillRaceClassInfoEntry const* rcEntry = sDB2Manager.GetSkillRaceClassInfo(packet.SkillLine, GetPlayer()->GetRace(), GetPlayer()->GetClass());
     if (!rcEntry || !(rcEntry->Flags & SKILL_FLAG_UNLEARNABLE))
         return;
 
     GetPlayer()->SetSkill(packet.SkillLine, 0, 0, 0);
-}
-
-void WorldSession::HandleUnlearnSpecialization(WorldPackets::Talent::UnlearnSpecialization& packet)
-{
-    if (GetPlayer()->GetSpecializationId() == packet.SpecializationID)
-    {
-        GetPlayer()->RemoveSpell(packet.SpecializationID);
-    }
-}
-
-void WorldSession::HandleShowTradeSkill(WorldPackets::Misc::ShowTradeSkill& packet)
-{
-    if (!sSkillLineStore.LookupEntry(packet.SkillLineID) || !sSpellMgr->GetSpellInfo(packet.SpellID, DIFFICULTY_NONE))
-        return;
-
-    Player* player = ObjectAccessor::FindPlayer(packet.PlayerGUID);
-    if (!player)
-        return;
-
-    std::set<uint32> relatedSkills;
-    relatedSkills.insert(packet.SkillLineID);
-
-    for (SkillLineEntry const* skillLine : sSkillLineStore)
-    {
-        if (skillLine->ParentSkillLineID != packet.SkillLineID)
-            continue;
-
-        if (!player->HasSkill(skillLine->ParentSkillLineID))
-            continue;
-
-        relatedSkills.insert(skillLine->ParentSkillLineID);
-    }
-
-    std::set<uint32> profSpells;
-    for (auto const& v : player->GetSpellMap())
-    {
-        if (v.second->state == PLAYERSPELL_REMOVED)
-            continue;
-
-        if (!v.second->active || v.second->disabled)
-            continue;
-
-        for (auto const& s : relatedSkills)
-            if (IsPartOfSkillLine(s, v.first))
-                profSpells.insert(v.first);
-    }
-
-    if (profSpells.empty())
-        return;
-
-    WorldPackets::Misc::ShowTradeSkillResponse response;
-    response.PlayerGUID = packet.PlayerGUID;
-    response.SpellId = packet.SpellID;
-
-    for (uint32 const& x : profSpells)
-        response.KnownAbilitySpellIDs.push_back(x);
-
-    for (uint32 const& v : relatedSkills)
-    {
-        response.SkillLineIDs.push_back(v);
-        response.SkillRanks.push_back(player->GetSkillValue(v));
-        response.SkillMaxRanks.push_back(player->GetMaxSkillValue(v));
-    }
-
-    _player->SendDirectMessage(response.Write());
 }
