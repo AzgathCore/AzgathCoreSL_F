@@ -207,6 +207,7 @@ namespace WorldPackets
             TaggedPosition<Position::XY> Pos;
             int32 Icon          = 0;
             int32 Importance    = 0;
+            int32 Unknown905    = 0;
             std::string Name;
         };
 

@@ -111,12 +111,12 @@ namespace WorldPackets
         ByteBuffer& operator<<(ByteBuffer& data, GarrisonMission const& mission)
         {
             data << uint64(mission.DbID);
-            data << uint32(mission.MissionRecID);
             data << uint32(mission.OfferTime);
             data << uint32(mission.OfferDuration);
             data << uint32(mission.StartTime);
             data << uint32(mission.TravelDuration);
             data << uint32(mission.MissionDuration);
+            data << uint32(mission.MissionRecID);
             data << uint32(mission.MissionState);
             data << uint32(mission.SuccessChance);
             data << uint32(mission.Flags);
@@ -145,8 +145,8 @@ namespace WorldPackets
 
         ByteBuffer& operator<<(ByteBuffer& data, GarrisonMissionBonusAbility const& areaBonus)
         {
-            data << uint32(areaBonus.GarrMssnBonusAbilityID);
             data << uint32(areaBonus.StartTime);
+            data << uint32(areaBonus.GarrMssnBonusAbilityID);
 
             return data;
         }
@@ -194,8 +194,8 @@ namespace WorldPackets
 
         ByteBuffer& operator<<(ByteBuffer& data, GarrisonEventEntry const& event)
         {
+            data << int64(event.EventValue);
             data << int32(event.EntryID);
-            data << int32(event.EventValue);
 
             return data;
         }
@@ -234,6 +234,7 @@ namespace WorldPackets
             data << uint32(garrison.ArchivedMissions.size());
             data << int32(garrison.NumFollowerActivationsRemaining);
             data << uint32(garrison.NumMissionsStartedToday);
+            data << int32(garrison.MinAutoTroopLevel);
 
             for (GarrisonPlotInfo* plot : garrison.Plots)
                 data << *plot;

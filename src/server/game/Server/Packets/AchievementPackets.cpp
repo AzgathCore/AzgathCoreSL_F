@@ -137,6 +137,7 @@ WorldPacket const* WorldPackets::Achievement::GuildCriteriaUpdate::Write()
         _worldPacket << uint32(progress.DateCreated);
         _worldPacket << uint32(progress.DateStarted);
         _worldPacket.AppendPackedTime(progress.DateUpdated);
+        _worldPacket << uint32(0); // this is a hack. this is a packed time written as int64 (progress.DateUpdated)
         _worldPacket << uint64(progress.Quantity);
         _worldPacket << progress.PlayerGUID;
         _worldPacket << int32(progress.Flags);
