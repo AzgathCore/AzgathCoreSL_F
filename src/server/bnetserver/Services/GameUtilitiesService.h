@@ -18,6 +18,7 @@
 #ifndef GameUtilitiesServiceService_h__
 #define GameUtilitiesServiceService_h__
 
+#include "Common.h"
 #include "Service.h"
 #include "game_utilities_service.pb.h"
 

@@ -21,7 +21,6 @@
 #include "Log.h"
 #include "MySQLHacks.h"
 #include "MySQLWorkaround.h"
-#include <cstring>
 
 namespace
 {

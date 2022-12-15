@@ -67,12 +67,10 @@ enum TBMCreatureIds
     NPC_INFINITE_VANQUISHER             = 18995
 };
 
-template <class AI, class T>
-inline AI* GetBlackMorassAI(T* obj)
+template<typename AI>
+inline AI* GetBlackMorassAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, TBMScriptName);
+    return GetInstanceAI<AI>(creature, TBMScriptName);
 }
-
-#define RegisterBlackMorassCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetBlackMorassAI)
 
 #endif

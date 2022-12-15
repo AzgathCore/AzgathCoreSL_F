@@ -24,13 +24,18 @@ namespace WorldPackets
 {
     namespace WorldState
     {
-        class TC_GAME_API InitWorldStates final : public ServerPacket
+        class InitWorldStates final : public ServerPacket
         {
         public:
             struct WorldStateInfo
             {
                 WorldStateInfo(int32 variableID, int32 value)
                     : VariableID(variableID), Value(value) { }
+
+                bool operator < (const WorldStateInfo& info) const
+                {
+                    return (VariableID < info.VariableID);
+                }
 
                 int32 VariableID;
                 int32 Value;

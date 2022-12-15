@@ -49,8 +49,7 @@ enum AZCreatureIds
     NPC_DALLIAH                                 = 20885,
     NPC_SOCCOTHRATES                            = 20886,
     NPC_MELLICHAR                               = 20904, // skyriss will kill this unit
-    NPC_ALPHA_POD_TARGET                        = 21436,
-    NPC_MILLHOUSE                               = 20977
+    NPC_ALPHA_POD_TARGET                        = 21436
 };
 
 enum AZGameObjectIds
@@ -65,17 +64,10 @@ enum AZGameObjectIds
     GO_WARDENS_SHIELD                           = 184802  // shield 'protecting' mellichar
 };
 
-enum AZSpellIds
+template<typename AI>
+inline AI* GetArcatrazAI(Creature* creature)
 {
-    SPELL_QID_10886                             = 39564
-};
-
-template <class AI, class T>
-inline AI* GetArcatrazAI(T* obj)
-{
-    return GetInstanceAI<AI>(obj, ArcatrazScriptName);
+    return GetInstanceAI<AI>(creature, ArcatrazScriptName);
 }
-
-#define RegisterArcatrazCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetArcatrazAI)
 
 #endif // ARCATRAZ_H

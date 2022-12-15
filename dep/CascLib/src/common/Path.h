@@ -17,12 +17,11 @@
 template <typename xchar>
 struct CASC_PATH
 {
-    CASC_PATH(int chSeparator = PATH_SEP_CHAR)
+    CASC_PATH(xchar chSeparator = PATH_SEP_CHAR)
     {
         m_szBufferBegin = m_szBufferPtr = m_Buffer;
         m_szBufferEnd = m_szBufferBegin + _countof(m_Buffer);
-        m_chSeparator = (xchar)chSeparator;
-        m_bLocalCache = 0;
+        m_chSeparator = chSeparator;
         m_Buffer[0] = 0;
     }
 
@@ -35,19 +34,9 @@ struct CASC_PATH
     }
 
     // LPCTSTR szPath = Path;
-    operator const xchar *() const
+    operator const xchar *()
     {
         return m_szBufferBegin;
-    }
-
-    void SetLocalCaching(int bLocalCache)
-    {
-        m_bLocalCache = (xchar)(bLocalCache != 0);
-    }
-
-    bool LocalCaching()
-    {
-        return (m_bLocalCache != 0);
     }
 
     // LPTSTR szPath = Path.New();
@@ -92,7 +81,7 @@ struct CASC_PATH
         return true;
     }
 
-    size_t Length() const
+    size_t Length()
     {
         return m_szBufferPtr - m_szBufferBegin;
     }
@@ -188,7 +177,6 @@ struct CASC_PATH
     xchar * m_szBufferEnd;
     xchar m_Buffer[MAX_PATH];
     xchar m_chSeparator;
-    xchar m_bLocalCache:1;
 };
 
 #endif // __CASC_PATH_H__

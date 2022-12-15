@@ -19,8 +19,8 @@
 #include "DB2Stores.h"
 #include "ObjectMgr.h"
 #include "Player.h"
-#include "StringConvert.h"
 #include "TaxiPackets.h"
+#include <limits>
 #include <sstream>
 
 void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint8 level)
@@ -31,7 +31,7 @@ void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint8 level
     {
         case CLASS_DEATH_KNIGHT:
         {
-            for (std::size_t i = 0; i < m_taximask.size(); ++i)
+            for (std::size_t i = 0; i < TaxiMaskSize; ++i)
                 m_taximask[i] |= sOldContinentsNodesMask[i] & factionMask[i];
             break;
         }
@@ -47,6 +47,11 @@ void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint8 level
         case RACE_DRAENEI:
         case RACE_WORGEN:
         case RACE_PANDAREN_ALLIANCE:
+        case RACE_VOID_ELF:
+        case RACE_LIGHTFORGED_DRAENEI:
+        case RACE_KUL_TIRAN:
+        case RACE_DARK_IRON_DWARF:
+        case RACE_MECHAGNOME:
             SetTaximaskNode(2);     // Stormwind, Elwynn
             SetTaximaskNode(6);     // Ironforge, Dun Morogh
             SetTaximaskNode(26);    // Lor'danel, Darkshore
@@ -68,6 +73,11 @@ void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint8 level
         case RACE_BLOODELF:
         case RACE_GOBLIN:
         case RACE_PANDAREN_HORDE:
+        case RACE_NIGHTBORNE:
+        case RACE_HIGHMOUNTAIN_TAUREN:
+        case RACE_ZANDALARI_TROLL:
+        case RACE_MAGHAR_ORC:
+        case RACE_VULPERA:
             SetTaximaskNode(11);    // Undercity, Tirisfal
             SetTaximaskNode(22);    // Thunder Bluff, Mulgore
             SetTaximaskNode(23);    // Orgrimmar, Durotar
@@ -93,28 +103,31 @@ void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint8 level
     // level dependent taxi hubs
     if (level >= 68)
         SetTaximaskNode(213);                               //Shattered Sun Staging Area
+
+    // Argus temp fix
+    if (level >= 110)
+    {
+        SetTaximaskNode(1944); // Vindicaar Krokuun
+        SetTaximaskNode(1928);
+
+        SetTaximaskNode(1977); // Vindicaar Mac'Aree
+        SetTaximaskNode(1982);
+
+        SetTaximaskNode(1994); // Vindicaar Antoran Wastes
+        SetTaximaskNode(1988);
+    }
 }
 
-bool PlayerTaxi::LoadTaxiMask(std::string const& data)
+void PlayerTaxi::LoadTaxiMask(std::string const &data)
 {
-    bool warn = false;
-    std::vector<std::string_view> tokens = Trinity::Tokenize(data, ' ', false);
-    for (size_t index = 0; (index < m_taximask.size()) && (index < tokens.size()); ++index)
+    Tokenizer tokens(data, ' ');
+
+    std::size_t index = 0;
+    for (Tokenizer::const_iterator iter = tokens.begin(); index < TaxiMaskSize && iter != tokens.end(); ++iter, ++index)
     {
-        if (Optional<uint32> mask = Trinity::StringTo<uint32>(tokens[index]))
-        {
-            // load and set bits only for existing taxi nodes
-            m_taximask[index] = sTaxiNodesMask[index] & *mask;
-            if (m_taximask[index] != *mask)
-                warn = true;
-        }
-        else
-        {
-            m_taximask[index] = 0;
-            warn = true;
-        }
+        // load and set bits only for existing taxi nodes
+        m_taximask[index] = sTaxiNodesMask[index] & atoul(*iter);
     }
-    return !warn;
 }
 
 void PlayerTaxi::AppendTaximaskTo(WorldPackets::Taxi::ShowTaxiNodes& data, bool all)
@@ -135,24 +148,16 @@ bool PlayerTaxi::LoadTaxiDestinationsFromString(const std::string& values, uint3
 {
     ClearTaxiDestinations();
 
-    std::vector<std::string_view> tokens = Trinity::Tokenize(values, ' ', false);
-    auto itr = tokens.begin();
-    if (itr != tokens.end())
-    {
-        if (Optional<uint32> faction = Trinity::StringTo<uint32>(*itr))
-            m_flightMasterFactionId = *faction;
-        else
-            return false;
-    }
-    else
-        return false;
+    Tokenizer tokens(values, ' ');
+    auto iter = tokens.begin();
+    if (iter != tokens.end())
+        m_flightMasterFactionId = atoul(*iter);
 
-    while ((++itr) != tokens.end())
+    ++iter;
+    for (; iter != tokens.end(); ++iter)
     {
-        if (Optional<uint32> node = Trinity::StringTo<uint32>(*itr))
-            AddTaxiDestination(*node);
-        else
-            return false;
+        uint32 node = atoul(*iter);
+        AddTaxiDestination(node);
     }
 
     if (m_TaxiDestinations.empty())
@@ -183,8 +188,6 @@ std::string PlayerTaxi::SaveTaxiDestinationsToString()
     if (m_TaxiDestinations.empty())
         return "";
 
-    ASSERT(m_TaxiDestinations.size() >= 2);
-
     std::ostringstream ss;
     ss << m_flightMasterFactionId << ' ';
 
@@ -209,7 +212,7 @@ uint32 PlayerTaxi::GetCurrentTaxiPath() const
 
 std::ostringstream& operator<<(std::ostringstream& ss, PlayerTaxi const& taxi)
 {
-    for (std::size_t i = 0; i < taxi.m_taximask.size(); ++i)
+    for (std::size_t i = 0; i < TaxiMaskSize; ++i)
         ss << uint32(taxi.m_taximask[i]) << ' ';
     return ss;
 }

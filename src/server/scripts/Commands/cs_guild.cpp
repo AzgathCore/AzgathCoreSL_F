@@ -26,20 +26,15 @@ EndScriptData */
 #include "AchievementMgr.h"
 #include "CharacterCache.h"
 #include "Chat.h"
-#include "ChatCommand.h"
+#include "Language.h"
 #include "Guild.h"
 #include "GuildMgr.h"
-#include "Language.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "RBAC.h"
 #include <iomanip>
 
-#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-using namespace Trinity::ChatCommands;
 class guild_commandscript : public CommandScript
 {
 public:
@@ -95,22 +90,7 @@ public:
         if (target->GetGuildId())
         {
             handler->SendSysMessage(LANG_PLAYER_IN_GUILD);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        if (sGuildMgr->GetGuildByName(guildName))
-        {
-            handler->SendSysMessage(LANG_GUILD_RENAME_ALREADY_EXISTS);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        if (sObjectMgr->IsReservedName(guildName) || !sObjectMgr->IsValidCharterName(guildName))
-        {
-            handler->SendSysMessage(LANG_BAD_VALUE);
-            handler->SetSentErrorMessage(true);
-            return false;
+            return true;
         }
 
         Guild* guild = new Guild;
@@ -196,14 +176,21 @@ public:
         return true;
     }
 
-    static bool HandleGuildRankCommand(ChatHandler* handler, Optional<PlayerIdentifier> player, uint8 rank)
+    static bool HandleGuildRankCommand(ChatHandler* handler, char const* args)
     {
-        if (!player)
-            player = PlayerIdentifier::FromTargetOrSelf(handler);
-        if (!player)
+        char* nameStr;
+        char* rankStr;
+        handler->extractOptFirstArg((char*)args, &nameStr, &rankStr);
+        if (!rankStr)
             return false;
 
-        ObjectGuid::LowType guildId = player->IsConnected() ? player->GetConnectedPlayer()->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(*player);
+        Player* target;
+        ObjectGuid targetGuid;
+        std::string target_name;
+        if (!handler->extractPlayerTarget(nameStr, &target, &targetGuid, &target_name))
+            return false;
+
+        ObjectGuid::LowType guildId = target ? target->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(targetGuid);
         if (!guildId)
             return false;
 
@@ -211,7 +198,9 @@ public:
         if (!targetGuild)
             return false;
 
-        return targetGuild->ChangeMemberRank(nullptr, *player, GuildRankId(rank));
+        uint8 newRank = uint8(atoi(rankStr));
+        CharacterDatabaseTransaction trans(nullptr);
+        return targetGuild->ChangeMemberRank(trans, targetGuid, newRank);
     }
 
     static bool HandleGuildRenameCommand(ChatHandler* handler, char const* _args)

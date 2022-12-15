@@ -22,7 +22,6 @@
 #include "Realm.h"
 #include <array>
 #include <map>
-#include <shared_mutex>
 #include <vector>
 #include <unordered_set>
 
@@ -39,6 +38,8 @@ struct RealmBuildInfo
 
 namespace boost
 {
+    class shared_mutex;
+
     namespace system
     {
         class error_code;
@@ -101,7 +102,7 @@ private:
         uint16 port, uint8 icon, RealmFlags flag, uint8 timezone, AccountTypes allowedSecurityLevel, float population);
 
     std::vector<RealmBuildInfo> _builds;
-    mutable std::shared_mutex _realmsMutex;
+    std::unique_ptr<boost::shared_mutex> _realmsMutex;
     RealmMap _realms;
     std::unordered_set<std::string> _subRegions;
     uint32 _updateInterval;

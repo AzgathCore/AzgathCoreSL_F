@@ -20,8 +20,7 @@
 
 #include "Packet.h"
 #include "ObjectGuid.h"
-
-class Unit;
+#include "CombatLogPacketsCommon.h"
 
 namespace WorldPackets
 {

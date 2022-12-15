@@ -19,6 +19,7 @@
 #define _WARDEN_MAC_H
 
 #include "ARC4.h"
+#include "ByteBuffer.h"
 #include "Warden.h"
 
 class WorldSession;
@@ -31,13 +32,12 @@ class TC_GAME_API WardenMac : public Warden
         ~WardenMac();
 
         void Init(WorldSession* session, SessionKey const& k) override;
-        void InitializeModuleForClient(ClientWardenModule& module) override;
+        ClientWardenModule* GetModuleForClient() override;
         void InitializeModule() override;
         void RequestHash() override;
         void HandleHashResult(ByteBuffer& buff) override;
-        void RequestChecks() override;
-        size_t DEBUG_ForceSpecificChecks(std::vector<uint16> const& /*checks*/) override { return 0; }
-        void HandleCheckResult(ByteBuffer& buff) override;
+        void RequestData() override;
+        void HandleData(ByteBuffer& buff) override;
 };
 
 #endif

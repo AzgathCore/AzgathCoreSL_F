@@ -15,11 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "WorldSession.h"
 #include "Common.h"
+#include "Chat.h"
 #include "DatabaseEnv.h"
+#include "MiscPackets.h"
+#include "ObjectMgr.h"
+#include "Opcodes.h"
+#include "Player.h"
 #include "SupportMgr.h"
 #include "TicketPackets.h"
+#include "Util.h"
+#include "WorldPacket.h"
+#include "WorldSession.h"
 
 void WorldSession::HandleGMTicketGetCaseStatusOpcode(WorldPackets::Ticket::GMTicketGetCaseStatus& /*packet*/)
 {
@@ -39,30 +46,15 @@ void WorldSession::HandleGMTicketSystemStatusOpcode(WorldPackets::Ticket::GMTick
 
 void WorldSession::HandleSubmitUserFeedback(WorldPackets::Ticket::SubmitUserFeedback& userFeedback)
 {
-    if (userFeedback.IsSuggestion)
-    {
-        if (!sSupportMgr->GetSuggestionSystemStatus())
-            return;
+    if (!sSupportMgr->GetBugSystemStatus())
+        return;
 
-        SuggestionTicket* ticket = new SuggestionTicket(GetPlayer());
-        ticket->SetPosition(userFeedback.Header.MapID, userFeedback.Header.Position);
-        ticket->SetFacing(userFeedback.Header.Facing);
-        ticket->SetNote(userFeedback.Note);
+    BugTicket* ticket = new BugTicket(GetPlayer());
+    ticket->SetPosition(userFeedback.Header.MapID, userFeedback.Header.Position);
+    ticket->SetFacing(userFeedback.Header.Facing);
+    ticket->SetNote(userFeedback.Note);
 
-        sSupportMgr->AddTicket(ticket);
-    }
-    else
-    {
-        if (!sSupportMgr->GetBugSystemStatus())
-            return;
-
-        BugTicket* ticket = new BugTicket(GetPlayer());
-        ticket->SetPosition(userFeedback.Header.MapID, userFeedback.Header.Position);
-        ticket->SetFacing(userFeedback.Header.Facing);
-        ticket->SetNote(userFeedback.Note);
-
-        sSupportMgr->AddTicket(ticket);
-    }
+    sSupportMgr->AddTicket(ticket);
 }
 
 void WorldSession::HandleSupportTicketSubmitComplaint(WorldPackets::Ticket::SupportTicketSubmitComplaint& packet)
@@ -75,9 +67,7 @@ void WorldSession::HandleSupportTicketSubmitComplaint(WorldPackets::Ticket::Supp
     comp->SetFacing(packet.Header.Facing);
     comp->SetChatLog(packet.ChatLog);
     comp->SetTargetCharacterGuid(packet.TargetCharacterGUID);
-    comp->SetReportType(ReportType(packet.ReportType));
-    comp->SetMajorCategory(ReportMajorCategory(packet.MajorCategory));
-    comp->SetMinorCategoryFlags(ReportMinorCategory(packet.MinorCategoryFlags));
+    comp->SetComplaintType(GMSupportComplaintType(packet.ComplaintType));
     comp->SetNote(packet.Note);
 
     sSupportMgr->AddTicket(comp);
@@ -103,4 +93,52 @@ void WorldSession::HandleComplaint(WorldPackets::Ticket::Complaint& packet)
     result.ComplaintType = packet.ComplaintType;
     result.Result = 0;
     SendPacket(result.Write());
+}
+
+void WorldSession::OnGMTicketGetTicketEvent()
+{
+    Player* player = GetPlayer();
+    if (!player)
+        return;
+
+    SendQueryTimeResponse();
+    // Player must not have opened ticket
+    if (SuggestionTicket* ticket = sSupportMgr->GetOpenSuggestionByPlayerGuid(player->GetGUID()))
+    {
+        sSupportMgr->SendTicket(this, ticket);
+        return;
+    }
+
+    sSupportMgr->SendTicket(this, nullptr);
+}
+
+void WorldSession::SendTicketStatusUpdate(uint8 response)
+{
+    Player* player = GetPlayer();
+    if (!player)
+        return;
+
+    switch (response)
+    {
+        case GMTICKET_RESPONSE_ALREADY_EXIST:
+            player->SendDirectMessage(WorldPackets::Misc::DisplayGameError(GameError::ERR_TICKET_ALREADY_EXISTS).Write());
+            break;
+        case GMTICKET_RESPONSE_UPDATE_ERROR:
+            player->SendDirectMessage(WorldPackets::Misc::DisplayGameError(GameError::ERR_TICKET_UPDATE_ERROR).Write());
+            break;
+        case GMTICKET_RESPONSE_CREATE_ERROR:
+            player->SendDirectMessage(WorldPackets::Misc::DisplayGameError(GameError::ERR_TICKET_CREATE_ERROR).Write());
+            break;
+        case GMTICKET_RESPONSE_CREATE_SUCCESS:
+        case GMTICKET_RESPONSE_UPDATE_SUCCESS:
+            OnGMTicketGetTicketEvent();
+            break;
+        case GMTICKET_RESPONSE_TICKET_DELETED:
+            player->SendCustomMessage("FSC_TICKET_DELETED");
+            break;
+        default:
+            player->SendDirectMessage(WorldPackets::Misc::DisplayGameError(GameError::ERR_TICKET_DB_ERROR).Write());
+            break;
+
+    }
 }

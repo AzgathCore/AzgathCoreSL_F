@@ -16,16 +16,15 @@
  */
 
 #include "TotemAI.h"
-#include "CellImpl.h"
+#include "Totem.h"
 #include "Creature.h"
+#include "ObjectAccessor.h"
+#include "SpellMgr.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
-#include "ObjectAccessor.h"
-#include "SpellInfo.h"
-#include "SpellMgr.h"
-#include "Totem.h"
+#include "CellImpl.h"
 
-int32 TotemAI::Permissible(Creature const* creature)
+int TotemAI::Permissible(Creature const* creature)
 {
     if (creature->IsTotem())
         return PERMIT_BASE_PROACTIVE;
@@ -33,9 +32,16 @@ int32 TotemAI::Permissible(Creature const* creature)
     return PERMIT_BASE_NO;
 }
 
-TotemAI::TotemAI(Creature* creature, uint32 scriptId) : NullCreatureAI(creature, scriptId), _victimGUID()
+TotemAI::TotemAI(Creature* c) : CreatureAI(c), i_victimGuid()
 {
-    ASSERT(creature->IsTotem(), "TotemAI: AI assigned to a non-totem creature (%s)!", creature->GetGUID().ToString().c_str());
+    ASSERT(c->IsTotem());
+}
+
+void TotemAI::MoveInLineOfSight(Unit* /*who*/) { }
+
+void TotemAI::EnterEvadeMode(EvadeReason /*why*/)
+{
+    me->CombatStop(true);
 }
 
 void TotemAI::UpdateAI(uint32 /*diff*/)
@@ -54,32 +60,34 @@ void TotemAI::UpdateAI(uint32 /*diff*/)
     // Get spell range
     float max_range = spellInfo->GetMaxRange(false);
 
-    // SpellModOp::Range not applied in this place just because not existence range mods for attacking totems
+    // SPELLMOD_RANGE not applied in this place just because not existence range mods for attacking totems
 
     // pointer to appropriate target if found any
-    Unit* victim = !_victimGUID.IsEmpty() ? ObjectAccessor::GetUnit(*me, _victimGUID) : nullptr;
+    Unit* victim = !i_victimGuid.IsEmpty() ? ObjectAccessor::GetUnit(*me, i_victimGuid) : nullptr;
 
     // Search victim if no, not attackable, or out of range, or friendly (possible in case duel end)
-    if (!victim || !victim->isTargetableForAttack() || !me->IsWithinDistInMap(victim, max_range) || me->IsFriendlyTo(victim) || !me->CanSeeOrDetect(victim))
+    if (!victim ||
+        !victim->isTargetableForAttack() || !me->IsWithinDistInMap(victim, max_range) ||
+        me->IsFriendlyTo(victim) || !me->CanSeeOrDetect(victim))
     {
         victim = nullptr;
-        float extraSearchRadius = max_range > 0.0f ? EXTRA_CELL_SEARCH_RADIUS : 0.0f;
         Trinity::NearestAttackableUnitInObjectRangeCheck u_check(me, me->GetCharmerOrOwnerOrSelf(), max_range);
         Trinity::UnitLastSearcher<Trinity::NearestAttackableUnitInObjectRangeCheck> checker(me, victim, u_check);
-        Cell::VisitAllObjects(me, checker, max_range + extraSearchRadius);
+        Cell::VisitAllObjects(me, checker, max_range);
     }
 
     // If have target
     if (victim)
     {
         // remember
-        _victimGUID = victim->GetGUID();
+        i_victimGuid = victim->GetGUID();
 
         // attack
-        me->CastSpell(victim, me->ToTotem()->GetSpell());
+        me->SetInFront(victim);                         // client change orientation by self
+        me->CastSpell(victim, me->ToTotem()->GetSpell(), false);
     }
     else
-        _victimGUID.Clear();
+        i_victimGuid.Clear();
 }
 
 void TotemAI::AttackStart(Unit* /*victim*/)

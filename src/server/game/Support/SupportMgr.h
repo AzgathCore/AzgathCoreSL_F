@@ -25,56 +25,21 @@ class ChatHandler;
 class Field;
 class Player;
 
-enum class ReportType : int32
-{
-    Chat                    = 0,
-    InWorld                 = 1,
-    ClubFinderPosting       = 2,
-    ClubFinderApplicant     = 3,
-    GroupFinderPosting      = 4,
-    GroupFinderApplicant    = 5,
-    ClubMember              = 6,
-    GroupMember             = 7,
-    Friend                  = 8,
-    Pet                     = 9,
-    BattlePet               = 10,
-    Calendar                = 11,
-    Mail                    = 12,
-    PvP                     = 13,
-};
-
-enum class ReportMajorCategory : int32
-{
-    InappropriateCommunication  = 0,
-    GameplaySabotage            = 1,
-    Cheating                    = 2,
-    InappropriateName           = 3,
-};
-
-enum class ReportMinorCategory : int32
-{
-    TextChat                = 0x0001,
-    Boosting                = 0x0002,
-    Spam                    = 0x0004,
-    Afk                     = 0x0008,
-    IntentionallyFeeding    = 0x0010,
-    BlockingProgress        = 0x0020,
-    Hacking                 = 0x0040,
-    Botting                 = 0x0080,
-    Advertisement           = 0x0100,
-    BTag                    = 0x0200,
-    GroupName               = 0x0400,
-    CharacterName           = 0x0800,
-    GuildName               = 0x1000,
-    Description             = 0x2000,
-    Name                    = 0x4000,
-};
-
 // from blizzard lua
 enum GMTicketSystemStatus
 {
     GMTICKET_QUEUE_STATUS_DISABLED  = 0,
     GMTICKET_QUEUE_STATUS_ENABLED   = 1
+};
+
+enum GMSupportComplaintType
+{
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_NONE        = 0,
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_LANGUAGE    = 2,
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_PLAYERNAME  = 4,
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_CHEAT       = 15,
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_GUILDNAME   = 23,
+    GMTICKET_SUPPORT_COMPLAINT_TYPE_SPAMMING    = 24
 };
 
 enum SupportSpamType
@@ -84,7 +49,31 @@ enum SupportSpamType
     SUPPORT_SPAM_TYPE_CALENDAR = 2
 };
 
-using ChatLog = WorldPackets::Ticket::SupportTicketChatLog;
+enum GMTicketResponse : uint8
+{
+    GMTICKET_RESPONSE_ALREADY_EXIST         = 1,
+    GMTICKET_RESPONSE_CREATE_SUCCESS        = 2,
+    GMTICKET_RESPONSE_CREATE_ERROR          = 3,
+    GMTICKET_RESPONSE_UPDATE_SUCCESS        = 4,
+    GMTICKET_RESPONSE_UPDATE_ERROR          = 5,
+    GMTICKET_RESPONSE_TICKET_DELETED        = 9
+};
+
+enum GMTicketEscalationStatus
+{
+    TICKET_UNASSIGNED                       = 0,
+    TICKET_ASSIGNED                         = 1,
+    TICKET_IN_ESCALATION_QUEUE              = 2,
+    TICKET_ESCALATED_ASSIGNED               = 3
+};
+
+enum GMTicketOpenedByGMStatus
+{
+    GMTICKET_OPENEDBYGM_STATUS_NOT_OPENED   = 0,
+    GMTICKET_OPENEDBYGM_STATUS_OPENED       = 1
+};
+
+using ChatLog = WorldPackets::Ticket::SupportTicketSubmitComplaint::SupportTicketChatLog;
 
 class TC_GAME_API Ticket
 {
@@ -169,18 +158,14 @@ public:
     ~ComplaintTicket();
 
     ObjectGuid GetTargetCharacterGuid() const { return _targetCharacterGuid; }
-    ReportType GetReportType() const { return _reportType; }
-    ReportMajorCategory GetMajorCategory() const { return _majorCategory; }
-    ReportMinorCategory GetMinorCategoryFlags() const { return _minorCategoryFlags; }
+    GMSupportComplaintType GetComplaintType() const { return _complaintType; }
     std::string const& GetNote() const { return _note; }
 
     void SetTargetCharacterGuid(ObjectGuid targetCharacterGuid)
     {
         _targetCharacterGuid = targetCharacterGuid;
     }
-    void SetReportType(ReportType reportType) { _reportType = reportType; }
-    void SetMajorCategory(ReportMajorCategory majorCategory) { _majorCategory = majorCategory; }
-    void SetMinorCategoryFlags(ReportMinorCategory minorCategoryFlags) { _minorCategoryFlags = minorCategoryFlags; }
+    void SetComplaintType(GMSupportComplaintType type) { _complaintType = type; }
     void SetChatLog(ChatLog const& log) { _chatLog = log; }
     void SetNote(std::string const& note) { _note = note; }
 
@@ -194,9 +179,7 @@ public:
 
 private:
     ObjectGuid _targetCharacterGuid;
-    ReportType _reportType;
-    ReportMajorCategory _majorCategory;
-    ReportMinorCategory _minorCategoryFlags;
+    GMSupportComplaintType _complaintType;
     ChatLog _chatLog;
     std::string _note;
 };
@@ -217,6 +200,9 @@ public:
 
     using Ticket::FormatViewMessageString;
     std::string FormatViewMessageString(ChatHandler& handler, bool detailed = false) const override;
+
+    // Custom addon ticket
+    void WriteData(std::vector<std::string>& data, std::string & message) const;
 
 private:
     std::string _note;
@@ -239,6 +225,7 @@ public:
     T* GetTicket(uint32 ticketId);
 
     ComplaintTicketList GetComplaintsByPlayerGuid(ObjectGuid playerGuid) const;
+    SuggestionTicket* GetOpenSuggestionByPlayerGuid(ObjectGuid playerGuid) const;
 
     void Initialize();
 
@@ -264,6 +251,9 @@ public:
     void AddTicket(BugTicket* ticket);
     void AddTicket(ComplaintTicket* ticket);
     void AddTicket(SuggestionTicket* ticket);
+
+    // Custom addon method
+    void SendTicket(WorldSession* session, SuggestionTicket* ticket) const;
 
     template<typename T>
     void RemoveTicket(uint32 ticketId);

@@ -27,22 +27,22 @@ uint32 const EncounterCount               = 3;
 
 enum SPDataTypes
 {
-    DATA_MENNU_THE_BETRAYER               = 0,
-    DATA_ROKMAR_THE_CRACKLER              = 1,
-    DATA_QUAGMIRRAN                       = 2,
-    DATA_AHUNE                            = 3,
-    DATA_AHUNE_BUNNY                      = 4,
-    DATA_FROZEN_CORE                      = 5,
-    DATA_FLAMECALLER_000                  = 6,
-    DATA_FLAMECALLER_001                  = 7,
-    DATA_FLAMECALLER_002                  = 8,
-    DATA_BONFIRE_BUNNY_000                = 9,
-    DATA_BONFIRE_BUNNY_001                = 10,
-    DATA_BONFIRE_BUNNY_002                = 11,
-    DATA_BEAM_BUNNY_000                   = 12,
-    DATA_BEAM_BUNNY_001                   = 13,
-    DATA_BEAM_BUNNY_002                   = 14,
-    DATA_LUMA_SKYMOTHER                   = 15
+    DATA_MENNU_THE_BETRAYER               = 1,
+    DATA_ROKMAR_THE_CRACKLER              = 2,
+    DATA_QUAGMIRRAN                       = 3,
+    DATA_AHUNE                            = 4,
+    DATA_AHUNE_BUNNY                      = 5,
+    DATA_FROZEN_CORE                      = 6,
+    DATA_FLAMECALLER_000                  = 7,
+    DATA_FLAMECALLER_001                  = 8,
+    DATA_FLAMECALLER_002                  = 9,
+    DATA_BONFIRE_BUNNY_000                = 10,
+    DATA_BONFIRE_BUNNY_001                = 11,
+    DATA_BONFIRE_BUNNY_002                = 12,
+    DATA_BEAM_BUNNY_000                   = 13,
+    DATA_BEAM_BUNNY_001                   = 14,
+    DATA_BEAM_BUNNY_002                   = 15,
+    DATA_LUMA_SKYMOTHER                   = 16
 };
 
 enum SPCreaturesIds
@@ -57,7 +57,9 @@ enum SPCreaturesIds
     NPC_SHAMAN_BONFIRE_BUNNY_002         = 25973,
     NPC_SHAMAN_BEAM_BUNNY_000            = 25964,
     NPC_SHAMAN_BEAM_BUNNY_001            = 25965,
-    NPC_SHAMAN_BEAM_BUNNY_002            = 25966
+    NPC_SHAMAN_BEAM_BUNNY_002            = 25966,
+    NPC_WHISP_DEST_BUNNY                 = 26120,
+    NPC_WHISP_SOURCE_BUNNY               = 26121
 };
 
 enum SPGameObjectIds
@@ -66,13 +68,10 @@ enum SPGameObjectIds
     GO_ICE_STONE                         = 187882
 };
 
-template <class AI, class T>
-inline AI* GetSlavePensAI(T* obj)
+template<typename AI>
+inline AI* GetSlavePensAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, SPScriptName);
+    return GetInstanceAI<AI>(creature, SPScriptName);
 }
-
-#define RegisterSlavePensCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetSlavePensAI)
-#define RegisterSlavePensGameObjectAI(ai_name) RegisterGameObjectAIWithFactory(ai_name, GetSlavePensAI)
 
 #endif // SLAVE_PENS_H

@@ -43,14 +43,14 @@ enum GLCreatureIds
 
 enum GLGameObjectIds
 {
-    GO_MAULGAR_DOOR             = 183817,
+    GO_MAULGAR_DOOR             = 184468,
     GO_GRUUL_DOOR               = 184662
 };
 
-template <class AI, class T>
-inline AI* GetGruulsLairAI(T* obj)
+template<typename AI>
+inline AI* GetGruulsLairAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, GLScriptName);
+    return GetInstanceAI<AI>(creature, GLScriptName);
 }
 
 #endif // GRUULS_LAIR_H_

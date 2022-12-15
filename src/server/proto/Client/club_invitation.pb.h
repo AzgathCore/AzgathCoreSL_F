@@ -968,7 +968,9 @@ class TC_PROTO_API ClubTicket : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -2270,6 +2272,7 @@ inline void ClubTicket::set_expiration_time(::google::protobuf::uint64 value) {
   // @@protoc_insertion_point(field_set:bgs.protocol.club.v1.ClubTicket.expiration_time)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace v1
@@ -2280,6 +2283,8 @@ inline void ClubTicket::set_expiration_time(::google::protobuf::uint64 value) {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

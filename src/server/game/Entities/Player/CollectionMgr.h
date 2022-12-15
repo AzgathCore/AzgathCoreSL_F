@@ -34,12 +34,10 @@ struct ItemModifiedAppearanceEntry;
 enum HeirloomPlayerFlags
 {
     HEIRLOOM_FLAG_NONE                    = 0x00,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_1         = 0x01,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_2         = 0x02,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_3         = 0x04,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_4         = 0x08,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_5         = 0x10,
-    HEIRLOOM_FLAG_UPGRADE_LEVEL_6         = 0x20,
+    HEIRLOOM_FLAG_BONUS_LEVEL_90          = 0x01,
+    HEIRLOOM_FLAG_BONUS_LEVEL_100         = 0x02,
+    HEIRLOOM_FLAG_BONUS_LEVEL_110         = 0x04,
+    HEIRLOOM_FLAG_BONUS_LEVEL_120         = 0x08
 };
 
 enum HeirloomItemFlags
@@ -90,7 +88,7 @@ public:
     // Account-wide toys
     void LoadToys();
     void LoadAccountToys(PreparedQueryResult result);
-    void SaveAccountToys(LoginDatabaseTransaction trans);
+    void SaveAccountToys(LoginDatabaseTransaction& trans);
     void ToySetFavorite(uint32 itemId, bool favorite);
     void ToyClearFanfare(uint32 itemId);
 
@@ -100,24 +98,25 @@ public:
 
     ToyBoxContainer const& GetAccountToys() const { return _toys; }
 
-    void OnItemAdded(Item* item);
+    void OnItemAdded(Item* item, Player* owner = nullptr);
 
     // Account-wide heirlooms
     void LoadHeirlooms();
     void LoadAccountHeirlooms(PreparedQueryResult result);
-    void SaveAccountHeirlooms(LoginDatabaseTransaction trans);
-    void AddHeirloom(uint32 itemId, uint32 flags);
+    void SaveAccountHeirlooms(LoginDatabaseTransaction& trans);
+    void AddHeirloom(uint32 itemId, uint32 flags, Player* owner = nullptr);
     void UpgradeHeirloom(uint32 itemId, int32 castItem);
     void CheckHeirloomUpgrades(Item* item);
 
     bool UpdateAccountHeirlooms(uint32 itemId, uint32 flags);
+    bool CanApplyHeirloomXpBonus(uint32 itemId, uint32 level);
     uint32 GetHeirloomBonus(uint32 itemId) const;
     HeirloomContainer const& GetAccountHeirlooms() const { return _heirlooms; }
 
     // Account-wide mounts
     void LoadMounts();
     void LoadAccountMounts(PreparedQueryResult result);
-    void SaveAccountMounts(LoginDatabaseTransaction trans);
+    void SaveAccountMounts(LoginDatabaseTransaction& trans);
     bool AddMount(uint32 spellId, MountStatusFlags flags, bool factionMount = false, bool learned = false);
     void MountSetFavorite(uint32 spellId, bool favorite);
     void SendSingleMountUpdate(std::pair<uint32, MountStatusFlags> mount);
@@ -126,7 +125,7 @@ public:
     // Appearances
     void LoadItemAppearances();
     void LoadAccountItemAppearances(PreparedQueryResult knownAppearances, PreparedQueryResult favoriteAppearances);
-    void SaveAccountItemAppearances(LoginDatabaseTransaction trans);
+    void SaveAccountItemAppearances(LoginDatabaseTransaction& trans);
     void AddItemAppearance(Item* item);
     void AddItemAppearance(uint32 itemId, uint32 appearanceModId = 0);
     void AddTransmogSet(uint32 transmogSetId);
@@ -137,13 +136,6 @@ public:
     std::unordered_set<ObjectGuid> GetItemsProvidingTemporaryAppearance(uint32 itemModifiedAppearanceId) const;
     // returns ItemAppearance::ID, not ItemModifiedAppearance::ID
     std::unordered_set<uint32> GetAppearanceIds() const;
-
-    // Illusions
-    void LoadTransmogIllusions();
-    void LoadAccountTransmogIllusions(PreparedQueryResult knownTransmogIllusions);
-    void SaveAccountTransmogIllusions(LoginDatabaseTransaction trans);
-    void AddTransmogIllusion(uint32 transmogIllusionId);
-    bool HasTransmogIllusion(uint32 transmogIllusionId) const;
 
     enum class FavoriteAppearanceState
     {
@@ -168,7 +160,6 @@ private:
     std::unique_ptr<boost::dynamic_bitset<uint32>> _appearances;
     std::unordered_map<uint32, std::unordered_set<ObjectGuid>> _temporaryAppearances;
     std::unordered_map<uint32, FavoriteAppearanceState> _favoriteAppearances;
-    std::unique_ptr<boost::dynamic_bitset<uint32>> _transmogIllusions;
 };
 
 #endif // CollectionMgr_h__

@@ -25,9 +25,9 @@ class Creature;
 class TC_GAME_API GuardAI : public ScriptedAI
 {
     public:
-        using ScriptedAI::ScriptedAI;
+        explicit GuardAI(Creature* creature);
 
-        static int32 Permissible(Creature const* creature);
+        static int Permissible(Creature const* creature);
         void UpdateAI(uint32 diff) override;
         bool CanSeeAlways(WorldObject const* obj) override;
 

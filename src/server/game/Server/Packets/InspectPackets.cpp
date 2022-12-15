@@ -77,10 +77,10 @@ void WorldPackets::Inspect::PlayerModelDisplayInfo::Initialize(Player const* pla
     GUID = player->GetGUID();
     SpecializationID = player->GetPrimarySpecialization();
     Name = player->GetName();
-    GenderID = player->GetNativeGender();
-    Race = player->GetRace();
-    ClassID = player->GetClass();
-
+    GenderID = player->GetNativeSex();
+    Race = player->getRace();
+    ClassID = player->getClass();
+    
     for (UF::ChrCustomizationChoice const& customization : player->m_playerData->Customizations)
         Customizations.push_back(customization);
 
@@ -129,12 +129,9 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Inspect::PVPBracketData c
     data << int32(bracket.SeasonPlayed);
     data << int32(bracket.SeasonWon);
     data << int32(bracket.WeeklyBestRating);
-    data << int32(bracket.SeasonBestRating);
-    data << int32(bracket.PvpTierID);
-    data << int32(bracket.WeeklyBestWinPvpTierID);
-    data << int32(bracket.Unused1);
-    data << int32(bracket.Unused2);
-    data.WriteBit(bracket.Disqualified);
+    data << int32(bracket.Unk710);
+    data << int32(bracket.Unk801_1);
+    data.WriteBit(bracket.Unk801_2);
     data.FlushBits();
 
     return data;
@@ -208,8 +205,8 @@ WorldPacket const* WorldPackets::Inspect::InspectResult::Write()
     if (!PvpTalents.empty())
         _worldPacket.append(PvpTalents.data(), PvpTalents.size());
 
-    _worldPacket.WriteBit(GuildData.has_value());
-    _worldPacket.WriteBit(AzeriteLevel.has_value());
+    _worldPacket.WriteBit(GuildData.is_initialized());
+    _worldPacket.WriteBit(AzeriteLevel.is_initialized());
     _worldPacket.FlushBits();
 
     for (PVPBracketData const& bracket : Bracket)

@@ -15,15 +15,14 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ScriptMgr.h"
 #include "CreatureAIImpl.h"
 #include "GameObject.h"
 #include "MotionMaster.h"
 #include "Player.h"
-#include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
-#include "ScriptedGossip.h"
 
 /*######
 ## Quest 37446: Lazy Peons
@@ -80,7 +79,7 @@ public:
                 work = true;
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
         {
             if (spell->Id != SPELL_AWAKEN_PEON)
                 return;
@@ -125,63 +124,98 @@ enum VoodooSpells
     SPELL_LAUNCH    = 16716, // Launch (Whee!)
 };
 
-// 17009 - Voodoo
-class spell_voodoo : public SpellScript
+// 17009
+class spell_voodoo : public SpellScriptLoader
 {
-    PrepareSpellScript(spell_voodoo);
+    public:
+        spell_voodoo() : SpellScriptLoader("spell_voodoo") { }
 
-    bool Validate(SpellInfo const* /*spellInfo*/) override
-    {
-        return ValidateSpellInfo({ SPELL_BREW, SPELL_GHOSTLY, SPELL_HEX1, SPELL_HEX2, SPELL_HEX3, SPELL_GROW, SPELL_LAUNCH });
-    }
+        class spell_voodoo_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_voodoo_SpellScript);
 
-    void HandleDummy(SpellEffIndex /*effIndex*/)
-    {
-        uint32 spellid = RAND(SPELL_BREW, SPELL_GHOSTLY, RAND(SPELL_HEX1, SPELL_HEX2, SPELL_HEX3), SPELL_GROW, SPELL_LAUNCH);
-        if (Unit* target = GetHitUnit())
-            GetCaster()->CastSpell(target, spellid, false);
-    }
+            bool Validate(SpellInfo const* /*spellInfo*/) override
+            {
+                return ValidateSpellInfo(
+                {
+                    SPELL_BREW,
+                    SPELL_GHOSTLY,
+                    SPELL_HEX1,
+                    SPELL_HEX2,
+                    SPELL_HEX3,
+                    SPELL_GROW,
+                    SPELL_LAUNCH
+                });
+            }
 
-    void Register() override
+            void HandleDummy(SpellEffIndex /*effIndex*/)
+            {
+                uint32 spellid = RAND(SPELL_BREW, SPELL_GHOSTLY, RAND(SPELL_HEX1, SPELL_HEX2, SPELL_HEX3), SPELL_GROW, SPELL_LAUNCH);
+                if (Unit* target = GetHitUnit())
+                    GetCaster()->CastSpell(target, spellid, false);
+            }
+
+            void Register() override
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_voodoo_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_voodoo_SpellScript();
+        }
+};
+
+enum
+{
+    QUEST_YOUNG_AND_VICIOUS = 24626,
+    NPC_SWIFTCLAW = 37989,
+};
+
+//37969
+struct npc_kijara_37969 : public ScriptedAI
+{
+    npc_kijara_37969(Creature* c) : ScriptedAI(c) { }
+
+    void QuestAccept(Player* player, Quest const* quest) override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_voodoo::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+        if (quest->ID == QUEST_YOUNG_AND_VICIOUS)
+            player->SummonCreature(NPC_SWIFTCLAW, -1553.891f, -5304.168f, 8.625f), TEMPSUMMON_TIMED_DESPAWN, 60000;
     }
 };
 
-enum Mithaka
+//37989
+struct npc_swiftclaw_37989 : public ScriptedAI
 {
-    DATA_SHIP_DOCKED    = 1,
-    GOSSIP_MENU_MITHAKA = 23225,
-    GOSSIP_TEXT_MITHAKA = 35969
-};
+    npc_swiftclaw_37989(Creature* c) : ScriptedAI(c) { }
 
-struct npc_mithaka : ScriptedAI
-{
-    npc_mithaka(Creature* creature) : ScriptedAI(creature), _shipInPort(false) { }
-
-    void SetData(uint32 /*type*/, uint32 data) override
+    void OnSpellClick(Unit* clicker, bool& result) override
     {
-        if (data == DATA_SHIP_DOCKED)
-            _shipInPort = true;
-        else
-            _shipInPort = false;
-    }
+        Player* player = clicker->ToPlayer();
+        if (player->GetQuestStatus(QUEST_YOUNG_AND_VICIOUS) == QUEST_STATUS_INCOMPLETE)
+        {
+            player->KilledMonsterCredit(37989);
+            me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
+            me->GetScheduler().Schedule(30s, [this, player](TaskContext context)
+            {
+                if (!player)
+                    return;
 
-    bool OnGossipHello(Player* player) override
-    {
-        InitGossipMenuFor(player, GOSSIP_MENU_MITHAKA);
-        if (!_shipInPort)
-            AddGossipItemFor(player, GOSSIP_MENU_MITHAKA, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        SendGossipMenuFor(player, GOSSIP_TEXT_MITHAKA, me->GetGUID());
-        return true;
+                if (player->GetAreaId() != 4875)
+                    return;
+
+                player->KilledMonsterCredit(38002);
+                me->DespawnOrUnsummon();
+            });
+        }
     }
-private:
-    bool _shipInPort;
 };
 
 void AddSC_durotar()
 {
     new npc_lazy_peon();
-    RegisterSpellScript(spell_voodoo);
-    RegisterCreatureAI(npc_mithaka);
+    new spell_voodoo();
+    RegisterCreatureAI(npc_kijara_37969);
+    RegisterCreatureAI(npc_swiftclaw_37989);
 }

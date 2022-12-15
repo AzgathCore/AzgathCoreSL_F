@@ -18,6 +18,7 @@
 #include "WorldSession.h"
 #include "CollectionMgr.h"
 #include "CollectionPackets.h"
+#include "PetBattle.h"
 
 void WorldSession::HandleCollectionItemSetFavorite(WorldPackets::Collections::CollectionItemSetFavorite& collectionItemSetFavorite)
 {
@@ -40,5 +41,14 @@ void WorldSession::HandleCollectionItemSetFavorite(WorldPackets::Collections::Co
             break;
         default:
             break;
+    }
+}
+
+void WorldSession::HandleBattlePetClearFanfare(WorldPackets::Collections::BattlePetClearFanfare& packet)
+{
+    if (auto battlePet = _player->GetBattlePet(packet.BattlePetGUID))
+    {
+        battlePet->Flags = battlePet->Flags & ~BATTLE_PET_FLAG_GIFT;;
+        battlePet->needSave = true;
     }
 }

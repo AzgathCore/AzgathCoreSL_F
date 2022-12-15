@@ -22,7 +22,7 @@
 #include "MapBuilder.h"
 #include "PathCommon.h"
 #include "Timer.h"
-#include "Util.h"
+#include "VMapFactory.h"
 #include "VMapManager2.h"
 #include <boost/filesystem/operations.hpp>
 #include <unordered_map>
@@ -33,33 +33,12 @@ constexpr char Readme[] =
 #include "Info/readme.txt"
 };
 
+using namespace MMAP;
+
 namespace
 {
     std::unordered_map<uint32, uint8> _liquidTypes;
-    std::unordered_map<uint32, std::vector<uint32>> _mapDataForVmapInitialization;
 }
-
-namespace MMAP
-{
-    std::unordered_map<uint32, MapEntry> sMapStore;
-
-    namespace VMapFactory
-    {
-        std::unique_ptr<VMAP::VMapManager2> CreateVMapManager()
-        {
-            std::unique_ptr<VMAP::VMapManager2> vmgr = std::make_unique<VMAP::VMapManager2>();
-            vmgr->InitializeThreadUnsafe(_mapDataForVmapInitialization);
-            vmgr->GetLiquidFlagsPtr = [](uint32 liquidId) -> uint32
-            {
-                auto itr = _liquidTypes.find(liquidId);
-                return itr != _liquidTypes.end() ? (1 << itr->second) : 0;
-            };
-            return vmgr;
-        }
-    }
-}
-
-using namespace MMAP;
 
 bool checkDirectories(bool debugOutput, std::vector<std::string>& dbcLocales)
 {
@@ -110,19 +89,11 @@ bool checkDirectories(bool debugOutput, std::vector<std::string>& dbcLocales)
     return true;
 }
 
-int finish(char const* message, int returnValue)
-{
-    printf("%s", message);
-    getchar(); // Wait for user input
-    return returnValue;
-}
-
 bool handleArgs(int argc, char** argv,
                int &mapnum,
                int &tileX,
                int &tileY,
-               Optional<float>& maxAngle,
-               Optional<float>& maxAngleNotSteep,
+               float &maxAngle,
                bool &skipLiquid,
                bool &skipContinents,
                bool &skipJunkMaps,
@@ -135,7 +106,6 @@ bool handleArgs(int argc, char** argv,
                unsigned int& threads)
 {
     char* param = nullptr;
-    [[maybe_unused]] bool allowDebug = false;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "--maxAngle") == 0)
@@ -145,22 +115,10 @@ bool handleArgs(int argc, char** argv,
                 return false;
 
             float maxangle = atof(param);
-            if (maxangle <= 90.f && maxangle >= 0.f)
+            if (maxangle <= 90.f && maxangle >= 45.f)
                 maxAngle = maxangle;
             else
                 printf("invalid option for '--maxAngle', using default\n");
-        }
-        else if (strcmp(argv[i], "--maxAngleNotSteep") == 0)
-        {
-            param = argv[++i];
-            if (!param)
-                return false;
-
-            float maxangle = atof(param);
-            if (maxangle <= 90.f && maxangle >= 0.f)
-                maxAngleNotSteep = maxangle;
-            else
-                printf("invalid option for '--maxAngleNotSteep', using default\n");
         }
         else if (strcmp(argv[i], "--threads") == 0)
         {
@@ -288,10 +246,6 @@ bool handleArgs(int argc, char** argv,
 
             offMeshInputPath = param;
         }
-        else if (strcmp(argv[i], "--allowDebug") == 0)
-        {
-            allowDebug = true;
-        }
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-?"))
         {
             printf("%s\n", Readme);
@@ -311,16 +265,14 @@ bool handleArgs(int argc, char** argv,
         }
     }
 
-#ifndef NDEBUG
-    if (!allowDebug)
-    {
-        finish("Build mmaps_generator in RelWithDebInfo or Release mode or it will take hours to complete!!!\nUse '--allowDebug' argument if you really want to run this tool in Debug.\n", -2);
-        silent = true;
-        return false;
-    }
-#endif
-
     return true;
+}
+
+int finish(char const* message, int returnValue)
+{
+    printf("%s", message);
+    getchar(); // Wait for user input
+    return returnValue;
 }
 
 std::unordered_map<uint32, uint8> LoadLiquid(std::string const& locale, bool silent, int32 errorExitCode)
@@ -371,12 +323,6 @@ std::unordered_map<uint32, std::vector<uint32>> LoadMap(std::string const& local
                 parentMapId = int16(record.GetUInt16("CosmeticParentMapID"));
             if (parentMapId != -1)
                 mapData[parentMapId].push_back(record.GetId());
-
-            MapEntry& map = sMapStore[record.GetId()];
-            map.MapType = record.GetUInt8("MapType");
-            map.InstanceType = record.GetUInt8("InstanceType");
-            map.ParentMapID = parentMapId;
-            map.Flags = record.GetInt32("Flags1");
         }
     }
     catch (std::exception const& e)
@@ -396,8 +342,8 @@ int main(int argc, char** argv)
 
     unsigned int threads = std::thread::hardware_concurrency();
     int mapnum = -1;
+    float maxAngle = 70.0f;
     int tileX = -1, tileY = -1;
-    Optional<float> maxAngle, maxAngleNotSteep;
     bool skipLiquid = false,
          skipContinents = false,
          skipJunkMaps = true,
@@ -409,7 +355,7 @@ int main(int argc, char** argv)
     char* file = nullptr;
 
     bool validParam = handleArgs(argc, argv, mapnum,
-                                 tileX, tileY, maxAngle, maxAngleNotSteep,
+                                 tileX, tileY, maxAngle,
                                  skipLiquid, skipContinents, skipJunkMaps, skipBattlegrounds,
                                  debugOutput, silent, bigBaseUnit, offMeshInputPath, file, threads);
 
@@ -434,10 +380,17 @@ int main(int argc, char** argv)
 
     _liquidTypes = LoadLiquid(dbcLocales[0], silent, -5);
 
-    _mapDataForVmapInitialization = LoadMap(dbcLocales[0], silent, -4);
+    std::unordered_map<uint32, std::vector<uint32>> mapData = LoadMap(dbcLocales[0], silent, -4);
 
-    MapBuilder builder(maxAngle, maxAngleNotSteep, skipLiquid, skipContinents, skipJunkMaps,
-                       skipBattlegrounds, debugOutput, bigBaseUnit, mapnum, offMeshInputPath, threads);
+    static_cast<VMAP::VMapManager2*>(VMAP::VMapFactory::createOrGetVMapManager())->InitializeThreadUnsafe(mapData);
+    static_cast<VMAP::VMapManager2*>(VMAP::VMapFactory::createOrGetVMapManager())->GetLiquidFlagsPtr = [](uint32 liquidId) -> uint32
+    {
+        auto itr = _liquidTypes.find(liquidId);
+        return itr != _liquidTypes.end() ? (1 << itr->second) : 0;
+    };
+
+    MapBuilder builder(maxAngle, skipLiquid, skipContinents, skipJunkMaps,
+                       skipBattlegrounds, debugOutput, bigBaseUnit, mapnum, offMeshInputPath);
 
     uint32 start = getMSTime();
     if (file)
@@ -445,11 +398,13 @@ int main(int argc, char** argv)
     else if (tileX > -1 && tileY > -1 && mapnum >= 0)
         builder.buildSingleTile(mapnum, tileX, tileY);
     else if (mapnum >= 0)
-        builder.buildMaps(uint32(mapnum));
+        builder.buildMap(uint32(mapnum));
     else
-        builder.buildMaps({});
+        builder.buildAllMaps(threads);
+
+    VMAP::VMapFactory::clear();
 
     if (!silent)
-        printf("Finished. MMAPS were built in %s\n", secsToTimeString(GetMSTimeDiffToNow(start) / 1000).c_str());
+        printf("Finished. MMAPS were built in %u ms!\n", GetMSTimeDiffToNow(start));
     return 0;
 }

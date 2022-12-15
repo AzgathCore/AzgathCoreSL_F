@@ -70,6 +70,7 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 
 }  // namespace
 
+
 void protobuf_AssignDesc_club_5fcore_2eproto() {
   protobuf_AddDesc_club_5fcore_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -293,11 +294,10 @@ void protobuf_AssignDesc_club_5fcore_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(StreamSettings));
   ClubSettings_descriptor_ = file->message_type(11);
-  static const int ClubSettings_offsets_[4] = {
+  static const int ClubSettings_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClubSettings, stream_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClubSettings, stream_notification_filter_all_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClubSettings, attribute_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClubSettings, push_notification_filter_all_),
   };
   ClubSettings_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -498,19 +498,18 @@ void protobuf_AddDesc_club_5fcore_2eproto() {
     ".v1.StreamPosition\022\022\n\nshort_name\030\t \001(\t\"c"
     "\n\016StreamSettings\022\021\n\tstream_id\030\001 \001(\004\022>\n\006f"
     "ilter\030\002 \001(\0162..bgs.protocol.club.v1.Strea"
-    "mNotificationFilter\"\301\001\n\014ClubSettings\0224\n\006"
+    "mNotificationFilter\"\233\001\n\014ClubSettings\0224\n\006"
     "stream\030\001 \003(\0132$.bgs.protocol.club.v1.Stre"
     "amSettings\022&\n\036stream_notification_filter"
     "_all\030\002 \001(\010\022-\n\tattribute\030\003 \003(\0132\032.bgs.prot"
-    "ocol.v2.Attribute\022$\n\034push_notification_f"
-    "ilter_all\030\004 \001(\010\"\226\001\n\023ClubSettingsOptions\022"
-    "8\n\006stream\030\001 \003(\0132$.bgs.protocol.club.v1.S"
-    "treamSettingsB\002\030\001\0224\n\010settings\030\002 \001(\0132\".bg"
-    "s.protocol.club.v1.ClubSettings\022\017\n\007versi"
-    "on\030\003 \001(\r\"\210\001\n\026ClubSettingsAssignment\0228\n\006s"
-    "tream\030\001 \003(\0132$.bgs.protocol.club.v1.Strea"
-    "mSettingsB\002\030\001\0224\n\010settings\030\002 \001(\0132\".bgs.pr"
-    "otocol.club.v1.ClubSettingsB\002H\001", 3191);
+    "ocol.v2.Attribute\"\226\001\n\023ClubSettingsOption"
+    "s\0228\n\006stream\030\001 \003(\0132$.bgs.protocol.club.v1"
+    ".StreamSettingsB\002\030\001\0224\n\010settings\030\002 \001(\0132\"."
+    "bgs.protocol.club.v1.ClubSettings\022\017\n\007ver"
+    "sion\030\003 \001(\r\"\210\001\n\026ClubSettingsAssignment\0228\n"
+    "\006stream\030\001 \003(\0132$.bgs.protocol.club.v1.Str"
+    "eamSettingsB\002\030\001\0224\n\010settings\030\002 \001(\0132\".bgs."
+    "protocol.club.v1.ClubSettingsB\002H\001", 3153);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "club_core.proto", &protobuf_RegisterTypes);
   AvatarId::default_instance_ = new AvatarId();
@@ -550,6 +549,7 @@ struct StaticDescriptorInitializer_club_5fcore_2eproto {
     protobuf_AddDesc_club_5fcore_2eproto();
   }
 } static_descriptor_initializer_club_5fcore_2eproto_;
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -750,6 +750,7 @@ void AvatarId::CopyFrom(const AvatarId& from) {
 }
 
 bool AvatarId::IsInitialized() const {
+
   return true;
 }
 
@@ -769,6 +770,7 @@ void AvatarId::Swap(AvatarId* other) {
   metadata.reflection = AvatarId_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -991,6 +993,7 @@ void SetBroadcastOptions::CopyFrom(const SetBroadcastOptions& from) {
 }
 
 bool SetBroadcastOptions::IsInitialized() const {
+
   return true;
 }
 
@@ -1010,6 +1013,7 @@ void SetBroadcastOptions::Swap(SetBroadcastOptions* other) {
   metadata.reflection = SetBroadcastOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1315,6 +1319,7 @@ void Broadcast::CopyFrom(const Broadcast& from) {
 }
 
 bool Broadcast::IsInitialized() const {
+
   if (has_creator()) {
     if (!this->creator().IsInitialized()) return false;
   }
@@ -1339,6 +1344,7 @@ void Broadcast::Swap(Broadcast* other) {
   metadata.reflection = Broadcast_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1599,6 +1605,7 @@ void UniqueClubType::CopyFrom(const UniqueClubType& from) {
 }
 
 bool UniqueClubType::IsInitialized() const {
+
   return true;
 }
 
@@ -1619,6 +1626,7 @@ void UniqueClubType::Swap(UniqueClubType* other) {
   metadata.reflection = UniqueClubType_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2217,6 +2225,7 @@ void ClubCreateOptions::CopyFrom(const ClubCreateOptions& from) {
 }
 
 bool ClubCreateOptions::IsInitialized() const {
+
   if (has_member()) {
     if (!this->member().IsInitialized()) return false;
   }
@@ -2247,6 +2256,7 @@ void ClubCreateOptions::Swap(ClubCreateOptions* other) {
   metadata.reflection = ClubCreateOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3099,6 +3109,7 @@ void Club::CopyFrom(const Club& from) {
 }
 
 bool Club::IsInitialized() const {
+
   if (has_broadcast()) {
     if (!this->broadcast().IsInitialized()) return false;
   }
@@ -3136,6 +3147,7 @@ void Club::Swap(Club* other) {
   metadata.reflection = Club_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3761,6 +3773,7 @@ void ClubDescription::CopyFrom(const ClubDescription& from) {
 }
 
 bool ClubDescription::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->leader())) return false;
   return true;
 }
@@ -3790,6 +3803,7 @@ void ClubDescription::Swap(ClubDescription* other) {
   metadata.reflection = ClubDescription_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -4036,6 +4050,7 @@ void ClubView::CopyFrom(const ClubView& from) {
 }
 
 bool ClubView::IsInitialized() const {
+
   return true;
 }
 
@@ -4056,6 +4071,7 @@ void ClubView::Swap(ClubView* other) {
   metadata.reflection = ClubView_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -4608,6 +4624,7 @@ void ClubStateOptions::CopyFrom(const ClubStateOptions& from) {
 }
 
 bool ClubStateOptions::IsInitialized() const {
+
   return true;
 }
 
@@ -4634,6 +4651,7 @@ void ClubStateOptions::Swap(ClubStateOptions* other) {
   metadata.reflection = ClubStateOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -5227,6 +5245,7 @@ void ClubStateAssignment::CopyFrom(const ClubStateAssignment& from) {
 }
 
 bool ClubStateAssignment::IsInitialized() const {
+
   if (has_broadcast()) {
     if (!this->broadcast().IsInitialized()) return false;
   }
@@ -5257,6 +5276,7 @@ void ClubStateAssignment::Swap(ClubStateAssignment* other) {
   metadata.reflection = ClubStateAssignment_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -5515,6 +5535,7 @@ void StreamSettings::CopyFrom(const StreamSettings& from) {
 }
 
 bool StreamSettings::IsInitialized() const {
+
   return true;
 }
 
@@ -5536,13 +5557,13 @@ void StreamSettings::Swap(StreamSettings* other) {
   return metadata;
 }
 
+
 // ===================================================================
 
 #ifndef _MSC_VER
 const int ClubSettings::kStreamFieldNumber;
 const int ClubSettings::kStreamNotificationFilterAllFieldNumber;
 const int ClubSettings::kAttributeFieldNumber;
-const int ClubSettings::kPushNotificationFilterAllFieldNumber;
 #endif  // !_MSC_VER
 
 ClubSettings::ClubSettings()
@@ -5564,7 +5585,6 @@ ClubSettings::ClubSettings(const ClubSettings& from)
 void ClubSettings::SharedCtor() {
   _cached_size_ = 0;
   stream_notification_filter_all_ = false;
-  push_notification_filter_all_ = false;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -5600,21 +5620,7 @@ ClubSettings* ClubSettings::New() const {
 }
 
 void ClubSettings::Clear() {
-#define OFFSET_OF_FIELD_(f) (reinterpret_cast<char*>(      \
-  &reinterpret_cast<ClubSettings*>(16)->f) - \
-   reinterpret_cast<char*>(16))
-
-#define ZR_(first, last) do {                              \
-    size_t f = OFFSET_OF_FIELD_(first);                    \
-    size_t n = OFFSET_OF_FIELD_(last) - f + sizeof(last);  \
-    ::memset(&first, 0, n);                                \
-  } while (0)
-
-  ZR_(stream_notification_filter_all_, push_notification_filter_all_);
-
-#undef OFFSET_OF_FIELD_
-#undef ZR_
-
+  stream_notification_filter_all_ = false;
   stream_.Clear();
   attribute_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -5670,21 +5676,6 @@ bool ClubSettings::MergePartialFromCodedStream(
           goto handle_unusual;
         }
         if (input->ExpectTag(26)) goto parse_attribute;
-        if (input->ExpectTag(32)) goto parse_push_notification_filter_all;
-        break;
-      }
-
-      // optional bool push_notification_filter_all = 4;
-      case 4: {
-        if (tag == 32) {
-         parse_push_notification_filter_all:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
-                 input, &push_notification_filter_all_)));
-          set_has_push_notification_filter_all();
-        } else {
-          goto handle_unusual;
-        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -5731,11 +5722,6 @@ void ClubSettings::SerializeWithCachedSizes(
       3, this->attribute(i), output);
   }
 
-  // optional bool push_notification_filter_all = 4;
-  if (has_push_notification_filter_all()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(4, this->push_notification_filter_all(), output);
-  }
-
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -5765,11 +5751,6 @@ void ClubSettings::SerializeWithCachedSizes(
         3, this->attribute(i), target);
   }
 
-  // optional bool push_notification_filter_all = 4;
-  if (has_push_notification_filter_all()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(4, this->push_notification_filter_all(), target);
-  }
-
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -5784,11 +5765,6 @@ int ClubSettings::ByteSize() const {
   if (_has_bits_[1 / 32] & (0xffu << (1 % 32))) {
     // optional bool stream_notification_filter_all = 2;
     if (has_stream_notification_filter_all()) {
-      total_size += 1 + 1;
-    }
-
-    // optional bool push_notification_filter_all = 4;
-    if (has_push_notification_filter_all()) {
       total_size += 1 + 1;
     }
 
@@ -5840,9 +5816,6 @@ void ClubSettings::MergeFrom(const ClubSettings& from) {
     if (from.has_stream_notification_filter_all()) {
       set_stream_notification_filter_all(from.stream_notification_filter_all());
     }
-    if (from.has_push_notification_filter_all()) {
-      set_push_notification_filter_all(from.push_notification_filter_all());
-    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -5860,6 +5833,7 @@ void ClubSettings::CopyFrom(const ClubSettings& from) {
 }
 
 bool ClubSettings::IsInitialized() const {
+
   return true;
 }
 
@@ -5868,7 +5842,6 @@ void ClubSettings::Swap(ClubSettings* other) {
     stream_.Swap(&other->stream_);
     std::swap(stream_notification_filter_all_, other->stream_notification_filter_all_);
     attribute_.Swap(&other->attribute_);
-    std::swap(push_notification_filter_all_, other->push_notification_filter_all_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -5882,6 +5855,7 @@ void ClubSettings::Swap(ClubSettings* other) {
   metadata.reflection = ClubSettings_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -6167,6 +6141,7 @@ void ClubSettingsOptions::CopyFrom(const ClubSettingsOptions& from) {
 }
 
 bool ClubSettingsOptions::IsInitialized() const {
+
   return true;
 }
 
@@ -6188,6 +6163,7 @@ void ClubSettingsOptions::Swap(ClubSettingsOptions* other) {
   metadata.reflection = ClubSettingsOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -6433,6 +6409,7 @@ void ClubSettingsAssignment::CopyFrom(const ClubSettingsAssignment& from) {
 }
 
 bool ClubSettingsAssignment::IsInitialized() const {
+
   return true;
 }
 
@@ -6453,6 +6430,7 @@ void ClubSettingsAssignment::Swap(ClubSettingsAssignment* other) {
   metadata.reflection = ClubSettingsAssignment_reflection_;
   return metadata;
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

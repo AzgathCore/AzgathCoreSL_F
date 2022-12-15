@@ -143,8 +143,8 @@ WorldPacket const* WorldPackets::Loot::LootList::Write()
     _worldPacket << Owner;
     _worldPacket << LootObj;
 
-    _worldPacket.WriteBit(Master.has_value());
-    _worldPacket.WriteBit(RoundRobinWinner.has_value());
+    _worldPacket.WriteBit(Master.is_initialized());
+    _worldPacket.WriteBit(RoundRobinWinner.is_initialized());
 
     _worldPacket.FlushBits();
 
@@ -166,7 +166,7 @@ WorldPacket const* WorldPackets::Loot::StartLootRoll::Write()
 {
     _worldPacket << LootObj;
     _worldPacket << int32(MapID);
-    _worldPacket << RollTime;
+    _worldPacket << uint32(RollTime);
     _worldPacket << uint8(ValidRolls);
     _worldPacket << uint8(Method);
     _worldPacket << Item;
@@ -231,4 +231,58 @@ WorldPacket const* WorldPackets::Loot::AELootTargets::Write()
     _worldPacket << uint32(Count);
 
     return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Loot::DisplayToast::Write()
+{
+    _worldPacket << Quantity;
+    _worldPacket << ToastMethod;
+    _worldPacket << QuestID;
+
+    _worldPacket.WriteBit(IsBonusRoll);
+
+    _worldPacket.WriteBits(ToastType, 2);
+
+    if (ToastType == uint32(ToastType::ITEM))
+    {
+        _worldPacket.WriteBit(Mailed);
+        _worldPacket.FlushBits();
+
+        // item instance
+        bool hasItemBonus = !bonusListIDs.empty();
+        _worldPacket << Loot;
+        _worldPacket << uint32(0); // RandomPropertiesSeed
+        _worldPacket << uint32(RandomPropertiesID);
+        _worldPacket.WriteBit(hasItemBonus);
+        _worldPacket.WriteBit(false); // HasModifications
+        if (hasItemBonus)
+        {
+            _worldPacket << uint8(1); // Indexes (works in case of 1 bonus, possibly should be bit mask of indexes?)
+
+            uint32 bonusCount = bonusListIDs.size();
+            _worldPacket << uint32(bonusCount);
+            for (uint32 j = 0; j < bonusCount; ++j)
+                _worldPacket << uint32(bonusListIDs[j]);
+        }
+
+        _worldPacket.FlushBits();
+
+        _worldPacket << SpecID;
+        _worldPacket << ItemQuantity;
+    }
+    else if (ToastType == uint32(ToastType::CURRENCY))
+    {
+        _worldPacket.FlushBits();
+        _worldPacket << CurrencyID;
+    }
+    else
+        _worldPacket.FlushBits();
+
+    return &_worldPacket;
+}
+
+void WorldPackets::Loot::DoMasterLootRoll::Read()
+{
+    _worldPacket >> LootObj;
+    _worldPacket >> LootListID;
 }

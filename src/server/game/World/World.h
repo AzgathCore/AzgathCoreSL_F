@@ -92,8 +92,8 @@ enum WorldTimers
     WUPDATE_GUILDSAVE,
     WUPDATE_BLACKMARKET,
     WUPDATE_CHECK_FILECHANGES,
+    WUPDATE_WORLD_QUEST,
     WUPDATE_WHO_LIST,
-    WUPDATE_CHANNEL_SAVE,
     WUPDATE_COUNT
 };
 
@@ -145,6 +145,7 @@ enum WorldBoolConfigs
     CONFIG_START_ALL_SPELLS,
     CONFIG_START_ALL_EXPLORED,
     CONFIG_START_ALL_REP,
+    CONFIG_ALWAYS_MAXSKILL,
     CONFIG_PVP_TOKEN_ENABLE,
     CONFIG_NO_RESET_TALENT_COST,
     CONFIG_SHOW_KICK_IN_WORLD,
@@ -171,10 +172,13 @@ enum WorldBoolConfigs
     CONFIG_STATS_LIMITS_ENABLE,
     CONFIG_INSTANCES_RESET_ANNOUNCE,
     CONFIG_IP_BASED_ACTION_LOGGING,
+    CONFIG_ALLOW_TRACK_BOTH_RESOURCES,
     CONFIG_CALCULATE_CREATURE_ZONE_AREA_DATA,
     CONFIG_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA,
-    CONFIG_FEATURE_SYSTEM_BPAY_STORE_ENABLED,
+    CONFIG_FEATURE_SYSTEM_BATTLE_PAY_ENABLED,
+    CONFIG_FEATURE_SYSTEM_BATTLE_PAY_AVAILABLE,
     CONFIG_FEATURE_SYSTEM_CHARACTER_UNDELETE_ENABLED,
+    CONFIG_FEATURE_SYSTEM_WAR_MODE_ENABLED,
     CONFIG_RESET_DUEL_COOLDOWNS,
     CONFIG_RESET_DUEL_HEALTH_MANA,
     CONFIG_BASEMAP_LOAD_GRIDS,
@@ -190,12 +194,13 @@ enum WorldBoolConfigs
     CONFIG_CACHE_DATA_QUERIES,
     CONFIG_CREATURE_CHECK_INVALID_POSITION,
     CONFIG_GAME_OBJECT_CHECK_INVALID_POSITION,
-    CONFIG_CHECK_GOBJECT_LOS,
-    CONFIG_RESPAWN_DYNAMIC_ESCORTNPC,
-    CONFIG_REGEN_HP_CANNOT_REACH_TARGET_IN_RAID,
-    CONFIG_ALLOW_LOGGING_IP_ADDRESSES_IN_DATABASE,
-    CONFIG_CHARACTER_CREATING_DISABLE_ALLIED_RACE_ACHIEVEMENT_REQUIREMENT,
-    BOOL_CONFIG_VALUE_COUNT
+    CONFIG_IGNORE_DUNGEONS_BIND,
+    CONFIG_BATTLE_PAY_ENABLED,
+	CONFIG_ARGUSWOW_ENABLE,
+    CONFIG_PET_BATTLES,
+    CONFIG_FEATURE_SYSTEM_CLUB_FINDER_ENABLED,
+    BOOL_CONFIG_VALUE_COUNT,
+    CONFIG_LFG_UNLOCKALL
 };
 
 enum WorldFloatConfigs
@@ -217,11 +222,6 @@ enum WorldFloatConfigs
     CONFIG_ARENA_WIN_RATING_MODIFIER_2,
     CONFIG_ARENA_LOSE_RATING_MODIFIER,
     CONFIG_ARENA_MATCHMAKER_RATING_MODIFIER,
-    CONFIG_RESPAWN_DYNAMICRATE_CREATURE,
-    CONFIG_RESPAWN_DYNAMICRATE_GAMEOBJECT,
-    CONFIG_CALL_TO_ARMS_5_PCT,
-    CONFIG_CALL_TO_ARMS_10_PCT,
-    CONFIG_CALL_TO_ARMS_20_PCT,
     FLOAT_CONFIG_VALUE_COUNT
 };
 
@@ -262,21 +262,17 @@ enum WorldIntConfigs
     CONFIG_CURRENCY_MAX_APEXIS_CRYSTALS,
     CONFIG_CURRENCY_START_JUSTICE_POINTS,
     CONFIG_CURRENCY_MAX_JUSTICE_POINTS,
+    CONFIG_CURRENCY_START_ARTIFACT_KNOWLEDGE,
     CONFIG_CURRENCY_RESET_HOUR,
     CONFIG_CURRENCY_RESET_DAY,
     CONFIG_CURRENCY_RESET_INTERVAL,
     CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL,
     CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL_DIFFERENCE,
-    CONFIG_RESET_SCHEDULE_WEEK_DAY,
-    CONFIG_RESET_SCHEDULE_HOUR,
+    CONFIG_INSTANCE_RESET_TIME_HOUR,
     CONFIG_INSTANCE_UNLOAD_DELAY,
     CONFIG_DAILY_QUEST_RESET_TIME_HOUR,
-    CONFIG_WEEKLY_QUEST_RESET_TIME_WDAY,
     CONFIG_MAX_PRIMARY_TRADE_SKILL,
     CONFIG_MIN_PETITION_SIGNS,
-    CONFIG_MIN_QUEST_SCALED_XP_RATIO,
-    CONFIG_MIN_CREATURE_SCALED_XP_RATIO,
-    CONFIG_MIN_DISCOVERED_SCALED_XP_RATIO,
     CONFIG_GM_LOGIN_STATE,
     CONFIG_GM_VISIBLE_STATE,
     CONFIG_GM_CHAT,
@@ -288,7 +284,6 @@ enum WorldIntConfigs
     CONFIG_FORCE_SHUTDOWN_THRESHOLD,
     CONFIG_GROUP_VISIBILITY,
     CONFIG_MAIL_DELIVERY_DELAY,
-    CONFIG_CLEAN_OLD_MAIL_TIME,
     CONFIG_UPTIME_UPDATE,
     CONFIG_SKILL_CHANCE_ORANGE,
     CONFIG_SKILL_CHANCE_YELLOW,
@@ -302,8 +297,6 @@ enum WorldIntConfigs
     CONFIG_EXPANSION,
     CONFIG_CHATFLOOD_MESSAGE_COUNT,
     CONFIG_CHATFLOOD_MESSAGE_DELAY,
-    CONFIG_CHATFLOOD_ADDON_MESSAGE_COUNT,
-    CONFIG_CHATFLOOD_ADDON_MESSAGE_DELAY,
     CONFIG_CHATFLOOD_MUTE_TIME,
     CONFIG_CREATURE_FAMILY_ASSISTANCE_DELAY,
     CONFIG_CREATURE_FAMILY_FLEE_DELAY,
@@ -356,7 +349,6 @@ enum WorldIntConfigs
     CONFIG_GUILD_BANK_EVENT_LOG_COUNT,
     CONFIG_MIN_LEVEL_STAT_SAVE,
     CONFIG_RANDOM_BG_RESET_HOUR,
-    CONFIG_CALENDAR_DELETE_OLD_EVENTS_HOUR,
     CONFIG_GUILD_RESET_HOUR,
     CONFIG_CHARDELETE_KEEP_DAYS,
     CONFIG_CHARDELETE_METHOD,
@@ -365,21 +357,20 @@ enum WorldIntConfigs
     CONFIG_CHARDELETE_DEMON_HUNTER_MIN_LEVEL,
     CONFIG_AUTOBROADCAST_CENTER,
     CONFIG_AUTOBROADCAST_INTERVAL,
+    CONFIG_AUTORESTART_WORLDSERVER,
     CONFIG_MAX_RESULTS_LOOKUP_COMMANDS,
     CONFIG_DB_PING_INTERVAL,
     CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION,
-    CONFIG_PRESERVE_CUSTOM_CHANNEL_INTERVAL,
     CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS,
+    CONFIG_LFG_DEBUG_JOIN,
     CONFIG_LFG_OPTIONSMASK,
     CONFIG_MAX_INSTANCES_PER_HOUR,
-    CONFIG_XP_BOOST_DAYMASK,
     CONFIG_WARDEN_CLIENT_RESPONSE_DELAY,
     CONFIG_WARDEN_CLIENT_CHECK_HOLDOFF,
     CONFIG_WARDEN_CLIENT_FAIL_ACTION,
     CONFIG_WARDEN_CLIENT_BAN_DURATION,
-    CONFIG_WARDEN_NUM_INJECT_CHECKS,
-    CONFIG_WARDEN_NUM_LUA_CHECKS,
-    CONFIG_WARDEN_NUM_CLIENT_MOD_CHECKS,
+    CONFIG_WARDEN_NUM_MEM_CHECKS,
+    CONFIG_WARDEN_NUM_OTHER_CHECKS,
     CONFIG_WINTERGRASP_PLR_MAX,
     CONFIG_WINTERGRASP_PLR_MIN,
     CONFIG_WINTERGRASP_PLR_MIN_LVL,
@@ -415,21 +406,17 @@ enum WorldIntConfigs
     CONFIG_NO_GRAY_AGGRO_ABOVE,
     CONFIG_NO_GRAY_AGGRO_BELOW,
     CONFIG_AUCTION_REPLICATE_DELAY,
+    CONFIG_CHALLENGE_LEVEL_LIMIT,
+    CONFIG_CHALLENGE_LEVEL_MAX,
+    CONFIG_CHALLENGE_LEVEL_STEP,
     CONFIG_AUCTION_SEARCH_DELAY,
     CONFIG_AUCTION_TAINTED_SEARCH_DELAY,
+    CONFIG_WEIGHTED_MYTHIC_KEYSTONE,
+    CONFIG_DUNGEON_ACTIVE_STEP,
     CONFIG_TALENTS_INSPECTING,
-    CONFIG_RESPAWN_MINCHECKINTERVALMS,
-    CONFIG_RESPAWN_DYNAMICMODE,
-    CONFIG_RESPAWN_GUIDWARNLEVEL,
-    CONFIG_RESPAWN_GUIDALERTLEVEL,
-    CONFIG_RESPAWN_RESTARTQUIETTIME,
-    CONFIG_RESPAWN_DYNAMICMINIMUM_CREATURE,
-    CONFIG_RESPAWN_DYNAMICMINIMUM_GAMEOBJECT,
-    CONFIG_RESPAWN_GUIDWARNING_FREQUENCY,
-    CONFIG_SOCKET_TIMEOUTTIME_ACTIVE,
     CONFIG_BLACKMARKET_MAXAUCTIONS,
     CONFIG_BLACKMARKET_UPDATE_PERIOD,
-    CONFIG_FACTION_BALANCE_LEVEL_CHECK_DIFF,
+    CONFIG_BATTLE_PAY_CURRENCY,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -508,13 +495,13 @@ enum Rates
     RATE_TALENT,
     RATE_CORPSE_DECAY_LOOTED,
     RATE_INSTANCE_RESET_TIME,
+    RATE_TARGET_POS_RECALCULATION_RANGE,
     RATE_DURABILITY_LOSS_ON_DEATH,
     RATE_DURABILITY_LOSS_DAMAGE,
     RATE_DURABILITY_LOSS_PARRY,
     RATE_DURABILITY_LOSS_ABSORB,
     RATE_DURABILITY_LOSS_BLOCK,
     RATE_MOVESPEED,
-    RATE_XP_BOOST,
     RATE_MONEY_QUEST,
     RATE_MONEY_MAX_LEVEL_QUEST,
     MAX_RATES
@@ -562,17 +549,32 @@ enum RealmZone
     REALM_ZONE_CN5_8         = 37                           // basic-Latin at create, any at login
 };
 
-struct PersistentWorldVariable;
+enum WorldStates
+{
+    WS_CURRENCY_RESET_TIME      = 20001,                     // Next currency reset time
+    WS_WEEKLY_QUEST_RESET_TIME  = 20002,                     // Next weekly reset time
+    WS_BG_DAILY_RESET_TIME      = 20003,                     // Next daily BG reset time
+    WS_CLEANING_FLAGS           = 20004,                     // Cleaning Flags
+    WS_GUILD_DAILY_RESET_TIME   = 20006,                     // Next guild cap reset time
+    WS_CHALLENGE_KEY_RESET_TIME         = 20015,                      // Reset time for Challenge key
+    WS_CHALLENGE_AFFIXE1_RESET_TIME     = 20016,                      // Challenge Affixe 1
+    WS_CHALLENGE_AFFIXE2_RESET_TIME     = 20017,                      // Challenge Affixe 2
+    WS_CHALLENGE_AFFIXE3_RESET_TIME     = 20018,                      // Challenge Affixe 3
+    WS_MONTHLY_QUEST_RESET_TIME = 20007,                     // Next monthly reset time
+    // Cata specific custom worldstates
+    WS_GUILD_WEEKLY_RESET_TIME  = 20050,                     // Next guild week reset time
+};
 
 /// Storage class for commands issued for delayed execution
 struct TC_GAME_API CliCommandHolder
 {
-    using Print = void(*)(void*, std::string_view);
-    using CommandFinished = void(*)(void*, bool success);
+    typedef void(*Print)(void*, const char*);
+    typedef void(*CommandFinished)(void*, bool success);
 
     void* m_callbackArg;
-    char* m_command;
+    char *m_command;
     Print m_print;
+
     CommandFinished m_commandFinished;
 
     CliCommandHolder(void* callbackArg, char const* command, Print zprint, CommandFinished commandFinished);
@@ -585,10 +587,29 @@ private:
 
 typedef std::unordered_map<uint32, WorldSession*> SessionMap;
 
+struct CharacterInfo
+{
+    ObjectGuid::LowType Guid;
+    std::string Name;
+    uint32 GuildId = 0;
+    uint32 AccountId = 0;
+    uint32 BnetAccountId = 0;
+    uint16 ZoneId = 0;
+    uint16 SpecId = 0;
+    uint8 Class = 0;
+    uint8 Race = 0;
+    uint8 Sex = 0;
+    uint8 Level = 0;
+    uint8 RankId = 0;
+    bool IsDeleted = false;
+};
+
 /// The World
 class TC_GAME_API World
 {
     public:
+        AzgathCore::AnyData Variables;
+
         static World* instance();
 
         static std::atomic<uint32> m_worldLoopCounter;
@@ -600,7 +621,7 @@ class TC_GAME_API World
         bool RemoveSession(uint32 id);
         /// Get the number of current active sessions
         void UpdateMaxSessionCounters();
-        SessionMap const& GetAllSessions() const { return m_sessions; }
+        const SessionMap& GetAllSessions() const { return m_sessions; }
         uint32 GetActiveAndQueuedSessionCount() const { return uint32(m_sessions.size()); }
         uint32 GetActiveSessionCount() const { return uint32(m_sessions.size() - m_QueuedPlayer.size()); }
         uint32 GetQueuedSessionCount() const { return uint32(m_QueuedPlayer.size()); }
@@ -679,7 +700,7 @@ class TC_GAME_API World
         void LoadConfigSettings(bool reload = false);
 
         void SendWorldText(uint32 string_id, ...);
-        void SendGlobalText(char const* text, WorldSession* self);
+        void SendGlobalText(const char* text, WorldSession* self);
         void SendGMText(uint32 string_id, ...);
         void SendServerMessage(ServerMessageType messageID, std::string stringParam = "", Player* player = nullptr);
         void SendGlobalMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
@@ -749,19 +770,9 @@ class TC_GAME_API World
             return index < INT64_CONFIT_VALUE_COUNT ? m_int64_configs[index] : 0;
         }
 
-        static PersistentWorldVariable const NextCurrencyResetTimeVarId;                    // Next arena distribution time
-        static PersistentWorldVariable const NextWeeklyQuestResetTimeVarId;                 // Next weekly quest reset time
-        static PersistentWorldVariable const NextBGRandomDailyResetTimeVarId;               // Next daily BG reset time
-        static PersistentWorldVariable const CharacterDatabaseCleaningFlagsVarId;           // Cleaning Flags
-        static PersistentWorldVariable const NextGuildDailyResetTimeVarId;                  // Next guild cap reset time
-        static PersistentWorldVariable const NextMonthlyQuestResetTimeVarId;                // Next monthly quest reset time
-        static PersistentWorldVariable const NextDailyQuestResetTimeVarId;                  // Next daily quest reset time
-        static PersistentWorldVariable const NextOldCalendarEventDeletionTimeVarId;         // Next daily calendar deletions of old events time
-        static PersistentWorldVariable const NextGuildWeeklyResetTimeVarId;                 // Next guild week reset time
-
-        int32 GetPersistentWorldVariable(PersistentWorldVariable const& var) const;
-        void SetPersistentWorldVariable(PersistentWorldVariable const& var, int32 value);
-        void LoadPersistentWorldVariables();
+        void setWorldState(uint32 index, uint32 value);
+        uint32 getWorldState(uint32 index) const;
+        void LoadWorldStates();
 
         /// Are we on a "Player versus Player" server?
         bool IsPvPRealm() const;
@@ -778,13 +789,11 @@ class TC_GAME_API World
         // for max speed access
         static float GetMaxVisibleDistanceOnContinents()    { return m_MaxVisibleDistanceOnContinents; }
         static float GetMaxVisibleDistanceInInstances()     { return m_MaxVisibleDistanceInInstances;  }
-        static float GetMaxVisibleDistanceInBG()            { return m_MaxVisibleDistanceInBG;         }
-        static float GetMaxVisibleDistanceInArenas()        { return m_MaxVisibleDistanceInArenas;     }
+        static float GetMaxVisibleDistanceInBGArenas()      { return m_MaxVisibleDistanceInBGArenas;   }
 
         static int32 GetVisibilityNotifyPeriodOnContinents(){ return m_visibility_notify_periodOnContinents; }
         static int32 GetVisibilityNotifyPeriodInInstances() { return m_visibility_notify_periodInInstances;  }
-        static int32 GetVisibilityNotifyPeriodInBG()        { return m_visibility_notify_periodInBG;         }
-        static int32 GetVisibilityNotifyPeriodInArenas()    { return m_visibility_notify_periodInArenas;     }
+        static int32 GetVisibilityNotifyPeriodInBGArenas()  { return m_visibility_notify_periodInBGArenas;   }
 
         void ProcessCliCommands();
         void QueueCliCommand(CliCommandHolder* commandHolder) { cliCmdQueue.add(commandHolder); }
@@ -803,23 +812,17 @@ class TC_GAME_API World
 
         void UpdateAreaDependentAuras();
 
-        bool IsBattlePetJournalLockAcquired(ObjectGuid battlenetAccountGuid);
-
         uint32 GetCleaningFlags() const { return m_CleaningFlags; }
-        void SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
-        void ResetEventSeasonalQuests(uint16 event_id, time_t eventStartTime);
+        void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
+        void   ResetEventSeasonalQuests(uint16 event_id);
+
+        CharacterInfo const* GetCharacterInfo(ObjectGuid const& guid) const;
+        CharacterInfo const* GetCharacterInfo(std::string name) const;
 
         void ReloadRBAC();
 
+        time_t getNextChallengeKeyReset();
         void RemoveOldCorpses();
-        void TriggerGuidWarning();
-        void TriggerGuidAlert();
-        bool IsGuidWarning() { return _guidWarn; }
-        bool IsGuidAlert() { return _guidAlert; }
-
-        // War mode balancing
-        void SetForcedWarModeFactionBalanceState(TeamId team, int32 reward = 0);
-        void DisableForcedWarModeFactionBalanceState();
 
     protected:
         void _UpdateGameTime();
@@ -827,18 +830,16 @@ class TC_GAME_API World
         // callback for UpdateRealmCharacters
         void _UpdateRealmCharCount(PreparedQueryResult resultCharCount);
 
-        void InitQuestResetTimes();
-        void CheckScheduledResetTimes();
+        void InitDailyQuestResetTime(bool loading = true);
+        void InitWeeklyQuestResetTime();
+        void InitMonthlyQuestResetTime();
+        void InitRandomBGResetTime();
+        void InitGuildResetTime();
         void InitCurrencyResetTime();
         void DailyReset();
         void ResetWeeklyQuests();
         void ResetMonthlyQuests();
-
-        void InitRandomBGResetTime();
-        void InitCalendarOldEventsDeletionTime();
-        void InitGuildResetTime();
         void ResetRandomBG();
-        void CalendarDeleteOldEvents();
         void ResetGuildCap();
         void ResetCurrencyWeekCap();
     private:
@@ -860,7 +861,6 @@ class TC_GAME_API World
         time_t blackmarket_timer;
 
         SessionMap m_sessions;
-        std::unordered_multimap<ObjectGuid, WorldSession*> m_sessionsByBnetGuid;
         typedef std::unordered_map<uint32, time_t> DisconnectMap;
         DisconnectMap m_disconnects;
         uint32 m_maxActiveSessionCount;
@@ -875,7 +875,8 @@ class TC_GAME_API World
         uint64 m_int64_configs[INT64_CONFIT_VALUE_COUNT];
         bool m_bool_configs[BOOL_CONFIG_VALUE_COUNT];
         float m_float_configs[FLOAT_CONFIG_VALUE_COUNT];
-        std::unordered_map<std::string, int32> m_worldVariables;
+        typedef std::map<uint32, uint32> WorldStatesMap;
+        WorldStatesMap m_worldstates;
         uint32 m_playerLimit;
         AccountTypes m_allowedSecurityLevel;
         LocaleConstant m_defaultDbcLocale;                     // from config for one from loaded DBC locales
@@ -887,13 +888,11 @@ class TC_GAME_API World
         // for max speed access
         static float m_MaxVisibleDistanceOnContinents;
         static float m_MaxVisibleDistanceInInstances;
-        static float m_MaxVisibleDistanceInBG;
-        static float m_MaxVisibleDistanceInArenas;
+        static float m_MaxVisibleDistanceInBGArenas;
 
         static int32 m_visibility_notify_periodOnContinents;
         static int32 m_visibility_notify_periodInInstances;
-        static int32 m_visibility_notify_periodInBG;
-        static int32 m_visibility_notify_periodInArenas;
+        static int32 m_visibility_notify_periodInBGArenas;
 
         // CLI command holder to be thread safe
         LockedQueue<CliCommandHolder*> cliCmdQueue;
@@ -903,9 +902,9 @@ class TC_GAME_API World
         time_t m_NextWeeklyQuestReset;
         time_t m_NextMonthlyQuestReset;
         time_t m_NextRandomBGReset;
-        time_t m_NextCalendarOldEventsDeletionTime;
         time_t m_NextGuildReset;
         time_t m_NextCurrencyReset;
+        time_t m_NextChallengeKeyReset;
 
         //Player Queue
         Queue m_QueuedPlayer;
@@ -928,27 +927,12 @@ class TC_GAME_API World
         typedef std::unordered_map<uint8, Autobroadcast> AutobroadcastContainer;
         AutobroadcastContainer m_Autobroadcasts;
 
+        std::vector<CharacterInfo*> _characterInfoStore;
+
+        std::unordered_map<std::string, CharacterInfo*> nameMap;
+
         void ProcessQueryCallbacks();
-
-        void SendGuidWarning();
-        void DoGuidWarningRestart();
-        void DoGuidAlertRestart();
         QueryCallbackProcessor _queryProcessor;
-
-        std::string _guidWarningMsg;
-        std::string _alertRestartReason;
-
-        std::mutex _guidAlertLock;
-
-        bool _guidWarn;
-        bool _guidAlert;
-        uint32 _warnDiff;
-        time_t _warnShutdownTime;
-
-        // War mode balancing
-        void UpdateWarModeRewardValues();
-
-    friend class debug_commandscript;
 };
 
 TC_GAME_API extern Realm realm;

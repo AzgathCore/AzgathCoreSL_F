@@ -37,14 +37,9 @@ enum BG_SA_Status
 
 enum BG_SA_GateState
 {
-    // alliance is defender
-    BG_SA_ALLIANCE_GATE_OK          = 1,
-    BG_SA_ALLIANCE_GATE_DAMAGED     = 2,
-    BG_SA_ALLIANCE_GATE_DESTROYED   = 3,
-    // horde is defender
-    BG_SA_HORDE_GATE_OK             = 4,
-    BG_SA_HORDE_GATE_DAMAGED        = 5,
-    BG_SA_HORDE_GATE_DESTROYED      = 6,
+    BG_SA_GATE_OK           = 1,
+    BG_SA_GATE_DAMAGED      = 2,
+    BG_SA_GATE_DESTROYED    = 3
 };
 
 enum BG_SA_EventIds
@@ -156,7 +151,9 @@ enum SATexts
 
 enum SAWorldStates
 {
-    BG_SA_TIMER                     = 3557,
+    BG_SA_TIMER_MINS                = 3559,
+    BG_SA_TIMER_SEC_TENS            = 3560,
+    BG_SA_TIMER_SEC_DECS            = 3561,
     BG_SA_ALLY_ATTACKS              = 4352,
     BG_SA_HORDE_ATTACKS             = 4353,
     BG_SA_PURPLE_GATEWS             = 3614,
@@ -178,10 +175,7 @@ enum SAWorldStates
     BG_SA_LEFT_GY_HORDE             = 3633,
     BG_SA_CENTER_GY_HORDE           = 3634,
     BG_SA_BONUS_TIMER               = 3571,
-    BG_SA_ENABLE_TIMER              = 3564,
-    BG_SA_ATTACKER_TEAM             = 3690,
-    BG_SA_DESTROYED_ALLIANCE_VEHICLES   = 3955,
-    BG_SA_DESTROYED_HORDE_VEHICLES      = 3956,
+    BG_SA_ENABLE_TIMER              = 3564
 };
 
 enum BG_SA_NPCs
@@ -570,7 +564,7 @@ struct BattlegroundSAScore final : public BattlegroundScore
 class BattlegroundSA : public Battleground
 {
     public:
-        BattlegroundSA(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundSA();
         ~BattlegroundSA();
 
         /**
@@ -583,13 +577,18 @@ class BattlegroundSA : public Battleground
         /* inherited from BattlegroundClass */
         /// Called when a player join battle
         void AddPlayer(Player* player) override;
+        /// Called when battle start
+        void StartingEventCloseDoors() override;
+        void StartingEventOpenDoors() override;
         /// Called for ini battleground, after that the first player be entered
         bool SetupBattleground() override;
         void Reset() override;
+        /// Called for generate packet contain worldstate data
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
         /// Called when a player kill a unit in bg
         void HandleKillUnit(Creature* creature, Player* killer) override;
         /// Return the nearest graveyard where player can respawn
-        WorldSafeLocsEntry const* GetClosestGraveyard(Player* player) override;
+        WorldSafeLocsEntry const* GetClosestGraveYard(Player* player) override;
         /// Called when someone activates an event
         void ProcessEvent(WorldObject* /*obj*/, uint32 /*eventId*/, WorldObject* /*invoker*/ = nullptr) override;
         /// Called when a player click on flag (graveyard flag)
@@ -614,6 +613,9 @@ class BattlegroundSA : public Battleground
         void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
 
         /* Scorekeeping */
+
+        // Achievement: Not Even a Scratch
+        bool CheckAchievementCriteriaMeet(uint32 criteriaId, Player const* source, Unit const* target = nullptr, uint32 miscValue = 0) override;
 
         // Control Phase Shift
         bool IsSpellAllowed(uint32 spellId, Player const* player) const override;
@@ -655,6 +657,8 @@ class BattlegroundSA : public Battleground
          * -Delete gameobject in front of door (lighting object, with different colours for each door)
          */
         void DestroyGate(Player* player, GameObject* go) override;
+        /// Update timer worldstate
+        void SendTime();
         /**
          * \brief Called when a graveyard is capture
          * -Update spiritguide
@@ -675,8 +679,6 @@ class BattlegroundSA : public Battleground
         void SendTransportInit(Player* player);
         /// Send packet to player for destroy boats (client part)
         void SendTransportsRemove(Player* player);
-
-        bool IsGateDestroyed(BG_SA_Objects gateId) const;
 
         /// Id of attacker team
         TeamId Attackers;
@@ -706,5 +708,11 @@ class BattlegroundSA : public Battleground
         /// for know if second round has been init
         bool InitSecondRound;
         std::map<uint32/*id*/, uint32/*timer*/> DemoliserRespawnList;
+
+        // Achievement: Defense of the Ancients
+        bool _gateDestroyed;
+
+        // Achievement: Not Even a Scratch
+        bool _allVehiclesAlive[BG_TEAMS_COUNT];
 };
 #endif

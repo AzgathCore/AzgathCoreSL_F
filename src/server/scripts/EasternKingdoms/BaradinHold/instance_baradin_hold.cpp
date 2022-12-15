@@ -30,13 +30,6 @@ DoorData const doorData[] =
     { 0,                 0,             DOOR_TYPE_ROOM }  // END
 };
 
-DungeonEncounterData const encounters[] =
-{
-    { DATA_ARGALOTH, {{ 1033 }} },
-    { DATA_OCCUTHAR, {{ 1250 }} },
-    { DATA_ALIZABAL, {{ 1332 }} }
-};
-
 class instance_baradin_hold: public InstanceMapScript
 {
     public:
@@ -49,7 +42,6 @@ class instance_baradin_hold: public InstanceMapScript
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
-                LoadDungeonEncounterData(encounters);
             }
 
             void OnCreatureCreate(Creature* creature) override

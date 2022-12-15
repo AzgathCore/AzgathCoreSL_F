@@ -18,13 +18,6 @@
 #include "PhaseShift.h"
 #include "Containers.h"
 
-PhaseShift::PhaseShift() = default;
-PhaseShift::PhaseShift(PhaseShift const& right) = default;
-PhaseShift::PhaseShift(PhaseShift&& right)  noexcept = default;
-PhaseShift& PhaseShift::operator=(PhaseShift const& right) = default;
-PhaseShift& PhaseShift::operator=(PhaseShift&& right) noexcept = default;
-PhaseShift::~PhaseShift() = default;
-
 bool PhaseShift::AddPhase(uint32 phaseId, PhaseFlags flags, std::vector<Condition*> const* areaConditions, int32 references /*= 1*/)
 {
     auto insertResult = Phases.emplace(phaseId, flags, nullptr);
@@ -89,6 +82,7 @@ PhaseShift::EraseResult<PhaseShift::UiMapPhaseIdContainer> PhaseShift::RemoveUiM
 void PhaseShift::Clear()
 {
     ClearPhases();
+    PersonalGuid.Clear();
     VisibleMapIds.clear();
     UiMapPhaseIds.clear();
 }
@@ -96,11 +90,9 @@ void PhaseShift::Clear()
 void PhaseShift::ClearPhases()
 {
     Flags &= PhaseShiftFlags::AlwaysVisible | PhaseShiftFlags::Inverse;
-    PersonalGuid.Clear();
     Phases.clear();
     NonCosmeticReferences = 0;
     CosmeticReferences = 0;
-    PersonalReferences = 0;
     DefaultReferences = 0;
     UpdateUnphasedFlag();
 }
@@ -131,19 +123,20 @@ bool PhaseShift::CanSee(PhaseShift const& other) const
 
     auto checkInversePhaseShift = [excludePhasesWithFlag](PhaseShift const& phaseShift, PhaseShift const& excludedPhaseShift)
     {
-        if (phaseShift.Flags.HasFlag(PhaseShiftFlags::Unphased) && excludedPhaseShift.Flags.HasFlag(PhaseShiftFlags::InverseUnphased))
-            return false;
+        if (phaseShift.Flags.HasFlag(PhaseShiftFlags::Unphased) && !excludedPhaseShift.Flags.HasFlag(PhaseShiftFlags::InverseUnphased))
+            return true;
 
-        for (PhaseRef const& phase : phaseShift.Phases)
+        for (auto itr = phaseShift.Phases.begin(); itr != phaseShift.Phases.end(); ++itr)
         {
-            if (phase.Flags.HasFlag(excludePhasesWithFlag))
+            if (itr->Flags.HasFlag(excludePhasesWithFlag))
                 continue;
 
-            auto itr2 = std::find(excludedPhaseShift.Phases.begin(), excludedPhaseShift.Phases.end(), phase);
-            if (itr2 != excludedPhaseShift.Phases.end() && !itr2->Flags.HasFlag(excludePhasesWithFlag))
-                return false;
+            auto itr2 = std::find(excludedPhaseShift.Phases.begin(), excludedPhaseShift.Phases.end(), *itr);
+            if (itr2 == excludedPhaseShift.Phases.end() || itr2->Flags.HasFlag(excludePhasesWithFlag))
+                return true;
         }
-        return true;
+
+        return false;
     };
 
     if (other.Flags.HasFlag(PhaseShiftFlags::Inverse))
@@ -165,16 +158,12 @@ void PhaseShift::ModifyPhasesReferences(PhaseContainer::iterator itr, int32 refe
         else
             DefaultReferences += references;
 
-        if (itr->Flags.HasFlag(PhaseFlags::Personal))
-            PersonalReferences += references;
-
         if (CosmeticReferences)
             Flags |= PhaseShiftFlags::NoCosmetic;
         else
             Flags &= ~PhaseShiftFlags::NoCosmetic;
 
         UpdateUnphasedFlag();
-        UpdatePersonalGuid();
     }
 }
 
@@ -186,18 +175,4 @@ void PhaseShift::UpdateUnphasedFlag()
         Flags &= ~unphasedFlag;
     else
         Flags |= unphasedFlag;
-}
-
-void PhaseShift::UpdatePersonalGuid()
-{
-    if (!PersonalReferences)
-        PersonalGuid.Clear();
-}
-
-bool PhaseShift::HasPersonalPhase() const
-{
-    for (PhaseRef const& phaseRef : GetPhases())
-        if (phaseRef.IsPersonal())
-            return true;
-    return false;
 }

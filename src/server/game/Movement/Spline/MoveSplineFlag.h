@@ -1,25 +1,25 @@
 /*
  * Copyright 2023 AzgathCore
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifndef TRINITYSERVER_MOVESPLINEFLAG_H
 #define TRINITYSERVER_MOVESPLINEFLAG_H
 
-#include "Define.h"
-#include <string>
+#include "MovementTypedefs.h"
 
 namespace Movement
 {
@@ -60,7 +60,7 @@ namespace Movement
             Parabolic           = 0x04000000,           // Affects elevation computation, can't be combined with Falling flag
             FadeObject          = 0x08000000,
             Steering            = 0x10000000,
-            UnlimitedSpeed      = 0x20000000,
+            Unknown_0x20000000  = 0x20000000,           // NOT VERIFIED
             Unknown_0x40000000  = 0x40000000,           // NOT VERIFIED
             Unknown_0x80000000  = 0x80000000,           // NOT VERIFIED
 
@@ -68,8 +68,8 @@ namespace Movement
             // flags that shouldn't be appended into SMSG_MONSTER_MOVE\SMSG_MONSTER_MOVE_TRANSPORT packet, should be more probably
             Mask_No_Monster_Move = Done,
             // Unused, not suported flags
-            Mask_Unused         = No_Spline | Enter_Cycle | Frozen | Unknown_0x8 | Unknown_0x100 | Unknown_0x20000 | Unknown_0x40000
-                                | Unknown_0x800000 | Unknown_0x1000000 | FadeObject | Steering | UnlimitedSpeed | Unknown_0x40000000 | Unknown_0x80000000
+            Mask_Unused = No_Spline | Enter_Cycle | Frozen | Unknown_0x8 | Unknown_0x100 | Unknown_0x20000 | Unknown_0x40000
+            | Unknown_0x800000 | Unknown_0x1000000 | FadeObject | Steering | Unknown_0x20000000 | Unknown_0x40000000 | Unknown_0x80000000
         };
 
         inline uint32& raw() { return (uint32&)*this; }
@@ -101,7 +101,7 @@ namespace Movement
         void EnableCatmullRom() { raw() = (raw() & ~SmoothGroundPath) | Catmullrom; }
         void EnableTransportEnter() { raw() = (raw() & ~TransportExit) | TransportEnter; }
         void EnableTransportExit() { raw() = (raw() & ~TransportEnter) | TransportExit; }
-
+        
         bool unknown0x1          : 1;
         bool unknown0x2          : 1;
         bool unknown0x4          : 1;
@@ -131,7 +131,7 @@ namespace Movement
         bool parabolic           : 1;
         bool fadeObject          : 1;
         bool steering            : 1;
-        bool unlimitedSpeed      : 1;
+        bool unknown0x20000000   : 1;
         bool unknown0x40000000   : 1;
         bool unknown0x80000000   : 1;
     };

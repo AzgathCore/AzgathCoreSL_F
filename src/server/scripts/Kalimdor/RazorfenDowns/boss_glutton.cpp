@@ -53,9 +53,9 @@ public:
             hp15 = false;
         }
 
-        void JustEngagedWith(Unit* who) override
+        void EnterCombat(Unit* /*who*/) override
         {
-            BossAI::JustEngagedWith(who);
+            _EnterCombat();
             Talk(SAY_AGGRO);
         }
 

@@ -16,17 +16,16 @@
  */
 
 #include "SceneObject.h"
-#include "GameTime.h"
+#include "Creature.h"
+#include "IteratorPair.h"
+#include "Log.h"
 #include "Map.h"
-#include "ObjectAccessor.h"
-#include "ObjectMgr.h"
 #include "PhasingHandler.h"
-#include "Player.h"
-#include "SpellAuras.h"
+#include "ScriptMgr.h"
+#include "Unit.h"
 #include "UpdateData.h"
-#include "Util.h"
 
-SceneObject::SceneObject() : WorldObject(false)
+SceneObject::SceneObject() : WorldObject(false), _duration(0)
 {
     m_objectType |= TYPEMASK_SCENEOBJECT;
     m_objectTypeId = TYPEID_SCENEOBJECT;
@@ -35,10 +34,13 @@ SceneObject::SceneObject() : WorldObject(false)
     m_updateFlag.SceneObject = true;
 }
 
-SceneObject::~SceneObject() = default;
+SceneObject::~SceneObject()
+{
+}
 
 void SceneObject::AddToWorld()
 {
+    ///- Register the Scene for guid lookup and for caster
     if (!IsInWorld())
     {
         GetMap()->GetObjectsStore().Insert<SceneObject>(GetGUID(), this);
@@ -48,6 +50,7 @@ void SceneObject::AddToWorld()
 
 void SceneObject::RemoveFromWorld()
 {
+    ///- Remove the Scene from the accessor and from all lists of objects in world
     if (IsInWorld())
     {
         WorldObject::RemoveFromWorld();
@@ -55,85 +58,30 @@ void SceneObject::RemoveFromWorld()
     }
 }
 
+bool SceneObject::IsNeverVisibleFor(WorldObject const* seer) const
+{
+    if (_participants.find(seer->GetGUID()) == _participants.end())
+        return true;
+
+    return WorldObject::IsNeverVisibleFor(seer);
+}
+
 void SceneObject::Update(uint32 diff)
 {
-    WorldObject::Update(diff);
+    if (GetDuration() > int32(diff))
+        _duration -= diff;
+    else
+        Remove(); // expired
 
-    if (ShouldBeRemoved())
-        Remove();
+    WorldObject::Update(diff);
 }
 
 void SceneObject::Remove()
 {
     if (IsInWorld())
-        AddObjectToRemoveList();
-}
-
-bool SceneObject::ShouldBeRemoved() const
-{
-    Unit* creator = ObjectAccessor::GetUnit(*this, GetOwnerGUID());
-    if (!creator)
-        return true;
-
-    if (!_createdBySpellCast.IsEmpty())
     {
-        // search for a dummy aura on creator
-        Aura const* linkedAura = creator->GetAura(_createdBySpellCast.GetEntry(), [this](Aura const* aura)
-        {
-            return aura->GetCastId() == _createdBySpellCast;
-        });
-        if (!linkedAura)
-            return true;
+        AddObjectToRemoveList(); // calls RemoveFromWorld
     }
-
-    return false;
-}
-
-SceneObject* SceneObject::CreateSceneObject(uint32 sceneId, Unit* creator, Position const& pos, ObjectGuid privateObjectOwner)
-{
-    SceneTemplate const* sceneTemplate = sObjectMgr->GetSceneTemplate(sceneId);
-    if (!sceneTemplate)
-        return nullptr;
-
-    ObjectGuid::LowType lowGuid = creator->GetMap()->GenerateLowGuid<HighGuid::SceneObject>();
-
-    SceneObject* sceneObject = new SceneObject();
-    if (!sceneObject->Create(lowGuid, SceneType::Normal, sceneId, sceneTemplate ? sceneTemplate->ScenePackageId : 0, creator->GetMap(), creator, pos, privateObjectOwner))
-    {
-        delete sceneObject;
-        return nullptr;
-    }
-
-    return sceneObject;
-}
-
-bool SceneObject::Create(ObjectGuid::LowType lowGuid, SceneType type, uint32 sceneId, uint32 scriptPackageId, Map* map, Unit* creator,
-    Position const& pos, ObjectGuid privateObjectOwner)
-{
-    SetMap(map);
-    Relocate(pos);
-    RelocateStationaryPosition(pos);
-
-    SetPrivateObjectOwner(privateObjectOwner);
-
-    Object::_Create(ObjectGuid::Create<HighGuid::SceneObject>(GetMapId(), sceneId, lowGuid));
-    PhasingHandler::InheritPhaseShift(this, creator);
-
-    UpdatePositionData();
-    SetZoneScript();
-
-    SetEntry(scriptPackageId);
-    SetObjectScale(1.0f);
-
-    SetUpdateFieldValue(m_values.ModifyValue(&SceneObject::m_sceneObjectData).ModifyValue(&UF::SceneObjectData::ScriptPackageID), scriptPackageId);
-    SetUpdateFieldValue(m_values.ModifyValue(&SceneObject::m_sceneObjectData).ModifyValue(&UF::SceneObjectData::RndSeedVal), GameTime::GetGameTimeMS());
-    SetUpdateFieldValue(m_values.ModifyValue(&SceneObject::m_sceneObjectData).ModifyValue(&UF::SceneObjectData::CreatedBy), creator->GetGUID());
-    SetUpdateFieldValue(m_values.ModifyValue(&SceneObject::m_sceneObjectData).ModifyValue(&UF::SceneObjectData::SceneType), AsUnderlyingType(type));
-
-    if (!GetMap()->AddToMap(this))
-        return false;
-
-    return true;
 }
 
 void SceneObject::BuildValuesCreate(ByteBuffer* data, Player const* target) const
@@ -157,51 +105,53 @@ void SceneObject::BuildValuesUpdate(ByteBuffer* data, Player const* target) cons
     if (m_values.HasChanged(TYPEID_OBJECT))
         m_objectData->WriteUpdate(*data, flags, this, target);
 
-    if (m_values.HasChanged(TYPEID_SCENEOBJECT))
+    if (m_values.HasChanged(TYPEID_CORPSE))
         m_sceneObjectData->WriteUpdate(*data, flags, this, target);
 
     data->put<uint32>(sizePos, data->wpos() - sizePos - 4);
-}
-
-void SceneObject::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
-    UF::SceneObjectData::Mask const& requestedSceneObjectMask, Player const* target) const
-{
-    UpdateMask<NUM_CLIENT_OBJECT_TYPES> valuesMask;
-    if (requestedObjectMask.IsAnySet())
-        valuesMask.Set(TYPEID_OBJECT);
-
-    if (requestedSceneObjectMask.IsAnySet())
-        valuesMask.Set(TYPEID_SCENEOBJECT);
-
-    ByteBuffer& buffer = PrepareValuesUpdateBuffer(data);
-    std::size_t sizePos = buffer.wpos();
-    buffer << uint32(0);
-    buffer << uint32(valuesMask.GetBlock(0));
-
-    if (valuesMask[TYPEID_OBJECT])
-        m_objectData->WriteUpdate(buffer, requestedObjectMask, true, this, target);
-
-    if (valuesMask[TYPEID_SCENEOBJECT])
-        m_sceneObjectData->WriteUpdate(buffer, requestedSceneObjectMask, true, this, target);
-
-    buffer.put<uint32>(sizePos, buffer.wpos() - sizePos - 4);
-
-    data->AddUpdateBlock();
-}
-
-void SceneObject::ValuesUpdateForPlayerWithMaskSender::operator()(Player const* player) const
-{
-    UpdateData udata(Owner->GetMapId());
-    WorldPacket packet;
-
-    Owner->BuildValuesUpdateForPlayerWithMask(&udata, ObjectMask.GetChangesMask(), SceneObjectMask.GetChangesMask(), player);
-
-    udata.BuildPacket(&packet);
-    player->SendDirectMessage(&packet);
 }
 
 void SceneObject::ClearUpdateMask(bool remove)
 {
     m_values.ClearChangesMask(&SceneObject::m_sceneObjectData);
     Object::ClearUpdateMask(remove);
+}
+
+SceneObject* SceneObject::CreateScene(uint32 SceneId, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* spellInfo /*= nullptr*/)
+{
+    ObjectGuid::LowType lowGuid = creator->GetMap()->GenerateLowGuid<HighGuid::SceneObject>();
+
+    SceneObject* Scene = new SceneObject();
+    if (!Scene->Create(lowGuid, SceneId, creator->GetMap(), creator, pos, std::move(participants), spellInfo))
+    {
+        delete Scene;
+        return nullptr;
+    }
+
+    return Scene;
+}
+
+bool SceneObject::Create(ObjectGuid::LowType lowGuid, uint32 SceneId, Map* map, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* /*spellInfo = nullptr*/)
+{
+    _creatorGuid = creator->GetGUID();
+    _participants = std::move(participants);
+
+    SetMap(map);
+    Relocate(pos);
+
+    Object::_Create(ObjectGuid::Create<HighGuid::SceneObject>(GetMapId(), SceneId, lowGuid));
+    PhasingHandler::InheritPhaseShift(this, creator);
+
+    SetEntry(SceneId);
+    SetObjectScale(1.0f);
+
+    if (!GetMap()->AddToMap(this))
+        return false;
+
+    return true;
+}
+
+void SceneObject::AddParticipant(ObjectGuid const& participantGuid)
+{
+    _participants.insert(participantGuid);
 }

@@ -15,6 +15,15 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "DatabaseEnv.h"
+#include "Define.h"
+#include "Errors.h"
+#include "Field.h"
 #include "Log.h"
-#include "MySQLHacks.h"
+#include "MySQLConnection.h"
+#include "MySQLWorkaround.h"
+#include "PreparedStatement.h"
+#include "QueryResult.h"
+#include "SQLOperation.h"
+#include "Transaction.h"
+#include <string>
+#include <vector>

@@ -24,41 +24,52 @@ EndScriptData */
 
 #include "ScriptMgr.h"
 #include "Chat.h"
-#include "ChatCommand.h"
 #include "DB2Stores.h"
 #include "Language.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "RBAC.h"
-
-using namespace Trinity::ChatCommands;
 
 class titles_commandscript : public CommandScript
 {
 public:
     titles_commandscript() : CommandScript("titles_commandscript") { }
 
-    ChatCommandTable GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommandTable titlesSetCommandTable =
+        static std::vector<ChatCommand> titlesSetCommandTable =
         {
-            { "mask", HandleTitlesSetMaskCommand, rbac::RBAC_PERM_COMMAND_TITLES_SET_MASK, Console::No },
+            { "mask", rbac::RBAC_PERM_COMMAND_TITLES_SET_MASK, false, &HandleTitlesSetMaskCommand, "" },
         };
-        static ChatCommandTable titlesCommandTable =
+        static std::vector<ChatCommand> titlesCommandTable =
         {
-            { "add",     HandleTitlesAddCommand,     rbac::RBAC_PERM_COMMAND_TITLES_ADD,     Console::No },
-            { "current", HandleTitlesCurrentCommand, rbac::RBAC_PERM_COMMAND_TITLES_CURRENT, Console::No },
-            { "remove",  HandleTitlesRemoveCommand,  rbac::RBAC_PERM_COMMAND_TITLES_REMOVE,  Console::No },
-            { "set",     titlesSetCommandTable },
+            { "add",     rbac::RBAC_PERM_COMMAND_TITLES_ADD,     false, &HandleTitlesAddCommand,     "" },
+            { "current", rbac::RBAC_PERM_COMMAND_TITLES_CURRENT, false, &HandleTitlesCurrentCommand, "" },
+            { "remove",  rbac::RBAC_PERM_COMMAND_TITLES_REMOVE,  false, &HandleTitlesRemoveCommand,  "" },
+            { "set",     rbac::RBAC_PERM_COMMAND_TITLES_SET,     false, nullptr,       "", titlesSetCommandTable },
         };
-        static ChatCommandTable commandTable =
+        static std::vector<ChatCommand> commandTable =
         {
-            { "titles", titlesCommandTable },
+            { "titles", rbac::RBAC_PERM_COMMAND_TITLES, false, nullptr, "", titlesCommandTable },
         };
         return commandTable;
     }
 
-    static bool HandleTitlesCurrentCommand(ChatHandler* handler, Variant<Hyperlink<title>, uint32> titleId)
+    static bool HandleTitlesCurrentCommand(ChatHandler* handler, char const* args)
     {
+        // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
+        char* id_p = handler->extractKeyFromLink((char*)args, "Htitle");
+        if (!id_p)
+            return false;
+
+        uint32 id = atoul(id_p);
+        if (id == 0)
+        {
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         Player* target = handler->getSelectedPlayer();
         if (!target)
         {
@@ -71,27 +82,40 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
-        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(titleId);
+        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(id);
         if (!titleInfo)
         {
-            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, titleId);
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
         std::string tNameLink = handler->GetNameLink(target);
-        std::string titleNameStr = Trinity::StringFormat(target->GetNativeGender() == GENDER_MALE ? titleInfo->Name[handler->GetSessionDbcLocale()] : titleInfo->Name1[handler->GetSessionDbcLocale()], target->GetName());
 
-        target->SetTitle(titleInfo);
+        target->SetTitle(titleInfo);                            // to be sure that title now known
         target->SetChosenTitle(titleInfo->MaskID);
 
-        handler->PSendSysMessage(LANG_TITLE_CURRENT_RES, titleId, titleNameStr.c_str(), tNameLink.c_str());
-
+        handler->PSendSysMessage(LANG_TITLE_CURRENT_RES, id,
+            (target->getGender() == GENDER_MALE ? titleInfo->Name : titleInfo->Name1)[handler->GetSessionDbcLocale()],
+            tNameLink.c_str());
         return true;
     }
 
-    static bool HandleTitlesAddCommand(ChatHandler* handler, Variant<Hyperlink<title>, uint32> titleId)
+    static bool HandleTitlesAddCommand(ChatHandler* handler, char const* args)
     {
+        // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
+        char* id_p = handler->extractKeyFromLink((char*)args, "Htitle");
+        if (!id_p)
+            return false;
+
+        uint32 id = atoul(id_p);
+        if (id == 0)
+        {
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         Player* target = handler->getSelectedPlayer();
         if (!target)
         {
@@ -104,25 +128,42 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
-        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(titleId);
+        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(id);
         if (!titleInfo)
         {
-            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, titleId);
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
         std::string tNameLink = handler->GetNameLink(target);
-        std::string titleNameStr = Trinity::StringFormat(target->GetNativeGender() == GENDER_MALE ? titleInfo->Name[handler->GetSessionDbcLocale()] : titleInfo->Name1[handler->GetSessionDbcLocale()], target->GetName());
+
+        std::string titleNameStr = Trinity::StringFormat(
+            (target->getGender() == GENDER_MALE ? titleInfo->Name : titleInfo->Name1)[handler->GetSessionDbcLocale()],
+            target->GetName().c_str()
+        );
 
         target->SetTitle(titleInfo);
-        handler->PSendSysMessage(LANG_TITLE_ADD_RES, titleId, titleNameStr.c_str(), tNameLink.c_str());
+        handler->PSendSysMessage(LANG_TITLE_ADD_RES, id, titleNameStr.c_str(), tNameLink.c_str());
 
         return true;
     }
 
-    static bool HandleTitlesRemoveCommand(ChatHandler* handler, Variant<Hyperlink<title>, uint16> titleId)
+    static bool HandleTitlesRemoveCommand(ChatHandler* handler, char const* args)
     {
+        // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
+        char* id_p = handler->extractKeyFromLink((char*)args, "Htitle");
+        if (!id_p)
+            return false;
+
+        uint32 id = atoul(id_p);
+        if (id == 0)
+        {
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         Player* target = handler->getSelectedPlayer();
         if (!target)
         {
@@ -135,10 +176,10 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
-        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(titleId);
+        CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(id);
         if (!titleInfo)
         {
-            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, titleId);
+            handler->PSendSysMessage(LANG_INVALID_TITLE_ID, id);
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -146,9 +187,13 @@ public:
         target->SetTitle(titleInfo, true);
 
         std::string tNameLink = handler->GetNameLink(target);
-        std::string titleNameStr = Trinity::StringFormat(target->GetNativeGender() == GENDER_MALE ? titleInfo->Name[handler->GetSessionDbcLocale()] : titleInfo->Name1[handler->GetSessionDbcLocale()], target->GetName());
 
-        handler->PSendSysMessage(LANG_TITLE_REMOVE_RES, titleId, titleNameStr.c_str(), tNameLink.c_str());
+        std::string titleNameStr = Trinity::StringFormat(
+            (target->getGender() == GENDER_MALE ? titleInfo->Name : titleInfo->Name1)[handler->GetSessionDbcLocale()],
+            target->GetName().c_str()
+        );
+
+        handler->PSendSysMessage(LANG_TITLE_REMOVE_RES, id, titleNameStr.c_str(), tNameLink.c_str());
 
         if (!target->HasTitle(target->m_playerData->PlayerTitle))
         {
@@ -160,8 +205,15 @@ public:
     }
 
     //Edit Player KnownTitles
-    static bool HandleTitlesSetMaskCommand(ChatHandler* handler, uint64 mask)
+    static bool HandleTitlesSetMaskCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
+        uint64 titles = 0;
+
+        sscanf((char*)args, UI64FMTD, &titles);
+
         Player* target = handler->getSelectedPlayer();
         if (!target)
         {
@@ -174,15 +226,15 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
-        uint64 titles2 = mask;
+        uint64 titles2 = titles;
 
-        for (uint32 i = 1; i < sCharTitlesStore.GetNumRows() && i < 64; ++i)
+        for (uint32 i = 1; i < sCharTitlesStore.GetNumRows(); ++i)
             if (CharTitlesEntry const* tEntry = sCharTitlesStore.LookupEntry(i))
                 titles2 &= ~(uint64(1) << tEntry->MaskID);
 
-        mask &= ~titles2;                                     // remove non-existing titles
+        titles &= ~titles2;                                     // remove non-existing titles
 
-        target->SetKnownTitles(0, mask);
+        target->SetKnownTitles(0, titles);
         handler->SendSysMessage(LANG_DONE);
 
         if (!target->HasTitle(target->m_playerData->PlayerTitle))

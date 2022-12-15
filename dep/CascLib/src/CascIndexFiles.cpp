@@ -118,7 +118,6 @@ static bool IndexDirectory_OnFileFound(
 
 static LPTSTR CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD IndexVersion)
 {
-    TCHAR szFullName[MAX_PATH];
     TCHAR szPlainName[0x40];
 
     // Sanity checks
@@ -128,10 +127,7 @@ static LPTSTR CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD Ind
 
     // Create the full path
     CascStrPrintf(szPlainName, _countof(szPlainName), hs->szIndexFormat, IndexValue, IndexVersion);
-    CombinePath(szFullName, _countof(szFullName), hs->szIndexPath, szPlainName, NULL);
-
-    // Return allocated path
-    return CascNewStr(szFullName);
+    return CombinePath(hs->szIndexPath, szPlainName);
 }
 
 static void SaveFileOffsetBitsAndEKeyLength(TCascStorage * hs, BYTE FileOffsetBits, BYTE EKeyLength)

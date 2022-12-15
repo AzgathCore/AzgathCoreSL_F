@@ -23,6 +23,7 @@ SDCategory: Items
 EndScriptData */
 
 /* ContentData
+item_nether_wraith_beacon(i31742)   Summons creatures for quest Becoming a Spellfire Tailor (q10832)
 item_flying_machine(i34060, i34061)  Engineering crafted flying machines
 item_gor_dreks_ointment(i30175)     Protecting Our Own(q10488)
 item_only_for_flight                Items which should only useable while flying
@@ -31,7 +32,6 @@ EndContentData */
 #include "ScriptMgr.h"
 #include "GameObject.h"
 #include "Item.h"
-#include "Map.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "Spell.h"
@@ -61,15 +61,15 @@ public:
         switch (itemId)
         {
             case 24538:
-                if (player->GetAreaId() != 3628)
+                if (player->GetAreaId() != AREA_HALAA)
                     disabled = true;
                 break;
             case 34489:
-                if (player->GetZoneId() != 4080)
+                if (player->GetZoneId() != ZONE_ISLE_OF_QUEL_DANAS)
                     disabled = true;
                 break;
             case 34475:
-                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_ARCANE_CHARGES, player->GetMap()->GetDifficultyID()))
+                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_ARCANE_CHARGES, DIFFICULTY_NONE))
                     Spell::SendCastResult(player, spellInfo, {}, castId, SPELL_FAILED_NOT_ON_GROUND);
                 break;
         }
@@ -81,6 +81,29 @@ public:
         // error
         player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
+    }
+};
+
+/*#####
+# item_nether_wraith_beacon
+#####*/
+
+class item_nether_wraith_beacon : public ItemScript
+{
+public:
+    item_nether_wraith_beacon() : ItemScript("item_nether_wraith_beacon") { }
+
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (player->GetQuestStatus(10832) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (Creature* nether = player->SummonCreature(22408, player->GetPositionX(), player->GetPositionY()+20, player->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 180000))
+                nether->AI()->AttackStart(player);
+
+            if (Creature* nether = player->SummonCreature(22408, player->GetPositionX(), player->GetPositionY()-20, player->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 180000))
+                nether->AI()->AttackStart(player);
+        }
+        return false;
     }
 };
 
@@ -101,6 +124,27 @@ public:
 
         player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
+    }
+};
+
+/*#####
+# item_incendiary_explosives
+#####*/
+
+class item_incendiary_explosives : public ItemScript
+{
+public:
+    item_incendiary_explosives() : ItemScript("item_incendiary_explosives") { }
+
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (player->FindNearestCreature(26248, 15) || player->FindNearestCreature(26249, 15))
+            return false;
+        else
+        {
+            player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, nullptr);
+            return true;
+        }
     }
 };
 
@@ -145,14 +189,79 @@ public:
 };
 
 /*#####
+# item_pile_fake_furs
+#####*/
+
+enum PileFakeFur
+{
+    GO_CARIBOU_TRAP_1                                      = 187982,
+    GO_CARIBOU_TRAP_2                                      = 187995,
+    GO_CARIBOU_TRAP_3                                      = 187996,
+    GO_CARIBOU_TRAP_4                                      = 187997,
+    GO_CARIBOU_TRAP_5                                      = 187998,
+    GO_CARIBOU_TRAP_6                                      = 187999,
+    GO_CARIBOU_TRAP_7                                      = 188000,
+    GO_CARIBOU_TRAP_8                                      = 188001,
+    GO_CARIBOU_TRAP_9                                      = 188002,
+    GO_CARIBOU_TRAP_10                                     = 188003,
+    GO_CARIBOU_TRAP_11                                     = 188004,
+    GO_CARIBOU_TRAP_12                                     = 188005,
+    GO_CARIBOU_TRAP_13                                     = 188006,
+    GO_CARIBOU_TRAP_14                                     = 188007,
+    GO_CARIBOU_TRAP_15                                     = 188008,
+    GO_HIGH_QUALITY_FUR                                    = 187983,
+    NPC_NESINGWARY_TRAPPER                                 = 25835
+};
+
+#define CaribouTrapsNum 15
+const uint32 CaribouTraps[CaribouTrapsNum] =
+{
+    GO_CARIBOU_TRAP_1, GO_CARIBOU_TRAP_2, GO_CARIBOU_TRAP_3, GO_CARIBOU_TRAP_4, GO_CARIBOU_TRAP_5,
+    GO_CARIBOU_TRAP_6, GO_CARIBOU_TRAP_7, GO_CARIBOU_TRAP_8, GO_CARIBOU_TRAP_9, GO_CARIBOU_TRAP_10,
+    GO_CARIBOU_TRAP_11, GO_CARIBOU_TRAP_12, GO_CARIBOU_TRAP_13, GO_CARIBOU_TRAP_14, GO_CARIBOU_TRAP_15,
+};
+
+class item_pile_fake_furs : public ItemScript
+{
+public:
+    item_pile_fake_furs() : ItemScript("item_pile_fake_furs") { }
+
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        GameObject* go = nullptr;
+        for (uint8 i = 0; i < CaribouTrapsNum; ++i)
+        {
+            go = player->FindNearestGameObject(CaribouTraps[i], 5.0f);
+            if (go)
+                break;
+        }
+
+        if (!go)
+            return false;
+
+        if (go->FindNearestCreature(NPC_NESINGWARY_TRAPPER, 10.0f, true) || go->FindNearestCreature(NPC_NESINGWARY_TRAPPER, 10.0f, false) || go->FindNearestGameObject(GO_HIGH_QUALITY_FUR, 2.0f))
+            return true;
+
+        float x, y, z;
+        go->GetClosePoint(x, y, z, go->GetObjectSize() / 3, 7.0f);
+        go->SummonGameObject(GO_HIGH_QUALITY_FUR, *go, QuaternionData(), 1);
+        if (TempSummon* summon = player->SummonCreature(NPC_NESINGWARY_TRAPPER, x, y, z, go->GetOrientation(), TEMPSUMMON_DEAD_DESPAWN, 1000))
+        {
+            summon->SetVisible(false);
+            summon->SetReactState(REACT_PASSIVE);
+            summon->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+        }
+        return false;
+    }
+};
+
+/*#####
 # item_petrov_cluster_bombs
 #####*/
 
 enum PetrovClusterBombs
 {
-    SPELL_PETROV_BOMB           = 42406,
-    AREA_ID_SHATTERED_STRAITS   = 4064,
-    ZONE_ID_HOWLING             = 495
+    SPELL_PETROV_BOMB = 42406,
 };
 
 class item_petrov_cluster_bombs : public ItemScript
@@ -162,10 +271,10 @@ public:
 
     bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/, ObjectGuid castId) override
     {
-        if (player->GetZoneId() != ZONE_ID_HOWLING)
+        if (player->GetZoneId() != ZONE_HOWLING_FJORD)
             return false;
 
-        if (!player->GetTransport() || player->GetAreaId() != AREA_ID_SHATTERED_STRAITS)
+        if (!player->GetTransport() || player->GetAreaId() != AREA_HOWLING_FJORD_SHATTERED_STRAITS)
         {
             if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_PETROV_BOMB, DIFFICULTY_NONE))
                 Spell::SendCastResult(player, spellInfo, {}, castId, SPELL_FAILED_NOT_HERE);
@@ -249,6 +358,33 @@ public:
     }
 };
 
+enum TheEmissary
+{
+    QUEST_THE_EMISSARY      =   11626,
+    NPC_LEVIROTH            =   26452
+};
+
+class item_trident_of_nazjan : public ItemScript
+{
+public:
+    item_trident_of_nazjan() : ItemScript("item_Trident_of_Nazjan") { }
+
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (player->GetQuestStatus(QUEST_THE_EMISSARY) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (Creature* pLeviroth = player->FindNearestCreature(NPC_LEVIROTH, 10.0f)) // spell range
+            {
+                pLeviroth->AI()->AttackStart(player);
+                return false;
+            } else
+                player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, nullptr);
+        } else
+            player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
+        return true;
+    }
+};
+
 enum CapturedFrog
 {
     QUEST_THE_PERFECT_SPIES      = 25444,
@@ -275,38 +411,279 @@ public:
     }
 };
 
-// Only used currently for
-// 19169: Nightfall
-class item_generic_limit_chance_above_60 : public ItemScript
+/*#####
+# item_primal_egg
+#####*/
+
+class item_primal_egg : public ItemScript
 {
-    public:
-        item_generic_limit_chance_above_60() : ItemScript("item_generic_limit_chance_above_60") { }
+public:
+    item_primal_egg() : ItemScript("item_primal_egg") { }
 
-        bool OnCastItemCombatSpell(Player* player, Unit* victim, SpellInfo const* /*spellInfo*/, Item* /*item*/) override
+    bool OnExpire(Player* player, ItemTemplate const* /*pItemProto*/) override
+    {
+        ItemPosCountVec dest;
+        uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 94296, 1); // Cracked Primal Egg
+        if (msg == EQUIP_ERR_OK)
+            player->StoreNewItem(dest, 94296, true, GenerateItemRandomBonusListId(94296));
+
+        return true;
+    }
+};
+
+/*#####
+# item_pulsating_sac
+#####*/
+
+class item_pulsating_sac : public ItemScript
+{
+public:
+    item_pulsating_sac() : ItemScript("item_pulsating_sac") { }
+
+    bool OnExpire(Player* player, ItemTemplate const* /*pItemProto*/) override
+    {
+        ItemPosCountVec dest;
+        uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 137608, 1); // Growling Sac
+        if (msg == EQUIP_ERR_OK)
+            player->StoreNewItem(dest, 137608, true, GenerateItemRandomBonusListId(137608));
+
+        return true;
+    }
+};
+
+class item_titanium_seal_of_dalaran : public ItemScript
+{
+public:
+    item_titanium_seal_of_dalaran() : ItemScript("item_titanium_seal_of_dalaran") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        uint8 luky = urand(0, 1);
+
+        if (pPlayer)
         {
-            // spell proc chance gets severely reduced on victims > 60 (formula unknown)
-            if (victim->GetLevel() > 60)
-            {
-                // gives ~0.1% proc chance at lvl 70
-                float const lvlPenaltyFactor = 9.93f;
-                float const failureChance = (victim->GetLevelForTarget(player) - 60) * lvlPenaltyFactor;
+            pPlayer->CastSpell(pPlayer, 60458, true);
+            pPlayer->TextEmote("casually flips his Titanium Seal of Dalaran");
 
-                // base ppm chance was already rolled, only roll success chance
-                return !roll_chance_f(failureChance);
-            }
-
-            return true;
+            if (luky)
+                pPlayer->TextEmote("caches the coin heads up!");
+            else
+                pPlayer->TextEmote("finds the coin face down for tails!");
         }
+        return false;
+    }
+};
+
+enum eBrewfestSampler
+{
+    QUEST_CHUG_AND_CHUCK_A = 12022,
+    QUEST_CHUG_AND_CHUCK_H = 12191,
+    NPC_BREWFEST_STOUT = 24108
+};
+class item_brewfest_sampler : public ItemScript
+{
+public:
+    item_brewfest_sampler() : ItemScript("item_brewfest_sampler") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->GetQuestStatus(QUEST_CHUG_AND_CHUCK_A) == QUEST_STATUS_INCOMPLETE
+            || pPlayer->GetQuestStatus(QUEST_CHUG_AND_CHUCK_H) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (Creature* pStout = pPlayer->FindNearestCreature(NPC_BREWFEST_STOUT, 10.0f)) // spell range
+            {
+                return false;
+            }
+            else
+                pPlayer->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, pItem, NULL);
+        }
+        else
+            pPlayer->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, pItem, NULL);
+        return true;
+    }
+};
+
+enum eBrewfestRamReins
+{
+    SPELL_BREWFEST_RAM = 43880,
+    SPELL_RAM_FATIGUE = 43052,
+    SPELL_SPEED_RAM_GALLOP = 42994,
+    SPELL_SPEED_RAM_CANTER = 42993,
+    SPELL_SPEED_RAM_TROT = 42992,
+    SPELL_SPEED_RAM_NORMAL = 43310,
+    SPELL_SPEED_RAM_EXHAUSED = 43332
+};
+
+class item_brewfest_ram_reins : public ItemScript
+{
+public:
+    item_brewfest_ram_reins() : ItemScript("item_brewfest_ram_reins") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->HasAura(SPELL_BREWFEST_RAM) && !pPlayer->HasAura(SPELL_SPEED_RAM_EXHAUSED))
+        {
+            if (pPlayer->HasAura(SPELL_SPEED_RAM_NORMAL))
+                pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_TROT, false);
+            else if (pPlayer->HasAura(SPELL_SPEED_RAM_TROT))
+            {
+               // if (pPlayer->GetAura(SPELL_SPEED_RAM_TROT)->GetDuration() < 3000)
+               //     pPlayer->GetAura(SPELL_SPEED_RAM_TROT)->SetDuration(4000);
+              //  else
+                    pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_CANTER, false);
+            }
+            else if (pPlayer->HasAura(SPELL_SPEED_RAM_CANTER))
+            {
+               // if (pPlayer->GetAura(SPELL_SPEED_RAM_CANTER)->GetDuration() < 3000)
+                //    pPlayer->GetAura(SPELL_SPEED_RAM_CANTER)->SetDuration(4000);
+               // else
+                    pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_GALLOP, false);
+            }
+           // else if (pPlayer->HasAura(SPELL_SPEED_RAM_GALLOP))
+              //  pPlayer->GetAura(SPELL_SPEED_RAM_GALLOP)->SetDuration(4000);
+        }
+        else
+            pPlayer->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, pItem, NULL);
+        return true;
+    }
+};
+
+// Leyara's Locket item=71259
+class item_leyara_locket : public ItemScript
+{
+public:
+    item_leyara_locket() : ItemScript("item_leyara_locket") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->getGender() == GENDER_MALE)
+            pPlayer->CastSpell(pPlayer, 101185); // model male
+        else
+            pPlayer->CastSpell(pPlayer, 101186); // female
+
+        return false;
+    }
+};
+
+//153190
+class item_fel_spotted_egg : public ItemScript
+{
+public:
+    item_fel_spotted_egg() : ItemScript("item_fel_spotted_egg") { }
+
+    bool OnExpire(Player* player, ItemTemplate const* /*pItemProto*/) override
+    {
+        ItemPosCountVec dest;
+        uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 153191, 1);
+        if (msg == EQUIP_ERR_OK)
+            player->StoreNewItem(dest, 153191, true, GenerateItemRandomBonusListId(153191));
+
+        return true;
+    }
+};
+
+//500500
+class item_level_boost_50 : public ItemScript
+{
+public:
+    item_level_boost_50() : ItemScript("item_level_boost_50") { }
+
+    bool OnRemove(Player* player, Item* /*item*/) override
+    {
+        if (player->getLevel() < 50)
+        {
+            player->SetLevel(50);
+            player->SetFullHealth();
+            player->SetFullPower(player->GetPowerType());
+            player->AddItem(182716, 4);
+            player->ModifyMoney(25000000, false);
+            switch (player->getClass())
+            {
+            case CLASS_WARRIOR:
+            case CLASS_PALADIN:
+            case CLASS_DEATH_KNIGHT:
+                player->AddItem(164438, 1);
+                player->AddItem(164440, 1);
+                player->AddItem(164435, 1);
+                player->AddItem(164437, 1);
+                player->AddItem(164439, 1);
+                player->AddItem(164441, 1);
+                player->AddItem(164442, 1);
+                player->AddItem(164436, 1);
+                break;
+            case CLASS_HUNTER:
+            case CLASS_SHAMAN:
+                player->AddItem(164399, 1);
+                player->AddItem(164401, 1);
+                player->AddItem(164402, 1);
+                player->AddItem(164395, 1);
+                player->AddItem(164400, 1);
+                player->AddItem(164398, 1);
+                player->AddItem(164396, 1);
+                player->AddItem(164397, 1);
+                break;
+            case CLASS_MAGE:
+            case CLASS_WARLOCK:
+                player->AddItem(146786, 1);
+                player->AddItem(146791, 1);
+                player->AddItem(146789, 1);
+                player->AddItem(146785, 1);
+                player->AddItem(146788, 1);
+                player->AddItem(146790, 1);
+                player->AddItem(146792, 1);
+                player->AddItem(146787, 1);
+                break;
+            case CLASS_PRIEST:
+                break;
+            case CLASS_ROGUE:
+            case CLASS_DEMON_HUNTER:
+            case CLASS_MONK:
+                player->AddItem(160166, 1);
+                player->AddItem(160168, 1);
+                player->AddItem(160167, 1);
+                player->AddItem(160169, 1);
+                player->AddItem(160164, 1);
+                player->AddItem(160163, 1);
+                player->AddItem(160162, 1);
+                player->AddItem(160165, 1);
+                break;
+            case CLASS_DRUID:
+                player->AddItem(164559, 1);
+                player->AddItem(164561, 1);
+                player->AddItem(164560, 1);
+                player->AddItem(164562, 1);
+                player->AddItem(164557, 1);
+                player->AddItem(164556, 1);
+                player->AddItem(164555, 1);
+                player->AddItem(164558, 1);
+                break;
+            }
+            player->SaveToDB();
+        }
+
+        return true;
+    }
 };
 
 void AddSC_item_scripts()
 {
     new item_only_for_flight();
+    new item_nether_wraith_beacon();
     new item_gor_dreks_ointment();
+    new item_incendiary_explosives();
     new item_mysterious_egg();
     new item_disgusting_jar();
+    new item_pile_fake_furs();
     new item_petrov_cluster_bombs();
     new item_dehta_trap_smasher();
+    new item_trident_of_nazjan();
     new item_captured_frog();
-    new item_generic_limit_chance_above_60();
+    new item_primal_egg();
+    new item_pulsating_sac();
+    new item_titanium_seal_of_dalaran();
+    new item_brewfest_sampler;
+    new item_brewfest_ram_reins;
+    new item_leyara_locket();
+    new item_fel_spotted_egg();
+    RegisterItemScript(item_level_boost_50);
 }

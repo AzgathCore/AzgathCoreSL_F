@@ -19,7 +19,6 @@
 #define QuestObjectiveCriteriaMgr_h__
 
 #include "CriteriaHandler.h"
-#include "DatabaseEnvFwd.h"
 
 class TC_GAME_API QuestObjectiveCriteriaMgr : public CriteriaHandler
 {
@@ -33,10 +32,10 @@ public:
 
     static void DeleteFromDB(ObjectGuid const& guid);
     void LoadFromDB(PreparedQueryResult objectiveResult, PreparedQueryResult criteriaResult);
-    void SaveToDB(CharacterDatabaseTransaction trans);
+    void SaveToDB(CharacterDatabaseTransaction& trans);
 
-    void ResetCriteria(CriteriaFailEvent failEvent, int32 failAsset, bool evenIfCriteriaComplete = false);
-    void ResetCriteriaTree(uint32 criteriaTreeId);
+    void ResetCriteria(CriteriaTypes type, uint64 miscValue1 = 0, uint64 miscValue2 = 0, bool evenIfCriteriaComplete = false);
+    void ResetCriteriaTree(uint32 Criteriatreeid);
 
     void SendAllData(Player const* receiver) const override;
 
@@ -44,7 +43,7 @@ public:
     bool HasCompletedObjective(QuestObjective const* questObjective) const;
 
 protected:
-    void SendCriteriaUpdate(Criteria const* entry, CriteriaProgress const* progress, Seconds timeElapsed, bool timedCompleted) const override;
+    void SendCriteriaUpdate(Criteria const* entry, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const override;
 
     void SendCriteriaProgressRemoved(uint32 criteriaId) override;
 
@@ -55,7 +54,7 @@ protected:
     void SendPacket(WorldPacket const* data) const override;
 
     std::string GetOwnerInfo() const override;
-    CriteriaList const& GetCriteriaByType(CriteriaType type, uint32 asset) const override;
+    CriteriaList const& GetCriteriaByType(CriteriaTypes type) const override;
 
 private:
     Player* _owner;

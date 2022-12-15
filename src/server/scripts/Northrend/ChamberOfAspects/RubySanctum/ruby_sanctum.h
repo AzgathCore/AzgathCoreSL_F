@@ -49,8 +49,7 @@ enum RSDataTypes
     DATA_BURNING_TREE_4                     = 16,
     DATA_FLAME_RING                         = 17,
     DATA_TWILIGHT_FLAME_RING                = 18,
-    DATA_BALTHARUS_CLONE                    = 19,
-    DATA_FLAME_WALLS                        = 20
+    DATA_BALTHARUS_CLONE                    = 19
 };
 
 enum RSSharedActions
@@ -129,12 +128,10 @@ enum RSInstanceSpell
     SPELL_BERSERK                       = 26662
 };
 
-template <class AI, class T>
+template<typename AI, typename T>
 inline AI* GetRubySanctumAI(T* obj)
 {
     return GetInstanceAI<AI>(obj, RSScriptName);
 }
-
-#define RegisterRubySanctumCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetRubySanctumAI)
 
 #endif // RUBY_SANCTUM_H_

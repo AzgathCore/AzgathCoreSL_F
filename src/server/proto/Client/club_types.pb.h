@@ -52,13 +52,19 @@ void TC_PROTO_API protobuf_AddDesc_club_5ftypes_2eproto();
 void protobuf_AssignDesc_club_5ftypes_2eproto();
 void protobuf_ShutdownFile_club_5ftypes_2eproto();
 
-// ===================================================================
 
 // ===================================================================
 
-// ===================================================================
 
 // ===================================================================
+
+
+// ===================================================================
+
+
+// ===================================================================
+
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace v1
@@ -69,6 +75,8 @@ void protobuf_ShutdownFile_club_5ftypes_2eproto();
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

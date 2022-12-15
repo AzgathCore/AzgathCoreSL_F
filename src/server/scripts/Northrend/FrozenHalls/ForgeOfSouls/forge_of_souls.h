@@ -57,12 +57,10 @@ enum FOSCreatures
     NPC_CRUCIBLE_OF_SOULS           = 37094
 };
 
-template <class AI, class T>
-inline AI* GetForgeOfSoulsAI(T* obj)
+template<typename AI>
+inline AI* GetForgeOfSoulsAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, FoSScriptName);
+    return GetInstanceAI<AI>(creature, FoSScriptName);
 }
-
-#define RegisterForgeOfSoulsCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetForgeOfSoulsAI)
 
 #endif // FORGE_OF_SOULS_H_

@@ -30,14 +30,6 @@ BossBoundaryData const boundaries =
     { DATA_SARTHARION, new RectangleBoundary(3218.86f, 3275.69f, 484.68f, 572.4f) }
 };
 
-DungeonEncounterData const encounters[] =
-{
-    { DATA_SARTHARION, {{ 1090 }} },
-    { DATA_TENEBRON, {{ 1092 }} },
-    { DATA_SHADRON, {{ 1091 }} },
-    { DATA_VESPERON, {{ 1093 }} }
-};
-
 class instance_obsidian_sanctum : public InstanceMapScript
 {
 public:
@@ -50,7 +42,6 @@ public:
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
             LoadBossBoundaries(boundaries);
-            LoadDungeonEncounterData(encounters);
         }
 
         void OnCreatureCreate(Creature* creature) override
@@ -65,17 +56,14 @@ public:
                 case NPC_TENEBRON:
                     tenebronGUID = creature->GetGUID();
                     creature->setActive(true);
-                    creature->SetFarVisible(true);
                     break;
                 case NPC_SHADRON:
                     shadronGUID = creature->GetGUID();
                     creature->setActive(true);
-                    creature->SetFarVisible(true);
                     break;
                 case NPC_VESPERON:
                     vesperonGUID = creature->GetGUID();
                     creature->setActive(true);
-                    creature->SetFarVisible(true);
                     break;
             }
         }

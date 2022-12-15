@@ -24,7 +24,6 @@ EndScriptData */
 
 #include "ScriptMgr.h"
 #include "Chat.h"
-#include "ChatCommand.h"
 #include "CriteriaHandler.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
@@ -36,49 +35,43 @@ EndScriptData */
 #include "RBAC.h"
 #include "SpellMgr.h"
 
-#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-using namespace Trinity::ChatCommands;
-
 class disable_commandscript : public CommandScript
 {
 public:
     disable_commandscript() : CommandScript("disable_commandscript") { }
 
-    ChatCommandTable GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommandTable removeDisableCommandTable =
+        static std::vector<ChatCommand> removeDisableCommandTable =
         {
-            { "spell",                HandleRemoveDisableSpellCommand,               rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_SPELL,                Console::Yes },
-            { "quest",                HandleRemoveDisableQuestCommand,               rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_QUEST,                Console::Yes },
-            { "map",                  HandleRemoveDisableMapCommand,                 rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_MAP,                  Console::Yes },
-            { "battleground",         HandleRemoveDisableBattlegroundCommand,        rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_BATTLEGROUND,         Console::Yes },
-            { "criteria",             HandleRemoveDisableCriteriaCommand,            rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_CRITERIA,             Console::Yes },
-            { "outdoorpvp",           HandleRemoveDisableOutdoorPvPCommand,          rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_OUTDOORPVP,           Console::Yes },
-            { "vmap",                 HandleRemoveDisableVmapCommand,                rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_VMAP,                 Console::Yes },
-            { "mmap",                 HandleRemoveDisableMMapCommand,                rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_MMAP,                 Console::Yes },
+            { "spell",        rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_SPELL,        true, &HandleRemoveDisableSpellCommand,        "" },
+            { "quest",        rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_QUEST,        true, &HandleRemoveDisableQuestCommand,        "" },
+            { "map",          rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_MAP,          true, &HandleRemoveDisableMapCommand,          "" },
+            { "battleground", rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_BATTLEGROUND, true, &HandleRemoveDisableBattlegroundCommand, "" },
+            { "criteria",     rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_CRITERIA,     true, &HandleRemoveDisableCriteriaCommand,     "" },
+            { "outdoorpvp",   rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_OUTDOORPVP,   true, &HandleRemoveDisableOutdoorPvPCommand,   "" },
+            { "vmap",         rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_VMAP,         true, &HandleRemoveDisableVmapCommand,         "" },
+            { "mmap",         rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE_MMAP,         true, &HandleRemoveDisableMMapCommand,         "" },
         };
-        static ChatCommandTable addDisableCommandTable =
+        static std::vector<ChatCommand> addDisableCommandTable =
         {
-            { "spell",                HandleAddDisableSpellCommand,                  rbac::RBAC_PERM_COMMAND_DISABLE_ADD_SPELL,                Console::Yes },
-            { "quest",                HandleAddDisableQuestCommand,                  rbac::RBAC_PERM_COMMAND_DISABLE_ADD_QUEST,                Console::Yes },
-            { "map",                  HandleAddDisableMapCommand,                    rbac::RBAC_PERM_COMMAND_DISABLE_ADD_MAP,                  Console::Yes },
-            { "battleground",         HandleAddDisableBattlegroundCommand,           rbac::RBAC_PERM_COMMAND_DISABLE_ADD_BATTLEGROUND,         Console::Yes },
-            { "criteria",             HandleAddDisableCriteriaCommand,               rbac::RBAC_PERM_COMMAND_DISABLE_ADD_CRITERIA,             Console::Yes },
-            { "outdoorpvp",           HandleAddDisableOutdoorPvPCommand,             rbac::RBAC_PERM_COMMAND_DISABLE_ADD_OUTDOORPVP,           Console::Yes },
-            { "vmap",                 HandleAddDisableVmapCommand,                   rbac::RBAC_PERM_COMMAND_DISABLE_ADD_VMAP,                 Console::Yes },
-            { "mmap",                 HandleAddDisableMMapCommand,                   rbac::RBAC_PERM_COMMAND_DISABLE_ADD_MMAP,                 Console::Yes },
+            { "spell",        rbac::RBAC_PERM_COMMAND_DISABLE_ADD_SPELL,        true, &HandleAddDisableSpellCommand,        "" },
+            { "quest",        rbac::RBAC_PERM_COMMAND_DISABLE_ADD_QUEST,        true, &HandleAddDisableQuestCommand,        "" },
+            { "map",          rbac::RBAC_PERM_COMMAND_DISABLE_ADD_MAP,          true, &HandleAddDisableMapCommand,          "" },
+            { "battleground", rbac::RBAC_PERM_COMMAND_DISABLE_ADD_BATTLEGROUND, true, &HandleAddDisableBattlegroundCommand, "" },
+            { "criteria",     rbac::RBAC_PERM_COMMAND_DISABLE_ADD_CRITERIA,     true, &HandleAddDisableCriteriaCommand,     "" },
+            { "outdoorpvp",   rbac::RBAC_PERM_COMMAND_DISABLE_ADD_OUTDOORPVP,   true, &HandleAddDisableOutdoorPvPCommand,   "" },
+            { "vmap",         rbac::RBAC_PERM_COMMAND_DISABLE_ADD_VMAP,         true, &HandleAddDisableVmapCommand,         "" },
+            { "mmap",         rbac::RBAC_PERM_COMMAND_DISABLE_ADD_MMAP,         true, &HandleAddDisableMMapCommand,         "" },
         };
-        static ChatCommandTable disableCommandTable =
+        static std::vector<ChatCommand> disableCommandTable =
         {
-            { "add",    addDisableCommandTable },
-            { "remove", removeDisableCommandTable },
+            { "add",    rbac::RBAC_PERM_COMMAND_DISABLE_ADD,    true, nullptr, "", addDisableCommandTable },
+            { "remove", rbac::RBAC_PERM_COMMAND_DISABLE_REMOVE, true, nullptr, "", removeDisableCommandTable },
         };
-        static ChatCommandTable commandTable =
+        static std::vector<ChatCommand> commandTable =
         {
-            { "disable", disableCommandTable },
+            { "disable", rbac::RBAC_PERM_COMMAND_DISABLE, false, nullptr, "", disableCommandTable },
         };
         return commandTable;
     }

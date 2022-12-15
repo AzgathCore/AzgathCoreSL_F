@@ -20,22 +20,28 @@
 
 #include "MovementGenerator.h"
 
-template <class T>
-class HomeMovementGenerator : public MovementGeneratorMedium< T, HomeMovementGenerator<T> >
+class Creature;
+
+template < class T >
+class HomeMovementGenerator;
+
+template <>
+class HomeMovementGenerator<Creature> : public MovementGeneratorMedium< Creature, HomeMovementGenerator<Creature> >
 {
     public:
-        explicit HomeMovementGenerator();
 
-        MovementGeneratorType GetMovementGeneratorType() const override;
+        HomeMovementGenerator() : arrived(false), skipToHome(false) { }
+        ~HomeMovementGenerator() { }
 
-        void DoInitialize(T*);
-        void DoReset(T*);
-        bool DoUpdate(T*, uint32);
-        void DoDeactivate(T*);
-        void DoFinalize(T*, bool, bool);
+        void DoInitialize(Creature*);
+        void DoFinalize(Creature*);
+        void DoReset(Creature*);
+        bool DoUpdate(Creature*, const uint32);
+        MovementGeneratorType GetMovementGeneratorType() const override { return HOME_MOTION_TYPE; }
 
     private:
-        void SetTargetLocation(T*);
+        void _setTargetLocation(Creature*);
+        bool arrived;
+        bool skipToHome;
 };
-
 #endif

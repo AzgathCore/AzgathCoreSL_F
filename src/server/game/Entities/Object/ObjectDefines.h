@@ -36,13 +36,11 @@
 #define DEFAULT_VISIBILITY_INSTANCE     170.0f                  // default visible distance in instances, 170 yards
 #define DEFAULT_VISIBILITY_BGARENAS     533.0f                  // default visible distance in BG/Arenas, roughly 533 yards
 
-#define DEFAULT_PLAYER_BOUNDING_RADIUS      0.388999998569489f     // player size, also currently used (correctly?) for any non Unit world objects
-#define DEFAULT_PLAYER_COMBAT_REACH         1.5f
-#define MIN_MELEE_REACH                     2.0f
-#define NOMINAL_MELEE_RANGE                 5.0f
-#define MELEE_RANGE                         (NOMINAL_MELEE_RANGE - MIN_MELEE_REACH * 2) //center to center for players
-
-#define EXTRA_CELL_SEARCH_RADIUS            40.0f // We need in some cases increase search radius. Allow to find creatures with huge combat reach in a different nearby cell.
+#define DEFAULT_WORLD_OBJECT_SIZE       0.388999998569489f      // player size, also currently used (correctly?) for any non Unit world objects
+#define DEFAULT_COMBAT_REACH            1.5f
+#define MIN_MELEE_REACH                 2.0f
+#define NOMINAL_MELEE_RANGE             5.0f
+#define MELEE_RANGE                     (NOMINAL_MELEE_RANGE - MIN_MELEE_REACH * 2) //center to center for players
 
 enum class VisibilityDistanceType : uint8
 {
@@ -68,18 +66,18 @@ enum TempSummonType
     TEMPSUMMON_MANUAL_DESPAWN              = 8              // despawns when UnSummon() is called
 };
 
+enum PhaseMasks
+{
+    PHASEMASK_NORMAL   = 0x00000001,
+    PHASEMASK_ANYWHERE = 0xFFFFFFFF
+};
+
 enum NotifyFlags
 {
     NOTIFY_NONE                     = 0x00,
     NOTIFY_AI_RELOCATION            = 0x01,
     NOTIFY_VISIBILITY_CHANGED       = 0x02,
     NOTIFY_ALL                      = 0xFF
-};
-
-enum GOSummonType
-{
-   GO_SUMMON_TIMED_OR_CORPSE_DESPAWN = 0,    // despawns after a specified time OR when the summoner dies
-   GO_SUMMON_TIMED_DESPAWN = 1     // despawns after a specified time
 };
 
 inline uint64 MAKE_PAIR64(uint32 l, uint32 h)

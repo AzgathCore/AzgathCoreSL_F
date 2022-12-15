@@ -17,7 +17,6 @@
 
 #include "ScriptMgr.h"
 #include "Chat.h"
-#include "ChatCommand.h"
 #include "DB2Stores.h"
 #include "Language.h"
 #include "ObjectMgr.h"
@@ -25,30 +24,28 @@
 #include "RBAC.h"
 #include "WorldSession.h"
 
-using namespace Trinity::ChatCommands;
-
 class scene_commandscript : public CommandScript
 {
 public:
     scene_commandscript() : CommandScript("scene_commandscript") { }
 
-    ChatCommandTable GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommandTable sceneCommandTable =
+        static std::vector<ChatCommand> sceneCommandTable =
         {
-            { "debug",          HandleDebugSceneCommand,       rbac::RBAC_PERM_COMMAND_SCENE_DEBUG,        Console::No },
-            { "play",           HandlePlaySceneCommand,        rbac::RBAC_PERM_COMMAND_SCENE_PLAY,         Console::No },
-            { "playpackage",    HandlePlayScenePackageCommand, rbac::RBAC_PERM_COMMAND_SCENE_PLAY_PACKAGE, Console::No },
-            { "cancel",         HandleCancelSceneCommand,      rbac::RBAC_PERM_COMMAND_SCENE_CANCEL,       Console::No }
+            { "debug",          rbac::RBAC_PERM_COMMAND_SCENE_DEBUG,        false, &HandleDebugSceneCommand,        "" },
+            { "play",           rbac::RBAC_PERM_COMMAND_SCENE_PLAY,         false, &HandlePlaySceneCommand,         "" },
+            { "playpackage",    rbac::RBAC_PERM_COMMAND_SCENE_PLAY_PACKAGE, false, &HandlePlayScenePackageCommand,  "" },
+            { "cancel",         rbac::RBAC_PERM_COMMAND_SCENE_CANCEL,       false, &HandleCancelSceneCommand,       "" }
         };
-        static ChatCommandTable commandTable =
+        static std::vector<ChatCommand> commandTable =
         {
-            { "scene",          sceneCommandTable }
+            { "scene",          rbac::RBAC_PERM_COMMAND_SCENE,              true, nullptr,                          "", sceneCommandTable }
         };
         return commandTable;
     }
 
-    static bool HandleDebugSceneCommand(ChatHandler* handler)
+    static bool HandleDebugSceneCommand(ChatHandler* handler, char const* /*args*/)
     {
         if (Player* player = handler->GetSession()->GetPlayer())
         {
@@ -59,8 +56,17 @@ public:
         return true;
     }
 
-    static bool HandlePlaySceneCommand(ChatHandler* handler, uint32 sceneId)
+    static bool HandlePlaySceneCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
+        char const* sceneIdStr = strtok((char*)args, " ");
+
+        if (!sceneIdStr)
+            return false;
+
+        uint32 sceneId = atoi(sceneIdStr);
         Player* target = handler->getSelectedPlayerOrSelf();
 
         if (!target)
@@ -77,8 +83,19 @@ public:
         return true;
     }
 
-    static bool HandlePlayScenePackageCommand(ChatHandler* handler, uint32 sceneScriptPackageId, Optional<uint32> flags)
+    static bool HandlePlayScenePackageCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
+        char const* scenePackageIdStr = strtok((char*)args, " ");
+        char const* flagsStr = strtok(nullptr, "");
+
+        if (!scenePackageIdStr)
+            return false;
+
+        uint32 scenePackageId = atoi(scenePackageIdStr);
+        uint32 flags = flagsStr ? atoi(flagsStr) : SCENEFLAG_UNK16;
         Player* target = handler->getSelectedPlayerOrSelf();
 
         if (!target)
@@ -88,15 +105,18 @@ public:
             return false;
         }
 
-        if (!sSceneScriptPackageStore.HasRecord(sceneScriptPackageId))
+        if (!sSceneScriptPackageStore.HasRecord(scenePackageId))
             return false;
 
-        target->GetSceneMgr().PlaySceneByPackageId(sceneScriptPackageId, static_cast<SceneFlag>(flags.value_or(0)));
+        target->GetSceneMgr().PlaySceneByPackageId(scenePackageId, flags);
         return true;
     }
 
-    static bool HandleCancelSceneCommand(ChatHandler* handler, uint32 sceneScriptPackageId)
+    static bool HandleCancelSceneCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
         Player* target = handler->getSelectedPlayerOrSelf();
 
         if (!target)
@@ -106,10 +126,12 @@ public:
             return false;
         }
 
-        if (!sSceneScriptPackageStore.HasRecord(sceneScriptPackageId))
+        uint32 id = atoi((char*)args);
+
+        if (!sSceneScriptPackageStore.HasRecord(id))
             return false;
 
-        target->GetSceneMgr().CancelSceneByPackageId(sceneScriptPackageId);
+        target->GetSceneMgr().CancelSceneByPackageId(id);
         return true;
     }
 };

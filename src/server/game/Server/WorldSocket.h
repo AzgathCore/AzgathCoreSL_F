@@ -18,16 +18,17 @@
 #ifndef __WORLDSOCKET_H__
 #define __WORLDSOCKET_H__
 
+#include "Common.h"
 #include "AsyncCallbackProcessor.h"
 #include "AuthDefines.h"
 #include "DatabaseEnvFwd.h"
 #include "MessageBuffer.h"
 #include "Socket.h"
-#include "WorldPacket.h"
 #include "WorldPacketCrypt.h"
 #include "MPSCQueue.h"
 #include <array>
-#include <boost/asio/ip/tcp.hpp>
+#include <chrono>
+#include <functional>
 #include <mutex>
 
 typedef struct z_stream_s z_stream;
@@ -36,22 +37,6 @@ class WorldPacket;
 class WorldSession;
 enum ConnectionType : int8;
 enum OpcodeClient : uint16;
-
-class EncryptablePacket : public WorldPacket
-{
-public:
-    EncryptablePacket(WorldPacket const& packet, bool encrypt) : WorldPacket(packet), _encrypt(encrypt)
-    {
-        SocketQueueLink.store(nullptr, std::memory_order_relaxed);
-    }
-
-    bool NeedsEncryption() const { return _encrypt; }
-
-    std::atomic<EncryptablePacket*> SocketQueueLink;
-
-private:
-    bool _encrypt;
-};
 
 namespace WorldPackets
 {
@@ -156,7 +141,7 @@ private:
     SessionKey _sessionKey;
     std::array<uint8, 16> _encryptKey;
 
-    TimePoint _LastPingTime;
+    std::chrono::steady_clock::time_point _LastPingTime;
     uint32 _OverSpeedPings;
 
     std::mutex _worldSessionLock;
@@ -166,7 +151,7 @@ private:
 
     MessageBuffer _headerBuffer;
     MessageBuffer _packetBuffer;
-    MPSCQueue<EncryptablePacket, &EncryptablePacket::SocketQueueLink> _bufferQueue;
+    MPSCQueue<EncryptablePacket> _bufferQueue;
     std::size_t _sendBufferSize;
 
     z_stream* _compressionStream;

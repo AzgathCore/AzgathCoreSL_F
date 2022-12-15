@@ -76,7 +76,7 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::LFG::LFGBlackListSlot con
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::LFG::LFGBlackList const& blackList)
 {
-    data.WriteBit(blackList.PlayerGuid.has_value());
+    data.WriteBit(blackList.PlayerGuid.is_initialized());
     data << uint32(blackList.Slot.size());
     if (blackList.PlayerGuid)
         data << *blackList.PlayerGuid;
@@ -121,10 +121,10 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::LFG::LfgPlayerQuestReward
     for (WorldPackets::LFG::LfgPlayerQuestRewardCurrency const& bonusCurrency : playerQuestReward.BonusCurrency)
         data << bonusCurrency;
 
-    data.WriteBit(playerQuestReward.RewardSpellID.has_value());
-    data.WriteBit(playerQuestReward.Unused1.has_value());
-    data.WriteBit(playerQuestReward.Unused2.has_value());
-    data.WriteBit(playerQuestReward.Honor.has_value());
+    data.WriteBit(playerQuestReward.RewardSpellID.is_initialized());
+    data.WriteBit(playerQuestReward.Unused1.is_initialized());
+    data.WriteBit(playerQuestReward.Unused2.is_initialized());
+    data.WriteBit(playerQuestReward.Honor.is_initialized());
     data.FlushBits();
 
     if (playerQuestReward.RewardSpellID)
@@ -303,8 +303,8 @@ WorldPacket const* WorldPackets::LFG::LFGQueueStatus::Write()
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::LFG::LFGPlayerRewards const& lfgPlayerRewards)
 {
-    data.WriteBit(lfgPlayerRewards.RewardItem.has_value());
-    data.WriteBit(lfgPlayerRewards.RewardCurrency.has_value());
+    data.WriteBit(lfgPlayerRewards.RewardItem.is_initialized());
+    data.WriteBit(lfgPlayerRewards.RewardCurrency.is_initialized());
     if (lfgPlayerRewards.RewardItem)
         data << *lfgPlayerRewards.RewardItem;
 
@@ -400,6 +400,27 @@ WorldPacket const* WorldPackets::LFG::LFGTeleportDenied::Write()
 {
     _worldPacket.WriteBits(Reason, 4);
     _worldPacket.FlushBits();
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::LFG::RequestPVPRewardsResponse::Write()
+{
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::RandomBattleground];
+
+    _worldPacket.WriteBit(HasWon10vs10);
+    _worldPacket.WriteBit(HasWonSkirmish);
+    _worldPacket.WriteBit(HasWon2vs2);
+    _worldPacket.WriteBit(HasWon3vs3);
+    _worldPacket.FlushBits();
+
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::Battleground10v10];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::ArenaSkirmish];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::Arena2v2];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::Arena3v3];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::BattlegroundBraw];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::ArenaBraw];
+    _worldPacket << Rewards[(uint8)BattlegroundBracketType::EpicBattleground];
 
     return &_worldPacket;
 }

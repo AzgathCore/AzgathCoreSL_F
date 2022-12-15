@@ -21,35 +21,51 @@
 #include "Define.h"
 #include "ConditionMgr.h"
 #include "ObjectGuid.h"
+#include "SharedDefines.h"
 #include <list>
-#include <memory>
 #include <set>
 #include <unordered_map>
 #include <vector>
 
+class ChallengeModeMgr;
 class LootStore;
 class LootTemplate;
 class Player;
 struct Loot;
 struct LootItem;
-enum LootType : uint8;
-enum class ItemContext : uint8;
+
+//checked. 9.0.2
+enum LootItemUIType
+{
+    LOOT_ITEM_UI_NORMAL            = 0,                        // player can loot the item.
+    LOOT_ITEM_UI_ROLL              = 1,                        // roll is ongoing. player cannot loot.
+    LOOT_ITEM_UI_LOCKED            = 2,                        // item is shown in red. player cannot loot.
+    LOOT_ITEM_UI_MASTER            = 3,                        // item can only be distributed by group loot master.
+    LOOT_ITEM_UI_OWNER             = 4,                        // ignore binding confirmation and etc, for single player looting
+};
+
+enum class LootItemType : uint8
+{
+    Item        = 0,
+    Currency    = 1
+};
 
 struct TC_GAME_API LootStoreItem
 {
-    uint32 itemid;                                         // id of the item
-    uint32 reference;                                      // referenced TemplateleId
-    float chance;                                          // chance to drop for both quest and non-quest items, chance to be used for refs
-    uint16 lootmode;
-    bool needs_quest;                                      // quest drop (quest is required for item to drop)
-    uint8 groupid;
-    uint8 mincount;                                        // mincount for drop items
-    uint8 maxcount;                                        // max drop count for the item mincount or Ref multiplicator
-    ConditionContainer conditions;                         // additional loot condition
+    uint32  itemid;                                         // id of the item
+    uint32  reference;                                      // referenced TemplateleId
+    float   chance;                                         // chance to drop for both quest and non-quest items, chance to be used for refs
+    uint16  lootmode;
+    bool    needs_quest;                                    // quest drop (quest is required for item to drop)
+    uint8   groupid;
+    uint32  mincount;                                       // mincount for drop items
+    uint32  maxcount;                                       // max drop count for the item mincount or Ref multiplicator
+    ConditionContainer conditions;                               // additional loot condition
+    std::vector<int32> bonus;
 
     // Constructor
     // displayid is filled in IsValid() which must be called after
-    LootStoreItem(uint32 _itemid, uint32 _reference, float _chance, bool _needs_quest, uint16 _lootmode, uint8 _groupid, uint8 _mincount, uint8 _maxcount)
+    LootStoreItem(uint32 _itemid, uint32 _reference, float _chance, bool _needs_quest, uint16 _lootmode, uint8 _groupid, uint32 _mincount, uint32 _maxcount)
         : itemid(_itemid), reference(_reference), chance(_chance), lootmode(_lootmode),
         needs_quest(_needs_quest), groupid(_groupid), mincount(_mincount), maxcount(_maxcount)
          { }
@@ -77,7 +93,7 @@ class TC_GAME_API LootStore
         void CheckLootRefs(LootIdSet* ref_set = nullptr) const; // check existence reference and remove it from ref_set
         void ReportUnusedIds(LootIdSet const& ids_set) const;
         void ReportNonExistingId(uint32 lootId) const;
-        void ReportNonExistingId(uint32 lootId, char const* ownerType, uint32 ownerId) const;
+        void ReportNonExistingId(uint32 lootId, const char* ownerType, uint32 ownerId) const;
 
         bool HaveLootFor(uint32 loot_id) const { return m_LootTemplates.find(loot_id) != m_LootTemplates.end(); }
         bool HaveQuestLootFor(uint32 loot_id) const;
@@ -112,13 +128,12 @@ class TC_GAME_API LootTemplate
         // Adds an entry to the group (at loading stage)
         void AddEntry(LootStoreItem* item);
         // Rolls for every item in the template and adds the rolled items the the loot
-        void Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId, Player const* personalLooter = nullptr) const;
-        void ProcessPersonalLoot(std::unordered_map<Player*, std::unique_ptr<Loot>>& personalLoot, bool rate, uint16 lootMode) const;
-        void CopyConditions(ConditionContainer const& conditions);
+       // void ProcessOploteChest(Loot& loot) const;
+        void Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId = 0, Player const* player = nullptr, bool specOnly = false) const;
+      //  void ProcessChallengeChest(Loot& loot, uint32 lootId, ChallengeModeMgr* _challenge) const;
+        void CopyConditions(const ConditionContainer& conditions);
         void CopyConditions(LootItem* li) const;
 
-        // True if template includes at least 1 drop for the player
-        bool HasDropForPlayer(Player const* player, uint8 groupId = 0, bool strictUsabilityCheck = false) const;
         // True if template includes at least 1 quest drop entry
         bool HasQuestDrop(LootTemplateMap const& store, uint8 groupId = 0) const;
         // True if template includes at least 1 quest drop for an active quest of the player
@@ -139,12 +154,6 @@ class TC_GAME_API LootTemplate
         LootTemplate& operator=(LootTemplate const&) = delete;
 };
 
-std::unordered_map<ObjectGuid, std::unique_ptr<Loot>> GenerateDungeonEncounterPersonalLoot(uint32 dungeonEncounterId,
-    uint32 lootId, LootStore const& store, LootType type, WorldObject const* lootOwner,
-    uint32 minMoney, uint32 maxMoney,
-    uint16 lootMode, ItemContext context,
-    std::vector<Player*> const& tappers);
-
 //=====================================================
 
 TC_GAME_API extern LootStore LootTemplates_Creature;
@@ -155,6 +164,7 @@ TC_GAME_API extern LootStore LootTemplates_Mail;
 TC_GAME_API extern LootStore LootTemplates_Milling;
 TC_GAME_API extern LootStore LootTemplates_Pickpocketing;
 TC_GAME_API extern LootStore LootTemplates_Reference;
+TC_GAME_API extern LootStore LootTemplates_Scrapping;
 TC_GAME_API extern LootStore LootTemplates_Skinning;
 TC_GAME_API extern LootStore LootTemplates_Disenchant;
 TC_GAME_API extern LootStore LootTemplates_Prospecting;
@@ -167,6 +177,7 @@ TC_GAME_API void LoadLootTemplates_Item();
 TC_GAME_API void LoadLootTemplates_Mail();
 TC_GAME_API void LoadLootTemplates_Milling();
 TC_GAME_API void LoadLootTemplates_Pickpocketing();
+TC_GAME_API void LoadLootTemplates_Scrapping();
 TC_GAME_API void LoadLootTemplates_Skinning();
 TC_GAME_API void LoadLootTemplates_Disenchant();
 TC_GAME_API void LoadLootTemplates_Prospecting();

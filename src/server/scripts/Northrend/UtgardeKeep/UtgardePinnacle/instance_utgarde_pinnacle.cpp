@@ -17,6 +17,7 @@
 
 #include "ScriptMgr.h"
 #include "AreaBoundary.h"
+#include "Creature.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "utgarde_pinnacle.h"
@@ -56,14 +57,6 @@ ObjectData const gameObjectData[] =
     { 0,                            0                           } //END
 };
 
-DungeonEncounterData const encounters[] =
-{
-    { DATA_SVALA_SORROWGRAVE, {{ 2030 }} },
-    { DATA_GORTOK_PALEHOOF, {{ 2027 }} },
-    { DATA_SKADI_THE_RUTHLESS, {{ 2029 }} },
-    { DATA_KING_YMIRON, {{ 2028 }} }
-};
-
 class instance_utgarde_pinnacle : public InstanceMapScript
 {
     public:
@@ -78,8 +71,8 @@ class instance_utgarde_pinnacle : public InstanceMapScript
                 LoadBossBoundaries(boundaries);
                 LoadDoorData(doorData);
                 LoadObjectData(creatureData, gameObjectData);
-                LoadDungeonEncounterData(encounters);
             }
+
 
             void OnGameObjectCreate(GameObject* go) override
             {
@@ -87,7 +80,7 @@ class instance_utgarde_pinnacle : public InstanceMapScript
 
                 if (go->GetEntry() == GO_GORTOK_PALEHOOF_SPHERE)
                     if (GetBossState(DATA_GORTOK_PALEHOOF) == DONE)
-                        go->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                        go->AddFlag(GO_FLAG_NOT_SELECTABLE);
             }
 
             void SetGuidData(uint32 type, ObjectGuid data) override

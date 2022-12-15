@@ -20,38 +20,36 @@
 #include "Corpse.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
-#include "GameTime.h"
 #include "Item.h"
 #include "Log.h"
+#include "MapManager.h"
 #include "NPCHandler.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "QueryPackets.h"
 #include "Realm.h"
-#include "TerrainMgr.h"
 #include "World.h"
+#include "WorldPacket.h"
 
-void WorldSession::BuildNameQueryData(ObjectGuid guid, WorldPackets::Query::NameCacheLookupResult& lookupData)
+void WorldSession::SendNameQueryOpcode(ObjectGuid guid)
 {
     Player* player = ObjectAccessor::FindConnectedPlayer(guid);
 
-    lookupData.Player = guid;
+    WorldPackets::Query::QueryPlayerNameResponse response;
+    response.Player = guid;
 
-    lookupData.Data.emplace();
-    if (lookupData.Data->Initialize(guid, player))
-        lookupData.Result = RESPONSE_SUCCESS; // name known
+    if (response.Data.Initialize(guid, player))
+        response.Result = RESPONSE_SUCCESS; // name known
     else
-        lookupData.Result = RESPONSE_FAILURE; // name unknown
-}
-
-void WorldSession::HandleQueryPlayerNames(WorldPackets::Query::QueryPlayerNames& queryPlayerNames)
-{
-    WorldPackets::Query::QueryPlayerNamesResponse response;
-    for (ObjectGuid guid : queryPlayerNames.Players)
-        BuildNameQueryData(guid, response.Players.emplace_back());
+        response.Result = RESPONSE_FAILURE; // name unknown
 
     SendPacket(response.Write());
+}
+
+void WorldSession::HandleNameQueryOpcode(WorldPackets::Query::QueryPlayerName& packet)
+{
+    SendNameQueryOpcode(packet.Player);
 }
 
 void WorldSession::HandleQueryTimeOpcode(WorldPackets::Query::QueryTime& /*queryTime*/)
@@ -62,7 +60,7 @@ void WorldSession::HandleQueryTimeOpcode(WorldPackets::Query::QueryTime& /*query
 void WorldSession::SendQueryTimeResponse()
 {
     WorldPackets::Query::QueryTimeResponse queryTimeResponse;
-    queryTimeResponse.CurrentTime = GameTime::GetSystemTime();
+    queryTimeResponse.CurrentTime = time(nullptr);
     SendPacket(queryTimeResponse.Write());
 }
 
@@ -146,12 +144,12 @@ void WorldSession::HandleQueryCorpseLocation(WorldPackets::Query::QueryCorpseLoc
             if (corpseMapEntry->IsDungeon() && corpseMapEntry->CorpseMapID >= 0)
             {
                 // if corpse map have entrance
-                if (std::shared_ptr<TerrainInfo> entranceTerrain = sTerrainMgr.LoadTerrain(corpseMapEntry->CorpseMapID))
+                if (Map* entranceMap = sMapMgr->CreateBaseMap(corpseMapEntry->CorpseMapID))
                 {
                     mapID = corpseMapEntry->CorpseMapID;
                     x = corpseMapEntry->Corpse.X;
                     y = corpseMapEntry->Corpse.Y;
-                    z = entranceTerrain->GetStaticHeight(player->GetPhaseShift(), x, y, MAX_HEIGHT);
+                    z = entranceMap->GetHeight(player->GetPhaseShift(), x, y, MAX_HEIGHT);
                 }
             }
         }
@@ -260,13 +258,15 @@ void WorldSession::HandleQueryQuestCompletionNPCs(WorldPackets::Query::QueryQues
 
         questCompletionNPC.QuestID = questID;
 
-        for (auto const& creatures : sObjectMgr->GetCreatureQuestInvolvedRelationReverseBounds(questID))
-            questCompletionNPC.NPCs.push_back(creatures.second);
+        auto creatures = sObjectMgr->GetCreatureQuestInvolvedRelationReverseBounds(questID);
+        for (auto it = creatures.first; it != creatures.second; ++it)
+            questCompletionNPC.NPCs.push_back(it->second);
 
-        for (auto const& gos : sObjectMgr->GetGOQuestInvolvedRelationReverseBounds(questID))
-            questCompletionNPC.NPCs.push_back(gos.second | 0x80000000); // GO mask
+        auto gos = sObjectMgr->GetGOQuestInvolvedRelationReverseBounds(questID);
+        for (auto it = gos.first; it != gos.second; ++it)
+            questCompletionNPC.NPCs.push_back(it->second | 0x80000000); // GO mask
 
-        response.QuestCompletionNPCs.push_back(std::move(questCompletionNPC));
+        response.QuestCompletionNPCs.push_back(questCompletionNPC);
     }
 
     SendPacket(response.Write());

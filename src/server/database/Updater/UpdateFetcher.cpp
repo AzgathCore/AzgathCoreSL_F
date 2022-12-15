@@ -34,6 +34,7 @@ struct UpdateFetcher::DirectoryEntry
     DirectoryEntry(Path const& path_, State state_) : path(path_), state(state_) { }
 
     Path const path;
+
     State const state;
 };
 
@@ -306,7 +307,7 @@ UpdateResult UpdateFetcher::Update(bool const redundancyChecks,
         {
             case MODE_APPLY:
                 speed = Apply(availableQuery.first);
-                [[fallthrough]];
+                /* fallthrough */
             case MODE_REHASH:
                 UpdateEntry(file, speed);
                 break;

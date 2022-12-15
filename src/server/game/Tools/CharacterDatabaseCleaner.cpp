@@ -36,7 +36,12 @@ void CharacterDatabaseCleaner::CleanDatabase()
 
     uint32 oldMSTime = getMSTime();
 
-    uint32 flags = sWorld->GetPersistentWorldVariable(World::CharacterDatabaseCleaningFlagsVarId);
+    // check flags which clean ups are necessary
+    QueryResult result = CharacterDatabase.PQuery("SELECT value FROM worldstates WHERE entry = %d", WS_CLEANING_FLAGS);
+    if (!result)
+        return;
+
+    uint32 flags = (*result)[0].GetUInt32();
 
     // clean up
     if (flags & CLEANING_FLAG_ACHIEVEMENT_PROGRESS)
@@ -57,7 +62,7 @@ void CharacterDatabaseCleaner::CleanDatabase()
     // NOTE: In order to have persistentFlags be set in worldstates for the next cleanup,
     // you need to define them at least once in worldstates.
     flags &= sWorld->getIntConfig(CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS);
-    sWorld->SetPersistentWorldVariable(World::CharacterDatabaseCleaningFlagsVarId, flags);
+    CharacterDatabase.DirectPExecute("UPDATE worldstates SET value = %u WHERE entry = %d", flags, WS_CLEANING_FLAGS);
 
     sWorld->SetCleaningFlags(flags);
 

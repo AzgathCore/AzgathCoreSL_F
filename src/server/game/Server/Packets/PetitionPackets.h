@@ -20,6 +20,7 @@
 
 #include "Packet.h"
 #include "ObjectGuid.h"
+#include "WorldSession.h"
 
 namespace WorldPackets
 {
@@ -100,7 +101,6 @@ namespace WorldPackets
 
             ObjectGuid Unit;
             std::string Title;
-            uint32 Unused910 = 0;
         };
 
         class PetitionShowSignatures final : public ClientPacket

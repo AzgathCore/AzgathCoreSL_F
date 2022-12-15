@@ -22,14 +22,13 @@
 #include "DB2CascFileSource.h"
 #include "ExtractorDB2LoadInfo.h"
 #include "StringFormat.h"
-#include "VMapDefinitions.h"
 #include "vmapexport.h"
 #include "wdtfile.h"
 #include "wmo.h"
-#include <algorithm>
 #include <CascLib.h>
 #include <boost/filesystem/operations.hpp>
 #include <fstream>
+#include <iostream>
 #include <list>
 #include <map>
 #include <unordered_map>
@@ -62,9 +61,6 @@ std::unordered_set<uint32> maps_that_are_parents;
 boost::filesystem::path input_path;
 bool preciseVectorData = false;
 char const* CascProduct = "wow";
-char const* CascRegion = "eu";
-bool UseRemoteCasc = false;
-uint32 DbcLocale = 0;
 std::unordered_map<std::string, WMODoodadData> WmoDoodads;
 
 // Constants
@@ -105,16 +101,6 @@ bool OpenCascStorage(int locale)
 {
     try
     {
-        if (UseRemoteCasc)
-        {
-            boost::filesystem::path const casc_cache_dir(boost::filesystem::canonical(input_path) / "CascCache");
-            CascStorage.reset(CASC::Storage::OpenRemote(casc_cache_dir, WowLocaleToCascLocaleFlags[locale], CascProduct, CascRegion));
-            if (CascStorage)
-                return true;
-
-            printf("Unable to open remote casc fallback to local casc\n");
-        }
-
         boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         CascStorage.reset(CASC::Storage::Open(storage_dir, WowLocaleToCascLocaleFlags[locale], CascProduct));
         if (!CascStorage)
@@ -136,17 +122,6 @@ uint32 GetInstalledLocalesMask()
 {
     try
     {
-        if (UseRemoteCasc)
-        {
-            boost::filesystem::path const casc_cache_dir(boost::filesystem::canonical(input_path) / "CascCache");
-
-            std::unique_ptr<CASC::Storage> storage(CASC::Storage::OpenRemote(casc_cache_dir, 0, CascProduct, CascRegion));
-            if (storage)
-                return CASC_LOCALE_ALL_WOW;
-
-            printf("Unable to open remote casc fallback to local casc\n");
-        }
-
         boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         std::unique_ptr<CASC::Storage> storage(CASC::Storage::Open(storage_dir, 0, CascProduct));
         if (!storage)
@@ -254,7 +229,6 @@ bool ExtractSingleWmo(std::string& fname)
 
     fseek(output, 8, SEEK_SET); // store the correct no of vertices
     fwrite(&Wmo_nVertices, sizeof(int), 1, output);
-    // store the correct no of groups
     fwrite(&groupCount, sizeof(uint32), 1, output);
     fclose(output);
 
@@ -364,29 +338,6 @@ bool processArgv(int argc, char ** argv, const char *versionString)
             else
                 result = false;
         }
-        else if (strcmp("-c", argv[i]) == 0)
-        {
-            UseRemoteCasc = true;
-        }
-        else if (strcmp("-r", argv[i]) == 0)
-        {
-            if (i + 1 < argc && strlen(argv[i + 1]))
-                CascRegion = argv[++i];
-            else
-                result = false;
-        }
-        else if (strcmp("-dl", argv[i]) == 0)
-        {
-            if (i + 1 < argc && strlen(argv[i + 1]))
-            {
-                for (uint32 l = 0; l < TOTAL_LOCALES; ++l)
-                    if (!strcmp(argv[i + 1], localeNames[l]))
-                        DbcLocale = 1 << l;
-                i++;
-            }
-            else
-                result = false;
-        }
         else
         {
             result = false;
@@ -398,13 +349,10 @@ bool processArgv(int argc, char ** argv, const char *versionString)
     {
         printf("Extract %s.\n",versionString);
         printf("%s [-?][-s][-l][-d <path>][-p <product>]\n", argv[0]);
-        printf("   -s  : (default) small size (data size optimization), ~500MB less vmap data.\n");
-        printf("   -l  : large size, ~500MB more vmap data. (might contain more details)\n");
-        printf("   -d  <path>: Path to the vector data source folder.\n");
-        printf("   -p  <product>: which installed product to open (wow/wowt/wow_beta)\n");
-        printf("   -c  use remote casc\n");
-        printf("   -r  set remote casc region - standard: eu\n");
-        printf("   -dl dbc locale\n");
+        printf("   -s : (default) small size (data size optimization), ~500MB less vmap data.\n");
+        printf("   -l : large size, ~500MB more vmap data. (might contain more details)\n");
+        printf("   -d <path>: Path to the vector data source folder.\n");
+        printf("   -p <product>: which installed product to open (wow/wowt/wow_beta)\n");
         printf("   -? : This message.\n");
     }
 
@@ -415,9 +363,6 @@ static bool RetardCheck()
 {
     try
     {
-        if (UseRemoteCasc)
-            return true;
-
         boost::filesystem::path storageDir(boost::filesystem::canonical(input_path) / "Data");
         boost::filesystem::directory_iterator end;
         for (boost::filesystem::directory_iterator itr(storageDir); itr != end; ++itr)
@@ -443,14 +388,24 @@ static bool RetardCheck()
     return true;
 }
 
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+// Main
+//
+// The program must be run with two command line arguments
+//
+// Arg1 - The source MPQ name (for testing reading and file find)
+// Arg2 - Listfile name
+//
+
 int main(int argc, char ** argv)
 {
     Trinity::Banner::Show("VMAP data extractor", [](char const* text) { printf("%s\n", text); }, nullptr);
 
     bool success = true;
+    const char *versionString = "V4.06 2018_02";
 
     // Use command line arguments, when some
-    if (!processArgv(argc, argv, VMAP::VMAP_MAGIC))
+    if (!processArgv(argc, argv, versionString))
         return 1;
 
     if (!RetardCheck())
@@ -471,11 +426,11 @@ int main(int argc, char ** argv)
         }
     }
 
-    printf("Extract %s. Beginning work ....\n", VMAP::VMAP_MAGIC);
+    printf("Extract %s. Beginning work ....\n", versionString);
     //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     // Create the working directory
     if (mkdir(szWorkDirWmo
-#if defined(__linux__) || defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__linux__) || defined(__APPLE__)
                     , 0711
 #endif
                     ))
@@ -485,9 +440,6 @@ int main(int argc, char ** argv)
     int32 FirstLocale = -1;
     for (int i = 0; i < TOTAL_LOCALES; ++i)
     {
-        if (DbcLocale && !(DbcLocale & (1 << i)))
-            continue;
-
         if (i == LOCALE_none)
             continue;
 
@@ -505,7 +457,7 @@ int main(int argc, char ** argv)
             continue;
         }
 
-        printf("Detected client build %u for locale %s\n\n", build, localeNames[i]);
+        printf("Detected client build: %u\n\n", build);
         break;
     }
 
@@ -591,10 +543,10 @@ int main(int argc, char ** argv)
     printf("\n");
     if (!success)
     {
-        printf("ERROR: Extract %s. Work NOT complete.\n   Precise vector data=%d.\nPress any key.\n", VMAP::VMAP_MAGIC, preciseVectorData);
+        printf("ERROR: Extract %s. Work NOT complete.\n   Precise vector data=%d.\nPress any key.\n", versionString, preciseVectorData);
         getchar();
     }
 
-    printf("Extract %s. Work complete. No errors.\n", VMAP::VMAP_MAGIC);
+    printf("Extract %s. Work complete. No errors.\n", versionString);
     return 0;
 }

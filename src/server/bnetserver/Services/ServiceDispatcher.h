@@ -19,6 +19,8 @@
 #define ServiceDispatcher_h__
 
 #include "MessageBuffer.h"
+#include "Log.h"
+#include "Common.h"
 #include "AccountService.h"
 #include "AuthenticationService.h"
 #include "challenge_service.pb.h"

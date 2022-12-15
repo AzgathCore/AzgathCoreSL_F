@@ -18,6 +18,8 @@
 #ifndef TRINITY_CELL_H
 #define TRINITY_CELL_H
 
+#include <cmath>
+
 #include "TypeContainer.h"
 #include "TypeContainerVisitor.h"
 

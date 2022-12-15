@@ -807,7 +807,9 @@ class TC_PROTO_API ClubBanRangeSet : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -1780,6 +1782,7 @@ inline void ClubBanRangeSet::set_allocated_reason_range(::bgs::protocol::Unsigne
   // @@protoc_insertion_point(field_set_allocated:bgs.protocol.club.v1.ClubBanRangeSet.reason_range)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace v1
@@ -1790,6 +1793,8 @@ inline void ClubBanRangeSet::set_allocated_reason_range(::bgs::protocol::Unsigne
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

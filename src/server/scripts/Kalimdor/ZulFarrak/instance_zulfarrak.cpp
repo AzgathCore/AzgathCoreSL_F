@@ -15,6 +15,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+ //Missing scripts and Bosses
+
 #include "ScriptMgr.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
@@ -218,9 +220,9 @@ public:
             switch (type)
             {
                 case EVENT_PYRAMID:
-                    PyramidPhase = data;
+                    PyramidPhase=data;
                     break;
-            }
+            };
         }
 
         virtual void Update(uint32 diff) override

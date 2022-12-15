@@ -980,6 +980,7 @@ class TC_PROTO_API ClubMembershipService : public ServiceBase
 
 // ===================================================================
 
+
 // ===================================================================
 
 // SubscribeRequest
@@ -1661,6 +1662,7 @@ inline void AdvanceStreamMentionViewTimeRequest::set_allocated_agent_id(::bgs::p
   // @@protoc_insertion_point(field_set_allocated:bgs.protocol.club.v1.membership.AdvanceStreamMentionViewTimeRequest.agent_id)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace membership
@@ -1672,6 +1674,8 @@ inline void AdvanceStreamMentionViewTimeRequest::set_allocated_agent_id(::bgs::p
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

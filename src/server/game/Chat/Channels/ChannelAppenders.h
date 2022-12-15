@@ -21,7 +21,6 @@
 #include "Channel.h"
 #include "ChannelPackets.h"
 #include "CharacterCache.h"
-#include "GridNotifiers.h"
 #include "World.h"
 
 // initial packet data (notify type and channel name)
@@ -32,17 +31,16 @@ class ChannelNameBuilder
         ChannelNameBuilder(Channel const* source, PacketModifier const& modifier)
             : _source(source), _modifier(modifier){ }
 
-        Trinity::PacketSenderOwning<WorldPackets::Channel::ChannelNotify>* operator()(LocaleConstant locale) const
+        WorldPackets::Packet* operator()(LocaleConstant locale) const
         {
             // LocalizedPacketDo sends client DBC locale, we need to get available to server locale
             LocaleConstant localeIdx = sWorld->GetAvailableDbcLocale(locale);
 
-            Trinity::PacketSenderOwning<WorldPackets::Channel::ChannelNotify>* sender = new Trinity::PacketSenderOwning<WorldPackets::Channel::ChannelNotify>();
-            sender->Data.Type = _modifier.NotificationType;
-            sender->Data._Channel = _source->GetName(localeIdx);
-            _modifier.Append(sender->Data);
-            sender->Data.Write();
-            return sender;
+            WorldPackets::Channel::ChannelNotify* data = new WorldPackets::Channel::ChannelNotify();
+            data->Type = _modifier.NotificationType;
+            data->_Channel = _source->GetName(localeIdx);
+            _modifier.Append(*data);
+            return data;
         }
 
         private:
@@ -187,8 +185,8 @@ struct ChannelOwnerAppend
 {
     explicit ChannelOwnerAppend(Channel const* channel, ObjectGuid const& ownerGuid) : _channel(channel), _ownerGuid(ownerGuid)
     {
-        if (CharacterCacheEntry const* cInfo = sCharacterCache->GetCharacterCacheByGuid(_ownerGuid))
-            _ownerName = cInfo->Name;
+        if (CharacterCacheEntry const* characterInfo = sCharacterCache->GetCharacterCacheByGuid(_ownerGuid))
+            _ownerName = characterInfo->Name;
     }
 
     static uint8 const NotificationType = CHAT_CHANNEL_OWNER_NOTICE;

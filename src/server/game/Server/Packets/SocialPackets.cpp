@@ -16,6 +16,7 @@
  */
 
 #include "SocialPackets.h"
+#include "ObjectMgr.h"
 #include "SocialMgr.h"
 #include "World.h"
 
@@ -129,9 +130,7 @@ void WorldPackets::Social::SetContactNotes::Read()
 
 void WorldPackets::Social::AddIgnore::Read()
 {
-    uint32 nameLength = _worldPacket.ReadBits(9);
-    _worldPacket >> AccountGUID;
-    Name = _worldPacket.ReadString(nameLength);
+    Name = _worldPacket.ReadString(_worldPacket.ReadBits(9));
 }
 
 void WorldPackets::Social::DelIgnore::Read()
@@ -139,10 +138,8 @@ void WorldPackets::Social::DelIgnore::Read()
     _worldPacket >> Player;
 }
 
-WorldPacket const* WorldPackets::Social::SocialContractRequestResponse::Write()
+void WorldPackets::Social::QuickJoinAutoAcceptRequests::Read()
 {
-    _worldPacket.WriteBit(ShowSocialContract);
-    _worldPacket.FlushBits();
-
-    return &_worldPacket;
+    EnableAutoAccept = _worldPacket.ReadBit();
 }
+

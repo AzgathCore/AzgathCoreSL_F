@@ -17,7 +17,6 @@
 
 #include "ItemPacketsCommon.h"
 #include "Item.h"
-#include "Loot.h"
 #include "Player.h"
 
 namespace WorldPackets
@@ -54,7 +53,7 @@ void ItemInstance::Initialize(::Item const* item)
     std::vector<int32> const& bonusListIds = item->m_itemData->BonusListIDs;
     if (!bonusListIds.empty())
     {
-        ItemBonus.emplace();
+        ItemBonus = boost::in_place();
         ItemBonus->BonusListIDs.insert(ItemBonus->BonusListIDs.end(), bonusListIds.begin(), bonusListIds.end());
         ItemBonus->Context = item->GetContext();
     }
@@ -79,11 +78,11 @@ void ItemInstance::Initialize(UF::SocketedGem const* gem)
 
 void ItemInstance::Initialize(::LootItem const& lootItem)
 {
-    ItemID = lootItem.itemid;
+    ItemID               = lootItem.itemid;
 
     if (!lootItem.BonusListIDs.empty() || lootItem.randomBonusListId)
     {
-        ItemBonus.emplace();
+        ItemBonus = boost::in_place();
         ItemBonus->BonusListIDs = lootItem.BonusListIDs;
         ItemBonus->Context = lootItem.context;
         if (lootItem.randomBonusListId)
@@ -103,7 +102,7 @@ void ItemInstance::Initialize(::VoidStorageItem const* voidItem)
 
     if (!voidItem->BonusListIDs.empty())
     {
-        ItemBonus.emplace();
+        ItemBonus = boost::in_place();
         ItemBonus->Context = voidItem->Context;
         ItemBonus->BonusListIDs = voidItem->BonusListIDs;
     }
@@ -114,13 +113,13 @@ bool ItemInstance::operator==(ItemInstance const& r) const
     if (ItemID != r.ItemID)
         return false;
 
-    if (ItemBonus.has_value() != r.ItemBonus.has_value())
+    if (ItemBonus.is_initialized() != r.ItemBonus.is_initialized())
         return false;
 
     if (Modifications != r.Modifications)
         return false;
 
-    if (ItemBonus.has_value() && *ItemBonus != *r.ItemBonus)
+    if (ItemBonus.is_initialized() && *ItemBonus != *r.ItemBonus)
         return false;
 
     return true;
@@ -195,7 +194,7 @@ ByteBuffer& operator<<(ByteBuffer& data, ItemInstance const& itemInstance)
 {
     data << int32(itemInstance.ItemID);
 
-    data.WriteBit(itemInstance.ItemBonus.has_value());
+    data.WriteBit(itemInstance.ItemBonus.is_initialized());
     data.FlushBits();
 
     data << itemInstance.Modifications;
@@ -217,7 +216,7 @@ ByteBuffer& operator>>(ByteBuffer& data, ItemInstance& itemInstance)
 
     if (hasItemBonus)
     {
-        itemInstance.ItemBonus.emplace();
+        itemInstance.ItemBonus = boost::in_place();
         data >> *itemInstance.ItemBonus;
     }
 

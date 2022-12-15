@@ -158,7 +158,9 @@ class TC_PROTO_API ContentHandle : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -364,6 +366,7 @@ inline void ContentHandle::set_allocated_proto_url(::std::string* proto_url) {
   // @@protoc_insertion_point(field_set_allocated:bgs.protocol.ContentHandle.proto_url)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace protocol
@@ -372,6 +375,8 @@ inline void ContentHandle::set_allocated_proto_url(::std::string* proto_url) {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

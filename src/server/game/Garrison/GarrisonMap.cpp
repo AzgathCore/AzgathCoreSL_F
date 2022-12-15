@@ -20,6 +20,7 @@
 #include "GameObject.h"
 #include "Garrison.h"
 #include "Log.h"
+#include "WodGarrison.h"
 #include "ObjectAccessor.h"
 #include "ObjectGridLoader.h"
 #include "Player.h"
@@ -73,24 +74,27 @@ void GarrisonGridLoader::LoadN()
 
 void GarrisonGridLoader::Visit(GameObjectMapType& m)
 {
-    std::vector<Garrison::Plot*> plots = i_garrison->GetPlots();
-    if (!plots.empty())
+    if (i_garrison->IsWodGarrison())
     {
-        CellCoord cellCoord = i_cell.GetCellCoord();
-        for (Garrison::Plot* plot : plots)
+        std::vector<WodGarrison::Plot*> plots = i_garrison->ToWodGarrison()->GetPlots();
+        if (!plots.empty())
         {
-            Position const& spawn = plot->PacketInfo.PlotPos.Pos;
-            if (cellCoord != Trinity::ComputeCellCoord(spawn.GetPositionX(), spawn.GetPositionY()))
-                continue;
+            CellCoord cellCoord = i_cell.GetCellCoord();
+            for (WodGarrison::Plot* plot : plots)
+            {
+                Position const& spawn = plot->PacketInfo.PlotPos.Pos;
+                if (cellCoord != Trinity::ComputeCellCoord(spawn.GetPositionX(), spawn.GetPositionY()))
+                    continue;
 
-            GameObject* go = plot->CreateGameObject(i_map, i_garrison->GetFaction());
-            if (!go)
-                continue;
+                GameObject* go = plot->CreateGameObject(i_map, i_garrison->GetFaction());
+                if (!go)
+                    continue;
 
-            go->AddToGrid(m);
-            ObjectGridLoader::SetObjectCell(go, cellCoord);
-            go->AddToWorld();
-            ++i_gameObjects;
+                go->AddToGrid(m);
+                ObjectGridLoader::SetObjectCell(go, cellCoord);
+                go->AddToWorld();
+                ++i_gameObjects;
+            }
         }
     }
 }
@@ -100,8 +104,8 @@ void GarrisonGridLoader::Visit(CreatureMapType& /*m*/)
 
 }
 
-GarrisonMap::GarrisonMap(uint32 id, time_t expiry, uint32 instanceId, ObjectGuid const& owner)
-    : Map(id, expiry, instanceId, DIFFICULTY_NORMAL), _owner(owner), _loadingPlayer(nullptr)
+GarrisonMap::GarrisonMap(uint32 id, time_t expiry, uint32 instanceId, Map* parent, ObjectGuid const& owner)
+    : Map(id, expiry, instanceId, DIFFICULTY_NORMAL, parent), _owner(owner), _loadingPlayer(nullptr)
 {
     GarrisonMap::InitVisibilityDistance();
 }
@@ -117,10 +121,10 @@ void GarrisonMap::LoadGridObjects(NGridType* grid, Cell const& cell)
 Garrison* GarrisonMap::GetGarrison()
 {
     if (_loadingPlayer)
-        return _loadingPlayer->GetGarrison();
+        return _loadingPlayer->GetGarrison(GARRISON_TYPE_GARRISON); // TODO
 
     if (Player* owner = ObjectAccessor::FindConnectedPlayer(_owner))
-        return owner->GetGarrison();
+        return owner->GetGarrison(GARRISON_TYPE_GARRISON); // TODO
 
     return nullptr;
 }
@@ -128,8 +132,8 @@ Garrison* GarrisonMap::GetGarrison()
 void GarrisonMap::InitVisibilityDistance()
 {
     //init visibility distance for instances
-    m_VisibleDistance = World::GetMaxVisibleDistanceInInstances();
-    m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodInInstances();
+    m_VisibleDistance = World::GetMaxVisibleDistanceInBGArenas();
+    m_VisibilityNotifyPeriod = World::GetVisibilityNotifyPeriodInBGArenas();
 }
 
 bool GarrisonMap::AddPlayerToMap(Player* player, bool initPlayer /*= true*/)

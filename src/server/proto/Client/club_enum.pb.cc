@@ -36,6 +36,7 @@ const ::google::protobuf::EnumDescriptor* StreamNotificationFilter_descriptor_ =
 
 }  // namespace
 
+
 void protobuf_AssignDesc_club_5fenum_2eproto() {
   protobuf_AddDesc_club_5fenum_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -237,6 +238,7 @@ bool StreamNotificationFilter_IsValid(int value) {
       return false;
   }
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

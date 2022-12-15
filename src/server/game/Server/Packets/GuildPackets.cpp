@@ -29,7 +29,8 @@ WorldPackets::Guild::QueryGuildInfoResponse::QueryGuildInfoResponse()
 WorldPacket const* WorldPackets::Guild::QueryGuildInfoResponse::Write()
 {
     _worldPacket << GuildGuid;
-    _worldPacket.WriteBit(Info.has_value());
+    _worldPacket << PlayerGuid;
+    _worldPacket.WriteBit(Info.is_initialized());
     _worldPacket.FlushBits();
 
     if (Info)
@@ -117,13 +118,7 @@ void WorldPackets::Guild::DeclineGuildInvites::Read()
 void WorldPackets::Guild::GuildInviteByName::Read()
 {
     uint32 nameLen = _worldPacket.ReadBits(9);
-    if (_worldPacket.ReadBit())
-        Unused910.emplace();
-
     Name = _worldPacket.ReadString(nameLen);
-
-    if (Unused910)
-        _worldPacket >> *Unused910;
 }
 
 WorldPacket const* WorldPackets::Guild::GuildInvite::Write()
@@ -178,8 +173,6 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRosterMemberD
     data << uint8(rosterMemberData.Level);
     data << uint8(rosterMemberData.ClassID);
     data << uint8(rosterMemberData.Gender);
-    data << uint64(rosterMemberData.GuildClubMemberID);
-    data << uint8(rosterMemberData.RaceID);
 
     data.WriteBits(rosterMemberData.Name.length(), 6);
     data.WriteBits(rosterMemberData.Note.length(), 8);
@@ -187,8 +180,6 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRosterMemberD
     data.WriteBit(rosterMemberData.Authenticated);
     data.WriteBit(rosterMemberData.SorEligible);
     data.FlushBits();
-
-    data << rosterMemberData.DungeonScore;
 
     data.WriteString(rosterMemberData.Name);
     data.WriteString(rosterMemberData.Note);
@@ -281,10 +272,12 @@ WorldPacket const* WorldPackets::Guild::GuildEventPlayerLeft::Write()
 {
     _worldPacket.WriteBit(Removed);
     _worldPacket.WriteBits(LeaverName.length(), 6);
+    _worldPacket.FlushBits();
 
     if (Removed)
     {
         _worldPacket.WriteBits(RemoverName.length(), 6);
+        _worldPacket.FlushBits();
 
         _worldPacket << RemoverGUID;
         _worldPacket << uint32(RemoverVirtualRealmAddress);
@@ -501,9 +494,37 @@ void WorldPackets::Guild::GuildChangeNameRequest::Read()
     NewName = _worldPacket.ReadString(nameLen);
 }
 
+WorldPacket const* WorldPackets::Guild::GuildChangeNameResult::Write()
+{
+    _worldPacket.WriteBit(Success);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Guild::GuildNameChanged::Write()
+{
+    _worldPacket << GuildGUID;
+    _worldPacket.WriteBits(GuildName.length(), 7);
+    _worldPacket.FlushBits();
+    _worldPacket.WriteString(GuildName);
+
+    return &_worldPacket;
+}
+
 WorldPacket const* WorldPackets::Guild::GuildFlaggedForRename::Write()
 {
     _worldPacket.WriteBit(FlagSet);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Guild::GuildInviteDeclined::Write()
+{
+    _worldPacket.WriteBits(Name.length(), 6);
+    _worldPacket << AutoDecline;
+    _worldPacket.FlushBits();
+    _worldPacket << VirtualRealmAddress;
+    _worldPacket << Name;
 
     return &_worldPacket;
 }
@@ -524,6 +545,17 @@ WorldPacket const* WorldPackets::Guild::GuildPartyState::Write()
 
     return &_worldPacket;
 }
+
+WorldPacket const* WorldPackets::Guild::GuildChallengeCompleted::Write()
+{
+    _worldPacket << ChallengeType;
+    _worldPacket << CurrentCount;
+    _worldPacket << MaxCount;
+    _worldPacket << GoldAwarded;
+
+    return &_worldPacket;
+}
+
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRewardItem const& rewardItem)
 {
@@ -548,7 +580,7 @@ void WorldPackets::Guild::RequestGuildRewardsList::Read()
 
 WorldPacket const* WorldPackets::Guild::GuildRewardList::Write()
 {
-    _worldPacket << Version;
+    _worldPacket << int32(Version);
     _worldPacket << uint32(RewardItems.size());
 
     for (GuildRewardItem const& item : RewardItems)
@@ -650,7 +682,48 @@ WorldPacket const* WorldPackets::Guild::GuildBankQueryResults::Write()
     return &_worldPacket;
 }
 
-void WorldPackets::Guild::AutoGuildBankItem::Read()
+void WorldPackets::Guild::GuildBankSwapItemsAuto::Read()
+{
+    _worldPacket >> Banker;
+    _worldPacket >> BankTab;
+    _worldPacket >> BankSlot;
+}
+
+void WorldPackets::Guild::GuildBankSwapItemsCount::Read()
+{
+    _worldPacket >> Banker;
+    _worldPacket >> BankTab;
+    _worldPacket >> BankSlot;
+    _worldPacket >> PlayerSlot;
+    _worldPacket >> StackCount;
+
+    HasBag = _worldPacket.ReadBit();
+    _worldPacket.ResetBitPos();
+
+    if (HasBag)
+        _worldPacket >> PlayerBag;
+}
+
+void WorldPackets::Guild::GuildBankSwapItemsBankBank::Read()
+{
+    _worldPacket >> Banker;
+    _worldPacket >> BankTab;
+    _worldPacket >> BankSlot;
+    _worldPacket >> NewBankTab;
+    _worldPacket >> NewBankSlot;
+}
+
+void WorldPackets::Guild::GuildBankSwapItemsBankBankCount::Read()
+{
+    _worldPacket >> Banker;
+    _worldPacket >> BankTab;
+    _worldPacket >> BankSlot;
+    _worldPacket >> NewBankTab;
+    _worldPacket >> NewBankSlot;
+    _worldPacket >> StackCount;
+}
+
+void WorldPackets::Guild::DepositGuildBankItem::Read()
 {
     _worldPacket >> Banker;
     _worldPacket >> BankTab;
@@ -658,7 +731,7 @@ void WorldPackets::Guild::AutoGuildBankItem::Read()
     _worldPacket >> ContainerItemSlot;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -672,7 +745,7 @@ void WorldPackets::Guild::StoreGuildBankItem::Read()
     _worldPacket >> ContainerItemSlot;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -686,7 +759,7 @@ void WorldPackets::Guild::SwapItemWithGuildBankItem::Read()
     _worldPacket >> ContainerItemSlot;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -719,7 +792,7 @@ void WorldPackets::Guild::MergeItemWithGuildBankItem::Read()
     _worldPacket >> StackCount;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -734,7 +807,7 @@ void WorldPackets::Guild::SplitItemToGuildBank::Read()
     _worldPacket >> StackCount;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -749,7 +822,7 @@ void WorldPackets::Guild::MergeGuildBankItemWithItem::Read()
     _worldPacket >> StackCount;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -764,7 +837,7 @@ void WorldPackets::Guild::SplitGuildBankItemToInventory::Read()
     _worldPacket >> StackCount;
 
     if (_worldPacket.ReadBit())
-        ContainerSlot.emplace();
+        ContainerSlot = boost::in_place();
 
     if (ContainerSlot)
         _worldPacket >> *ContainerSlot;
@@ -806,7 +879,7 @@ WorldPacket const* WorldPackets::Guild::GuildBankLogQueryResults::Write()
 {
     _worldPacket << int32(Tab);
     _worldPacket << uint32(Entry.size());
-    _worldPacket.WriteBit(WeeklyBonusMoney.has_value());
+    _worldPacket.WriteBit(WeeklyBonusMoney.is_initialized());
     _worldPacket.FlushBits();
 
     for (GuildBankLogEntry const& logEntry : Entry)
@@ -815,22 +888,22 @@ WorldPacket const* WorldPackets::Guild::GuildBankLogQueryResults::Write()
         _worldPacket << uint32(logEntry.TimeOffset);
         _worldPacket << int8(logEntry.EntryType);
 
-        _worldPacket.WriteBit(logEntry.Money.has_value());
-        _worldPacket.WriteBit(logEntry.ItemID.has_value());
-        _worldPacket.WriteBit(logEntry.Count.has_value());
-        _worldPacket.WriteBit(logEntry.OtherTab.has_value());
+        _worldPacket.WriteBit(logEntry.Money.is_initialized());
+        _worldPacket.WriteBit(logEntry.ItemID.is_initialized());
+        _worldPacket.WriteBit(logEntry.Count.is_initialized());
+        _worldPacket.WriteBit(logEntry.OtherTab.is_initialized());
         _worldPacket.FlushBits();
 
-        if (logEntry.Money.has_value())
+        if (logEntry.Money.is_initialized())
             _worldPacket << uint64(*logEntry.Money);
 
-        if (logEntry.ItemID.has_value())
+        if (logEntry.ItemID.is_initialized())
             _worldPacket << int32(*logEntry.ItemID);
 
-        if (logEntry.Count.has_value())
+        if (logEntry.Count.is_initialized())
             _worldPacket << int32(*logEntry.Count);
 
-        if (logEntry.OtherTab.has_value())
+        if (logEntry.OtherTab.is_initialized())
             _worldPacket << int8(*logEntry.OtherTab);
     }
 
@@ -884,7 +957,7 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildNewsEvent con
     for (ObjectGuid memberGuid : newsEvent.MemberList)
         data << memberGuid;
 
-    data.WriteBit(newsEvent.Item.has_value());
+    data.WriteBit(newsEvent.Item.is_initialized());
     data.FlushBits();
 
     if (newsEvent.Item)
@@ -956,14 +1029,4 @@ void WorldPackets::Guild::GuildSetAchievementTracking::Read()
 
     for (uint32& achievementID : AchievementIDs)
         _worldPacket >> achievementID;
-}
-
-WorldPacket const* WorldPackets::Guild::GuildNameChanged::Write()
-{
-    _worldPacket << GuildGUID;
-    _worldPacket.WriteBits(GuildName.length(), 7);
-    _worldPacket.FlushBits();
-    _worldPacket.WriteString(GuildName);
-
-    return &_worldPacket;
 }

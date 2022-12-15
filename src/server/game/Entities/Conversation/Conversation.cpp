@@ -16,31 +16,26 @@
  */
 
 #include "Conversation.h"
-#include "ConditionMgr.h"
-#include "Containers.h"
-#include "ConversationDataStore.h"
 #include "Creature.h"
-#include "DB2Stores.h"
 #include "IteratorPair.h"
 #include "Log.h"
 #include "Map.h"
 #include "PhasingHandler.h"
-#include "Player.h"
 #include "ScriptMgr.h"
+#include "Unit.h"
 #include "UpdateData.h"
 
-Conversation::Conversation() : WorldObject(false), _duration(0), _textureKitId(0)
+Conversation::Conversation() : WorldObject(false), _duration(0), _relocateTick(CONVERSATION_RELOCATE_TICK), _textureKitId(0)
 {
     m_objectType |= TYPEMASK_CONVERSATION;
     m_objectTypeId = TYPEID_CONVERSATION;
 
     m_updateFlag.Stationary = true;
-    m_updateFlag.Conversation = true;
-
-    _lastLineEndTimes.fill(Milliseconds::zero());
 }
 
-Conversation::~Conversation() = default;
+Conversation::~Conversation()
+{
+}
 
 void Conversation::AddToWorld()
 {
@@ -62,23 +57,31 @@ void Conversation::RemoveFromWorld()
     }
 }
 
+bool Conversation::IsNeverVisibleFor(WorldObject const* seer) const
+{
+    if (!_global)
+        if (_participants.find(seer->GetGUID()) == _participants.end())
+            return true;
+
+    return WorldObject::IsNeverVisibleFor(seer);
+}
+
 void Conversation::Update(uint32 diff)
 {
-    if (GetDuration() > Milliseconds(diff))
+    if (GetDuration() > int32(diff))
+        _duration -= diff;
+    else
+        Remove(); // expired
+
+    if (_relocateTick <= diff)
     {
-        _duration -= Milliseconds(diff);
-        DoWithSuppressingObjectUpdates([&]()
-        {
-            // Only sent in CreateObject
-            ApplyModUpdateFieldValue(m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::Progress), int32(diff), true);
-            const_cast<UF::ConversationData&>(*m_conversationData).ClearChanged(&UF::ConversationData::Progress);
-        });
+        if (Unit* creator = ObjectAccessor::GetUnit(*this, GetCreatorGuid()))
+            Relocate(*creator);
+
+        _relocateTick = CONVERSATION_RELOCATE_TICK;
     }
     else
-    {
-        Remove(); // expired
-        return;
-    }
+        _relocateTick -= diff;
 
     WorldObject::Update(diff);
 }
@@ -87,11 +90,12 @@ void Conversation::Remove()
 {
     if (IsInWorld())
     {
+        sScriptMgr->OnConversationRemove(this, ObjectAccessor::GetUnit(*this, GetCreatorGuid()));
         AddObjectToRemoveList(); // calls RemoveFromWorld
     }
 }
 
-Conversation* Conversation::CreateConversation(uint32 conversationEntry, Unit* creator, Position const& pos, ObjectGuid privateObjectOwner, SpellInfo const* spellInfo /*= nullptr*/)
+Conversation* Conversation::CreateConversation(uint32 conversationEntry, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* spellInfo /*= nullptr*/)
 {
     ConversationTemplate const* conversationTemplate = sConversationDataStore->GetConversationTemplate(conversationEntry);
     if (!conversationTemplate)
@@ -100,7 +104,7 @@ Conversation* Conversation::CreateConversation(uint32 conversationEntry, Unit* c
     ObjectGuid::LowType lowGuid = creator->GetMap()->GenerateLowGuid<HighGuid::Conversation>();
 
     Conversation* conversation = new Conversation();
-    if (!conversation->Create(lowGuid, conversationEntry, creator->GetMap(), creator, pos, privateObjectOwner, spellInfo))
+    if (!conversation->Create(lowGuid, conversationEntry, creator->GetMap(), creator, pos, std::move(participants), spellInfo))
     {
         delete conversation;
         return nullptr;
@@ -109,118 +113,78 @@ Conversation* Conversation::CreateConversation(uint32 conversationEntry, Unit* c
     return conversation;
 }
 
-struct ConversationActorFillVisitor
-{
-    explicit ConversationActorFillVisitor(Conversation* conversation, Unit const* creator, Map const* map, ConversationActorTemplate const& actor)
-        : _conversation(conversation), _creator(creator), _map(map), _actor(actor)
-    {
-    }
-
-    void operator()(ConversationActorWorldObjectTemplate const& worldObject) const
-    {
-        Creature const* bestFit = nullptr;
-
-        for (auto const& [_, creature] : Trinity::Containers::MapEqualRange(_map->GetCreatureBySpawnIdStore(), worldObject.SpawnId))
-        {
-            bestFit = creature;
-
-            // If creature is in a personal phase then we pick that one specifically
-            if (creature->GetPhaseShift().GetPersonalGuid() == _creator->GetGUID())
-                break;
-        }
-
-        if (bestFit)
-            _conversation->AddActor(_actor.Id, _actor.Index, bestFit->GetGUID());
-    }
-
-    void operator()(ConversationActorNoObjectTemplate const& noObject) const
-    {
-        _conversation->AddActor(_actor.Id, _actor.Index, ConversationActorType::WorldObject, noObject.CreatureId, noObject.CreatureDisplayInfoId);
-    }
-
-    void operator()([[maybe_unused]] ConversationActorActivePlayerTemplate const& activePlayer) const
-    {
-        _conversation->AddActor(_actor.Id, _actor.Index, ObjectGuid::Create<HighGuid::Player>(0xFFFFFFFFFFFFFFFF));
-    }
-
-    void operator()(ConversationActorTalkingHeadTemplate const& talkingHead) const
-    {
-        _conversation->AddActor(_actor.Id, _actor.Index, ConversationActorType::TalkingHead, talkingHead.CreatureId, talkingHead.CreatureDisplayInfoId);
-    }
-
-private:
-    Conversation* _conversation;
-    Unit const* _creator;
-    ::Map const* _map;
-    ConversationActorTemplate const& _actor;
-};
-
-bool Conversation::Create(ObjectGuid::LowType lowGuid, uint32 conversationEntry, Map* map, Unit* creator, Position const& pos, ObjectGuid privateObjectOwner, SpellInfo const* /*spellInfo = nullptr*/)
+bool Conversation::Create(ObjectGuid::LowType lowGuid, uint32 conversationEntry, Map* map, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* /*spellInfo = nullptr*/)
 {
     ConversationTemplate const* conversationTemplate = sConversationDataStore->GetConversationTemplate(conversationEntry);
     ASSERT(conversationTemplate);
 
     _creatorGuid = creator->GetGUID();
-    SetPrivateObjectOwner(privateObjectOwner);
+    _participants = std::move(participants);
 
     SetMap(map);
     Relocate(pos);
-    RelocateStationaryPosition(pos);
 
     Object::_Create(ObjectGuid::Create<HighGuid::Conversation>(GetMapId(), conversationEntry, lowGuid));
     PhasingHandler::InheritPhaseShift(this, creator);
 
-    UpdatePositionData();
-    SetZoneScript();
-
     SetEntry(conversationEntry);
     SetObjectScale(1.0f);
 
+    SetUpdateFieldValue(m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::LastLineEndTime), conversationTemplate->LastLineEndTime);
+    _duration = conversationTemplate->LastLineEndTime;
     _textureKitId = conversationTemplate->TextureKitId;
 
-    for (ConversationActorTemplate const& actor : conversationTemplate->Actors)
-        std::visit(ConversationActorFillVisitor(this, creator, map, actor), actor.Data);
+    m_updateFlag.Conversation = conversationTemplate->Actors.size() != 0;
+
+    for (uint16 actorIndex = 0; actorIndex < conversationTemplate->Actors.size(); ++actorIndex)
+    {
+        if (ConversationActorTemplate const* actor = conversationTemplate->Actors[actorIndex])
+        {
+            UF::ConversationActor& actorField = AddDynamicUpdateFieldValue(m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::Actors));
+            actorField.CreatureID = actor->CreatureId;
+            actorField.CreatureDisplayInfoID = actor->CreatureModelId;
+            actorField.Type = AsUnderlyingType(ActorType::CreatureActor);
+        }
+    }
+
+    for (uint16 actorIndex = 0; actorIndex < conversationTemplate->ActorGuids.size(); ++actorIndex)
+    {
+        ObjectGuid::LowType const& actorGuid = conversationTemplate->ActorGuids[actorIndex];
+        if (!actorGuid)
+            continue;
+
+        for (auto const& pair : Trinity::Containers::MapEqualRange(map->GetCreatureBySpawnIdStore(), actorGuid))
+        {
+            // we just need the last one, overriding is legit
+            AddActor(pair.second->GetGUID(), actorIndex);
+        }
+    }
+
+    for (uint16 actorIndex = 0; actorIndex < conversationTemplate->ActorNearIds.size(); ++actorIndex)
+    {
+        uint32 const& actorNearId = conversationTemplate->ActorNearIds[actorIndex];
+        if (!actorNearId)
+            continue;
+
+        if (Creature* actor = creator->FindNearestCreature(actorNearId, 50.f))
+            AddActor(actor->GetGUID(), actorIndex);
+    }
 
     std::set<uint16> actorIndices;
     std::vector<UF::ConversationLine> lines;
     for (ConversationLineTemplate const* line : conversationTemplate->Lines)
     {
-        if (!sConditionMgr->IsObjectMeetingNotGroupedConditions(CONDITION_SOURCE_TYPE_CONVERSATION_LINE, line->Id, creator))
-            continue;
-
         actorIndices.insert(line->ActorIdx);
         lines.emplace_back();
-
         UF::ConversationLine& lineField = lines.back();
         lineField.ConversationLineID = line->Id;
+        lineField.StartTime = line->StartTime;
         lineField.UiCameraID = line->UiCameraID;
         lineField.ActorIndex = line->ActorIdx;
         lineField.Flags = line->Flags;
-
-        ConversationLineEntry const* convoLine = sConversationLineStore.LookupEntry(line->Id); // never null for conversationTemplate->Lines
-
-        for (LocaleConstant locale = LOCALE_enUS; locale < TOTAL_LOCALES; locale = LocaleConstant(locale + 1))
-        {
-            if (locale == LOCALE_none)
-                continue;
-
-            _lineStartTimes[{ locale, line->Id }] = _lastLineEndTimes[locale];
-            if (locale == DEFAULT_LOCALE)
-                lineField.StartTime = _lastLineEndTimes[locale].count();
-
-            if (int32 const* broadcastTextDuration = sDB2Manager.GetBroadcastTextDuration(convoLine->BroadcastTextID, locale))
-                _lastLineEndTimes[locale] += Milliseconds(*broadcastTextDuration);
-
-            _lastLineEndTimes[locale] += Milliseconds(convoLine->AdditionalDuration);
-        }
     }
 
-    _duration = Milliseconds(*std::max_element(_lastLineEndTimes.begin(), _lastLineEndTimes.end()));
-    SetUpdateFieldValue(m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::LastLineEndTime), _duration.count());
     SetUpdateFieldValue(m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::Lines), std::move(lines));
-
-    // conversations are despawned 5-20s after LastLineEndTime
-    _duration += 10s;
 
     sScriptMgr->OnConversationCreate(this, creator);
 
@@ -241,36 +205,16 @@ bool Conversation::Create(ObjectGuid::LowType lowGuid, uint32 conversationEntry,
     return true;
 }
 
-void Conversation::AddActor(int32 actorId, uint32 actorIdx, ObjectGuid const& actorGuid)
+void Conversation::AddActor(ObjectGuid const& actorGuid, uint16 actorIdx)
 {
     auto actorField = m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::Actors, actorIdx);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::CreatureID), 0);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::CreatureDisplayInfoID), 0);
     SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::ActorGUID), actorGuid);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::Id), actorId);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::Type), AsUnderlyingType(ConversationActorType::WorldObject));
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::NoActorObject), 0);
+    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::Type), AsUnderlyingType(ActorType::WorldObjectActor));
 }
 
-void Conversation::AddActor(int32 actorId, uint32 actorIdx, ConversationActorType type, uint32 creatureId, uint32 creatureDisplayInfoId)
+void Conversation::AddParticipant(ObjectGuid const& participantGuid)
 {
-    auto actorField = m_values.ModifyValue(&Conversation::m_conversationData).ModifyValue(&UF::ConversationData::Actors, actorIdx);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::CreatureID), creatureId);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::CreatureDisplayInfoID), creatureDisplayInfoId);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::ActorGUID), ObjectGuid::Empty);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::Id), actorId);
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::Type), AsUnderlyingType(type));
-    SetUpdateFieldValue(actorField.ModifyValue(&UF::ConversationActor::NoActorObject), type == ConversationActorType::WorldObject ? 1 : 0);
-}
-
-Milliseconds const* Conversation::GetLineStartTime(LocaleConstant locale, int32 lineId) const
-{
-    return Trinity::Containers::MapGetValuePtr(_lineStartTimes, { locale, lineId });
-}
-
-Milliseconds Conversation::GetLastLineEndTime(LocaleConstant locale) const
-{
-    return _lastLineEndTimes[locale];
+    _participants.insert(participantGuid);
 }
 
 uint32 Conversation::GetScriptId() const
@@ -315,7 +259,7 @@ void Conversation::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::Obje
     if (requestedConversationMask.IsAnySet())
         valuesMask.Set(TYPEID_CONVERSATION);
 
-    ByteBuffer& buffer = PrepareValuesUpdateBuffer(data);
+    ByteBuffer buffer = PrepareValuesUpdateBuffer();
     std::size_t sizePos = buffer.wpos();
     buffer << uint32(0);
     buffer << uint32(valuesMask.GetBlock(0));
@@ -328,18 +272,7 @@ void Conversation::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::Obje
 
     buffer.put<uint32>(sizePos, buffer.wpos() - sizePos - 4);
 
-    data->AddUpdateBlock();
-}
-
-void Conversation::ValuesUpdateForPlayerWithMaskSender::operator()(Player const* player) const
-{
-    UpdateData udata(Owner->GetMapId());
-    WorldPacket packet;
-
-    Owner->BuildValuesUpdateForPlayerWithMask(&udata, ObjectMask.GetChangesMask(), ConversationMask.GetChangesMask(), player);
-
-    udata.BuildPacket(&packet);
-    player->SendDirectMessage(&packet);
+    data->AddUpdateBlock(buffer);
 }
 
 void Conversation::ClearUpdateMask(bool remove)

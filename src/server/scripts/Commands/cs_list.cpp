@@ -25,58 +25,58 @@ EndScriptData */
 #include "ScriptMgr.h"
 #include "CharacterCache.h"
 #include "Chat.h"
-#include "ChatCommand.h"
-#include "Creature.h"
 #include "DatabaseEnv.h"
-#include "DB2Stores.h"
-#include "GameObject.h"
-#include "GameTime.h"
 #include "Language.h"
-#include "Map.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
-#include "PhasingHandler.h"
 #include "Player.h"
 #include "RBAC.h"
 #include "SpellAuraEffects.h"
 #include "WorldSession.h"
 #include <sstream>
 
-using namespace Trinity::ChatCommands;
-
 class list_commandscript : public CommandScript
 {
 public:
     list_commandscript() : CommandScript("list_commandscript") { }
 
-    ChatCommandTable GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommandTable listAurasCommandTable =
+        static std::vector<ChatCommand> listCommandTable =
         {
-            { "",               HandleListAllAurasCommand,      rbac::RBAC_PERM_COMMAND_LIST_AURAS,         Console::No  },
-            { "id",             HandleListAurasByIdCommand,     rbac::RBAC_PERM_COMMAND_LIST_AURAS,         Console::No  },
-            { "name",           HandleListAurasByNameCommand,   rbac::RBAC_PERM_COMMAND_LIST_AURAS,         Console::No  },
+            { "creature", rbac::RBAC_PERM_COMMAND_LIST_CREATURE, true, &HandleListCreatureCommand, "" },
+            { "item",     rbac::RBAC_PERM_COMMAND_LIST_ITEM,     true, &HandleListItemCommand,     "" },
+            { "object",   rbac::RBAC_PERM_COMMAND_LIST_OBJECT,   true, &HandleListObjectCommand,   "" },
+            { "auras",    rbac::RBAC_PERM_COMMAND_LIST_AURAS,   false, &HandleListAurasCommand,    "" },
+            { "mail",     rbac::RBAC_PERM_COMMAND_LIST_MAIL,     true, &HandleListMailCommand,     "" },
+            { "scenes",   rbac::RBAC_PERM_COMMAND_LIST_SCENES,  false, &HandleListScenesCommand,   "" },
+            { "quests",   rbac::RBAC_PERM_COMMAND_LIST_QUESTS,  false, &HandleListQuestsCommand,   "" },
         };
-
-        static ChatCommandTable listCommandTable =
+        static std::vector<ChatCommand> commandTable =
         {
-            { "creature",       HandleListCreatureCommand,      rbac::RBAC_PERM_COMMAND_LIST_CREATURE,      Console::Yes },
-            { "item",           HandleListItemCommand,          rbac::RBAC_PERM_COMMAND_LIST_ITEM,          Console::Yes },
-            { "object",         HandleListObjectCommand,        rbac::RBAC_PERM_COMMAND_LIST_OBJECT,        Console::Yes },
-            { "auras",          listAurasCommandTable                                                                    },
-            { "mail",           HandleListMailCommand,          rbac::RBAC_PERM_COMMAND_LIST_MAIL,          Console::Yes },
-            { "spawnpoints",    HandleListSpawnPointsCommand,   rbac::RBAC_PERM_COMMAND_LIST_SPAWNPOINTS,   Console::No  },
-            { "respawns",       HandleListRespawnsCommand,      rbac::RBAC_PERM_COMMAND_LIST_RESPAWNS,      Console::No  },
-            { "scenes",         HandleListScenesCommand,        rbac::RBAC_PERM_COMMAND_LIST_SCENES,        Console::No },
-        };
-        static ChatCommandTable commandTable =
-        {
-            { "list", listCommandTable },
+            { "list", rbac::RBAC_PERM_COMMAND_LIST,true, nullptr, "", listCommandTable },
         };
         return commandTable;
     }
 
-    static bool HandleListCreatureCommand(ChatHandler* handler, Variant<Hyperlink<creature_entry>, uint32> creatureId, Optional<uint32> countArg)
+    static bool HandleListCreatureCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
+        // number or [name] Shift-click form |color|Hcreature_entry:creature_id|h[name]|h|r
+        char* id = handler->extractKeyFromLink((char*)args, "Hcreature_entry");
+        if (!id)
+            return false;
+
+        uint32 creatureId = atoul(id);
+        if (!creatureId)
+        {
+            handler->PSendSysMessage(LANG_COMMAND_INVALIDCREATUREID, creatureId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(creatureId);
         if (!cInfo)
         {
@@ -85,7 +85,8 @@ public:
             return false;
         }
 
-        uint32 count = countArg.value_or(10);
+        char* countStr = strtok(nullptr, " ");
+        uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
             return false;
@@ -117,30 +118,11 @@ public:
                 float y         = fields[2].GetFloat();
                 float z         = fields[3].GetFloat();
                 uint16 mapId    = fields[4].GetUInt16();
-                bool liveFound = false;
 
-                // Get map (only support base map from console)
-                Map* thisMap = nullptr;
                 if (handler->GetSession())
-                    thisMap = handler->GetSession()->GetPlayer()->GetMap();
-
-                // If map found, try to find active version of this creature
-                if (thisMap)
-                {
-                    auto const creBounds = Trinity::Containers::MapEqualRange(thisMap->GetCreatureBySpawnIdStore(), guid);
-                    for (auto& [spawnId, creature] : creBounds)
-                        handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), std::to_string(guid).c_str(), cInfo->Name.c_str(),
-                            x, y, z, mapId, creature->GetGUID().ToString().c_str(), creature->IsAlive() ? "*" : " ");
-                    liveFound = creBounds.begin() != creBounds.end();
-                }
-
-                if (!liveFound)
-                {
-                    if (handler->GetSession())
-                        handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), std::to_string(guid).c_str(), cInfo->Name.c_str(), x, y, z, mapId, "", "");
-                    else
-                        handler->PSendSysMessage(LANG_CREATURE_LIST_CONSOLE, std::to_string(guid).c_str(), cInfo->Name.c_str(), x, y, z, mapId, "", "");
-                }
+                    handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), creatureId, cInfo->Name.c_str(), x, y, z, mapId);
+                else
+                    handler->PSendSysMessage(LANG_CREATURE_LIST_CONSOLE, std::to_string(guid).c_str(), cInfo->Name.c_str(), x, y, z, mapId);
             }
             while (result->NextRow());
         }
@@ -150,10 +132,33 @@ public:
         return true;
     }
 
-    static bool HandleListItemCommand(ChatHandler* handler, Hyperlink<item> item, Optional<uint32> countArg)
+    static bool HandleListItemCommand(ChatHandler* handler, char const* args)
     {
-        uint32 itemId = item->Item->GetId();
-        uint32 count = countArg.value_or(10);
+        if (!*args)
+            return false;
+
+        char const* id = handler->extractKeyFromLink((char*)args, "Hitem");
+        if (!id)
+            return false;
+
+        uint32 itemId = atoul(id);
+        if (!itemId)
+        {
+            handler->PSendSysMessage(LANG_COMMAND_ITEMIDINVALID, itemId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId);
+        if (!itemTemplate)
+        {
+            handler->PSendSysMessage(LANG_COMMAND_ITEMIDINVALID, itemId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        char* countStr = strtok(nullptr, " ");
+        uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
             return false;
@@ -192,8 +197,6 @@ public:
                     itemPos = "[equipped]";
                 else if (Player::IsInventoryPos(itemBag, itemSlot))
                     itemPos = "[in inventory]";
-                else if (Player::IsReagentBankPos(itemBag, itemSlot))
-                    itemPos = "[in reagent bank]";
                 else if (Player::IsBankPos(itemBag, itemSlot))
                     itemPos = "[in bank]";
                 else
@@ -207,7 +210,7 @@ public:
 
             if (count > resultCount)
                 count -= resultCount;
-            else
+            else if (count)
                 count = 0;
         }
 
@@ -254,7 +257,7 @@ public:
 
             if (count > resultCount)
                 count -= resultCount;
-            else
+            else if (count)
                 count = 0;
         }
 
@@ -329,7 +332,7 @@ public:
 
             if (count > resultCount)
                 count -= resultCount;
-            else
+            else if (count)
                 count = 0;
         }
 
@@ -345,8 +348,24 @@ public:
         return true;
     }
 
-    static bool HandleListObjectCommand(ChatHandler* handler, Variant<Hyperlink<gameobject_entry>, uint32> gameObjectId, Optional<uint32> countArg)
+    static bool HandleListObjectCommand(ChatHandler* handler, char const* args)
     {
+        if (!*args)
+            return false;
+
+        // number or [name] Shift-click form |color|Hgameobject_entry:go_id|h[name]|h|r
+        char* id = handler->extractKeyFromLink((char*)args, "Hgameobject_entry");
+        if (!id)
+            return false;
+
+        uint32 gameObjectId = atoul(id);
+        if (!gameObjectId)
+        {
+            handler->PSendSysMessage(LANG_COMMAND_LISTOBJINVALIDID, gameObjectId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         GameObjectTemplate const* gInfo = sObjectMgr->GetGameObjectTemplate(gameObjectId);
         if (!gInfo)
         {
@@ -355,7 +374,8 @@ public:
             return false;
         }
 
-        uint32 count = countArg.value_or(10);
+        char* countStr = strtok(nullptr, " ");
+        uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
             return false;
@@ -388,30 +408,11 @@ public:
                 float z         = fields[3].GetFloat();
                 uint16 mapId    = fields[4].GetUInt16();
                 uint32 entry    = fields[5].GetUInt32();
-                bool liveFound = false;
 
-                // Get map (only support base map from console)
-                Map* thisMap = nullptr;
                 if (handler->GetSession())
-                    thisMap = handler->GetSession()->GetPlayer()->GetMap();
-
-                // If map found, try to find active version of this object
-                if (thisMap)
-                {
-                    auto const goBounds = Trinity::Containers::MapEqualRange(thisMap->GetGameObjectBySpawnIdStore(), guid);
-                    for (auto& [spawnId, go] : goBounds)
-                        handler->PSendSysMessage(LANG_GO_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId,
-                            go->GetGUID().ToString().c_str(), go->isSpawned() ? "*" : " ");
-                    liveFound = goBounds.begin() != goBounds.end();
-                }
-
-                if (!liveFound)
-                {
-                    if (handler->GetSession())
-                        handler->PSendSysMessage(LANG_GO_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId, "", "");
-                    else
-                        handler->PSendSysMessage(LANG_GO_LIST_CONSOLE, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId, "", "");
-                }
+                    handler->PSendSysMessage(LANG_GO_LIST_CHAT, std::to_string(guid).c_str(), entry, gInfo->name.c_str(), x, y, z, mapId);
+                else
+                    handler->PSendSysMessage(LANG_GO_LIST_CONSOLE, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId);
             }
             while (result->NextRow());
         }
@@ -421,22 +422,7 @@ public:
         return true;
     }
 
-    static bool HandleListAllAurasCommand(ChatHandler* handler)
-    {
-        return ListAurasCommand(handler, {}, {});
-    }
-
-    static bool HandleListAurasByIdCommand(ChatHandler* handler, uint32 spellId)
-    {
-        return ListAurasCommand(handler, spellId, {});
-    }
-
-    static bool HandleListAurasByNameCommand(ChatHandler* handler, WTail namePart)
-    {
-        return ListAurasCommand(handler, {}, namePart);
-    }
-
-    static bool ListAurasCommand(ChatHandler* handler, Optional<uint32> spellId, std::wstring namePart)
+    static bool HandleListAurasCommand(ChatHandler* handler, char const* args)
     {
         Unit* unit = handler->getSelectedUnit();
         if (!unit)
@@ -446,22 +432,20 @@ public:
             return false;
         }
 
-        wstrToLower(namePart);
+        std::string param = (char*)args;
 
         char const* talentStr = handler->GetTrinityString(LANG_TALENT);
         char const* passiveStr = handler->GetTrinityString(LANG_PASSIVE);
 
         Unit::AuraApplicationMap const& auras = unit->GetAppliedAuras();
         handler->PSendSysMessage(LANG_COMMAND_TARGET_LISTAURAS, std::to_string(auras.size()).c_str());
-        for (auto const& [aurId, aurApp] : auras)
+        for (Unit::AuraApplicationMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
         {
 
+            AuraApplication const* aurApp = itr->second;
             Aura const* aura = aurApp->GetBase();
             char const* name = aura->GetSpellInfo()->SpellName->Str[handler->GetSessionDbcLocale()];
             bool talent = aura->GetSpellInfo()->HasAttribute(SPELL_ATTR0_CU_IS_TALENT);
-
-            if (!ShouldListAura(aura->GetSpellInfo(), spellId, namePart, handler->GetSessionDbcLocale()))
-                continue;
 
             std::ostringstream ss_name;
             ss_name << "|cffffffff|Hspell:" << aura->GetId() << "|h[" << name << "]|h|r";
@@ -473,68 +457,58 @@ public:
                 aura->GetCasterGUID().ToString().c_str());
         }
 
-        for (uint16 i = 0; i < TOTAL_AURAS; ++i)
+        if (param == "all")
         {
-            Unit::AuraEffectList const& auraList = unit->GetAuraEffectsByType(AuraType(i));
-            if (auraList.empty())
-                continue;
-
-            bool sizeLogged = false;
-
-            for (AuraEffect const* effect : auraList)
+            for (uint16 i = 0; i < TOTAL_AURAS; ++i)
             {
-                if (!ShouldListAura(effect->GetSpellInfo(), spellId, namePart, handler->GetSessionDbcLocale()))
+                Unit::AuraEffectList const& auraList = unit->GetAuraEffectsByType(AuraType(i));
+                if (auraList.empty())
                     continue;
 
-                if (!sizeLogged)
-                {
-                    sizeLogged = true;
-                    handler->PSendSysMessage(LANG_COMMAND_TARGET_LISTAURATYPE, std::to_string(auraList.size()).c_str(), i);
-                }
+                handler->PSendSysMessage(LANG_COMMAND_TARGET_LISTAURATYPE, std::to_string(auraList.size()).c_str(), i);
 
-                handler->PSendSysMessage(LANG_COMMAND_TARGET_AURASIMPLE, effect->GetId(), effect->GetEffIndex(), effect->GetAmount());
+                for (Unit::AuraEffectList::const_iterator itr = auraList.begin(); itr != auraList.end(); ++itr)
+                    handler->PSendSysMessage(LANG_COMMAND_TARGET_AURASIMPLE, (*itr)->GetId(), (*itr)->GetEffIndex(), (*itr)->GetAmount());
             }
         }
 
         return true;
     }
-
-    static bool ShouldListAura(SpellInfo const* spellInfo, Optional<uint32> spellId, std::wstring namePart, LocaleConstant locale)
-    {
-        if (spellId)
-            return spellInfo->Id == spellId;
-
-        if (!namePart.empty())
-        {
-            std::string name = (*spellInfo->SpellName)[locale];
-            return Utf8FitTo(name, namePart);
-        }
-
-        return true;
-    }
-
     // handle list mail command
-    static bool HandleListMailCommand(ChatHandler* handler, Optional<PlayerIdentifier> player)
+    static bool HandleListMailCommand(ChatHandler* handler, char const* args)
     {
-        if (!player)
-            player = PlayerIdentifier::FromTargetOrSelf(handler);
-        if (!player)
+        Player* target;
+        ObjectGuid targetGuid;
+        std::string targetName;
+        CharacterDatabasePreparedStatement* stmt = nullptr;
+
+        if (!*args)
             return false;
 
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MAIL_LIST_COUNT);
-        stmt->setUInt64(0, player->GetGUID().GetCounter());
+        ObjectGuid parseGUID = ObjectGuid::Create<HighGuid::Player>(strtoull(args, nullptr, 10));
+
+        if (sCharacterCache->GetCharacterNameByGuid(parseGUID, targetName))
+        {
+            target = ObjectAccessor::FindPlayer(parseGUID);
+            targetGuid = parseGUID;
+        }
+        else if (!handler->extractPlayerTarget((char*)args, &target, &targetGuid, &targetName))
+            return false;
+
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MAIL_LIST_COUNT);
+        stmt->setUInt64(0, targetGuid.GetCounter());
         PreparedQueryResult queryResult = CharacterDatabase.Query(stmt);
         if (queryResult)
         {
             Field* fields       = queryResult->Fetch();
             uint32 countMail    = fields[0].GetUInt64();
 
-            std::string nameLink = handler->playerLink(player->GetName());
-            handler->PSendSysMessage(LANG_LIST_MAIL_HEADER, countMail, nameLink.c_str(), player->GetGUID().ToString().c_str());
+            std::string nameLink = handler->playerLink(targetName);
+            handler->PSendSysMessage(LANG_LIST_MAIL_HEADER, countMail, nameLink.c_str(), targetGuid.ToString().c_str());
             handler->PSendSysMessage(LANG_ACCOUNT_LIST_BAR);
 
             stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MAIL_LIST_INFO);
-            stmt->setUInt64(0, player->GetGUID().GetCounter());
+            stmt->setUInt64(0, targetGuid.GetCounter());
             queryResult = CharacterDatabase.Query(stmt);
 
             if (queryResult)
@@ -548,8 +522,8 @@ public:
                     ObjectGuid::LowType receiverId = queryFields[3].GetUInt64();
                     std::string receiver    = queryFields[4].GetString();
                     std::string subject     = queryFields[5].GetString();
-                    time_t deliverTime      = queryFields[6].GetInt64();
-                    time_t expireTime       = queryFields[7].GetInt64();
+                    uint64 deliverTime      = queryFields[6].GetUInt32();
+                    uint64 expireTime       = queryFields[7].GetUInt32();
                     uint64 money            = queryFields[8].GetUInt64();
                     uint8 hasItem           = queryFields[9].GetUInt8();
                     uint32 gold = money / GOLD;
@@ -588,7 +562,7 @@ public:
                                         {
                                             uint32 color = ItemQualityColors[itemTemplate->GetQuality()];
                                             std::ostringstream itemStr;
-                                            itemStr << "|c" << std::hex << color << "|Hitem:" << item_entry << ":0:0:0:0:0:0:0:" << handler->GetSession()->GetPlayer()->GetLevel()
+                                            itemStr << "|c" << std::hex << color << "|Hitem:" << item_entry << ":0:0:0:0:0:0:0:" << handler->GetSession()->GetPlayer()->getLevel()
                                                 << ":0:0:0:0:0|h[" << itemTemplate->GetName(handler->GetSessionDbcLocale()) << "]|h|r";
                                             handler->PSendSysMessage(LANG_LIST_MAIL_INFO_ITEM, itemStr.str().c_str(), item_entry, item_guid, item_count);
                                         }
@@ -614,95 +588,7 @@ public:
         return true;
     }
 
-    static bool HandleListSpawnPointsCommand(ChatHandler* handler)
-    {
-        Player const* player = handler->GetSession()->GetPlayer();
-        Map const* map = player->GetMap();
-        uint32 const mapId = map->GetId();
-        bool const showAll = map->IsBattlegroundOrArena() || map->IsDungeon();
-        handler->PSendSysMessage("Listing all spawn points in map %u (%s)%s:", mapId, map->GetMapName(), showAll ? "" : " within 5000yd");
-        for (auto const& pair : sObjectMgr->GetAllCreatureData())
-        {
-            SpawnData const& data = pair.second;
-            if (data.mapId != mapId)
-                continue;
-            CreatureTemplate const* cTemp = sObjectMgr->GetCreatureTemplate(data.id);
-            if (!cTemp)
-                continue;
-            if (showAll || data.spawnPoint.IsInDist2d(player, 5000.0))
-                handler->PSendSysMessage("Type: %u | SpawnId: " UI64FMTD " | Entry: %u (%s) | X: %.3f | Y: %.3f | Z: %.3f", uint32(data.type), data.spawnId, data.id, cTemp->Name.c_str(), data.spawnPoint.GetPositionX(), data.spawnPoint.GetPositionY(), data.spawnPoint.GetPositionZ());
-        }
-        for (auto const& pair : sObjectMgr->GetAllGameObjectData())
-        {
-            SpawnData const& data = pair.second;
-            if (data.mapId != mapId)
-                continue;
-            GameObjectTemplate const* goTemp = sObjectMgr->GetGameObjectTemplate(data.id);
-            if (!goTemp)
-                continue;
-            if (showAll || data.spawnPoint.IsInDist2d(player, 5000.0))
-                handler->PSendSysMessage("Type: %u | SpawnId: " UI64FMTD " | Entry: %u (%s) | X: %.3f | Y: %.3f | Z: %.3f", uint32(data.type), data.spawnId, data.id, goTemp->name.c_str(), data.spawnPoint.GetPositionX(), data.spawnPoint.GetPositionY(), data.spawnPoint.GetPositionZ());
-        }
-        return true;
-    }
-
-    static char const* GetZoneName(uint32 zoneId, LocaleConstant locale)
-    {
-        AreaTableEntry const* zoneEntry = sAreaTableStore.LookupEntry(zoneId);
-        return zoneEntry ? zoneEntry->AreaName[locale] : "<unknown zone>";
-    }
-
-    static bool HandleListRespawnsCommand(ChatHandler* handler, Optional<uint32> range)
-    {
-        Player const* player = handler->GetSession()->GetPlayer();
-        Map* map = player->GetMap();
-
-        LocaleConstant locale = handler->GetSession()->GetSessionDbcLocale();
-        char const* stringOverdue = sObjectMgr->GetTrinityString(LANG_LIST_RESPAWNS_OVERDUE, locale);
-
-        uint32 zoneId = player->GetZoneId();
-        char const* zoneName = GetZoneName(zoneId, locale);
-        for (SpawnObjectType type : EnumUtils::Iterate<SpawnObjectType>())
-        {
-            if (range)
-                handler->PSendSysMessage(LANG_LIST_RESPAWNS_RANGE, EnumUtils::ToTitle(type), *range);
-            else
-                handler->PSendSysMessage(LANG_LIST_RESPAWNS_ZONE, EnumUtils::ToTitle(type), zoneName, zoneId);
-
-            handler->PSendSysMessage(LANG_LIST_RESPAWNS_LISTHEADER);
-            std::vector<RespawnInfo const*> respawns;
-            map->GetRespawnInfo(respawns, SpawnObjectTypeMask(1 << type));
-            for (RespawnInfo const* ri : respawns)
-            {
-                SpawnMetadata const* data = sObjectMgr->GetSpawnMetadata(ri->type, ri->spawnId);
-                if (!data)
-                    continue;
-
-                uint32 respawnZoneId = 0;
-                if (SpawnData const* edata = data->ToSpawnData())
-                {
-                    respawnZoneId = map->GetZoneId(PhasingHandler::GetEmptyPhaseShift(), edata->spawnPoint);
-                    if (range)
-                    {
-                        if (!player->IsInDist(edata->spawnPoint, *range))
-                            continue;
-                    }
-                    else
-                    {
-                        if (zoneId != respawnZoneId)
-                            continue;
-                    }
-                }
-                uint32 gridY = ri->gridId / MAX_NUMBER_OF_GRIDS;
-                uint32 gridX = ri->gridId % MAX_NUMBER_OF_GRIDS;
-                std::string respawnTime = ri->respawnTime > GameTime::GetGameTime() ? secsToTimeString(uint64(ri->respawnTime - GameTime::GetGameTime()), TimeFormat::ShortText) : stringOverdue;
-                handler->PSendSysMessage(UI64FMTD " | %u | [%02u,%02u] | %s (%u) | %s%s", ri->spawnId, ri->entry, gridX, gridY, GetZoneName(respawnZoneId, locale), respawnZoneId, respawnTime.c_str(), map->IsSpawnGroupActive(data->spawnGroupData->groupId) ? "" : " (inactive)");
-            }
-        }
-        return true;
-    }
-
-    static bool HandleListScenesCommand(ChatHandler* handler)
+    static bool HandleListScenesCommand(ChatHandler* handler, char const* /*args*/)
     {
         Player* target = handler->getSelectedPlayer();
 
@@ -716,13 +602,34 @@ public:
             return false;
         }
 
-        SceneTemplateByInstance const& instanceByPackageMap = target->GetSceneMgr().GetSceneTemplateByInstanceMap();
+        SceneTemplateByInstance const& instanceByPackageMap = target->GetSceneMgr().GetSceneByInstanceMap();
 
         handler->PSendSysMessage(LANG_DEBUG_SCENE_OBJECT_LIST, target->GetSceneMgr().GetActiveSceneCount());
 
-        for (auto const& instanceByPackage : instanceByPackageMap)
-            handler->PSendSysMessage(LANG_DEBUG_SCENE_OBJECT_DETAIL, instanceByPackage.second->ScenePackageId, instanceByPackage.first);
+        for (auto instanceByPackage : instanceByPackageMap)
+            handler->PSendSysMessage(LANG_DEBUG_SCENE_OBJECT_DETAIL, instanceByPackage.second.ScenePackageId, instanceByPackage.first);
 
+        return true;
+    }
+
+    static bool HandleListQuestsCommand(ChatHandler* handler, char const* /*args*/)
+    {
+        Player* target = handler->getSelectedPlayerOrSelf();
+
+        uint32 activeQuestCount = 0;
+        for (uint16 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
+        {
+            uint32 questId = target->GetQuestSlotQuestId(i);
+
+            if (questId == 0)
+                continue;
+
+            ++activeQuestCount;
+            QuestStatus status = target->GetQuestStatus(questId);
+            handler->PSendSysMessage(LANG_LIST_QUESTS_DETAIL, questId, target->GetQuestStatusString(status).c_str());
+        }
+
+        handler->PSendSysMessage(LANG_LIST_QUESTS, activeQuestCount);
         return true;
     }
 };

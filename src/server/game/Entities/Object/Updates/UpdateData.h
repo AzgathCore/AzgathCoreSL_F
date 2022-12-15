@@ -37,7 +37,7 @@ class UpdateData
 {
     public:
         UpdateData(uint32 map);
-        UpdateData(UpdateData&& right) noexcept : m_map(right.m_map), m_blockCount(right.m_blockCount),
+        UpdateData(UpdateData&& right) : m_map(right.m_map), m_blockCount(right.m_blockCount),
             m_outOfRangeGUIDs(std::move(right.m_outOfRangeGUIDs)),
             m_data(std::move(right.m_data))
         {
@@ -46,10 +46,9 @@ class UpdateData
         void AddDestroyObject(ObjectGuid guid);
         void AddOutOfRangeGUID(GuidSet& guids);
         void AddOutOfRangeGUID(ObjectGuid guid);
-        void AddUpdateBlock() { ++m_blockCount; }
-        ByteBuffer& GetBuffer() { return m_data; }
+        void AddUpdateBlock(const ByteBuffer &block);
         bool BuildPacket(WorldPacket* packet);
-        bool HasData() const { return m_blockCount > 0 || !m_outOfRangeGUIDs.empty() || !m_destroyGUIDs.empty(); }
+        bool HasData() const { return m_blockCount > 0 || !m_outOfRangeGUIDs.empty(); }
         void Clear();
 
         GuidSet const& GetOutOfRangeGUIDs() const { return m_outOfRangeGUIDs; }

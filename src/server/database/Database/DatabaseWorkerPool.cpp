@@ -34,20 +34,9 @@
 #include "Transaction.h"
 #include "MySQLWorkaround.h"
 #include <mysqld_error.h>
-#ifdef TRINITY_DEBUG
-#include <sstream>
-#include <boost/stacktrace.hpp>
-#endif
 
-#define MIN_MYSQL_SERVER_VERSION 50700u
-#define MIN_MYSQL_SERVER_VERSION_STRING "5.7"
-#define MIN_MYSQL_CLIENT_VERSION 50700u
-#define MIN_MYSQL_CLIENT_VERSION_STRING "5.7"
-
-#define MIN_MARIADB_SERVER_VERSION 100209u
-#define MIN_MARIADB_SERVER_VERSION_STRING "10.2.9"
-#define MIN_MARIADB_CLIENT_VERSION 30003u
-#define MIN_MARIADB_CLIENT_VERSION_STRING "3.0.3"
+#define MIN_MYSQL_SERVER_VERSION 50100u
+#define MIN_MYSQL_CLIENT_VERSION 50100u
 
 class PingOperation : public SQLOperation
 {
@@ -65,14 +54,9 @@ DatabaseWorkerPool<T>::DatabaseWorkerPool()
       _async_threads(0), _synch_threads(0)
 {
     WPFatal(mysql_thread_safe(), "Used MySQL library isn't thread-safe.");
-
-#if defined(LIBMARIADB) && MARIADB_PACKAGE_VERSION_ID >= 30200
-    WPFatal(mysql_get_client_version() >= MIN_MARIADB_CLIENT_VERSION, "TrinityCore does not support MariaDB versions below " MIN_MARIADB_CLIENT_VERSION_STRING " (found %s id %lu, need id >= %u), please update your MariaDB client library", mysql_get_client_info(), mysql_get_client_version(), MIN_MARIADB_CLIENT_VERSION);
-    WPFatal(mysql_get_client_version() == MARIADB_PACKAGE_VERSION_ID, "Used MariaDB library version (%s id %lu) does not match the version id used to compile TrinityCore (id %u). Search on forum for TCE00011.", mysql_get_client_info(), mysql_get_client_version(), MARIADB_PACKAGE_VERSION_ID);
-#else
-    WPFatal(mysql_get_client_version() >= MIN_MYSQL_CLIENT_VERSION, "TrinityCore does not support MySQL versions below " MIN_MYSQL_CLIENT_VERSION_STRING " (found %s id %lu, need id >= %u), please update your MySQL client library", mysql_get_client_info(), mysql_get_client_version(), MIN_MYSQL_CLIENT_VERSION);
-    WPFatal(mysql_get_client_version() == MYSQL_VERSION_ID, "Used MySQL library version (%s id %lu) does not match the version id used to compile TrinityCore (id %u). Search on forum for TCE00011.", mysql_get_client_info(), mysql_get_client_version(), MYSQL_VERSION_ID);
-#endif
+    WPFatal(mysql_get_client_version() >= MIN_MYSQL_CLIENT_VERSION, "AzgathCore does not support MySQL versions below 5.1");
+    WPFatal(mysql_get_client_version() == MYSQL_VERSION_ID, "Used MySQL library version (%s) does not match the version used to compile AzgathCore (%s). Search on forum for TCE00011.",
+        mysql_get_client_info(), MYSQL_SERVER_VERSION);
 }
 
 template <class T>
@@ -239,13 +223,13 @@ QueryCallback DatabaseWorkerPool<T>::AsyncQuery(PreparedStatement<T>* stmt)
 }
 
 template <class T>
-SQLQueryHolderCallback DatabaseWorkerPool<T>::DelayQueryHolder(std::shared_ptr<SQLQueryHolder<T>> holder)
+QueryResultHolderFuture DatabaseWorkerPool<T>::DelayQueryHolder(SQLQueryHolder<T>* holder)
 {
     SQLQueryHolderTask* task = new SQLQueryHolderTask(holder);
     // Store future result before enqueueing - task might get already processed and deleted before returning from this method
     QueryResultHolderFuture result = task->GetFuture();
     Enqueue(task);
-    return { std::move(holder), std::move(result) };
+    return result;
 }
 
 template <class T>
@@ -318,7 +302,6 @@ void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction<T>& transacti
     /// @todo More elegant way
     if (errorCode == ER_LOCK_DEADLOCK)
     {
-        //todo: handle multiple sync threads deadlocking in a similar way as async threads
         uint8 loopBreaker = 5;
         for (uint8 i = 0; i < loopBreaker; ++i)
         {
@@ -396,18 +379,9 @@ uint32 DatabaseWorkerPool<T>::OpenConnections(InternalIndex type, uint8 numConne
             _connections[type].clear();
             return error;
         }
-#ifndef LIBMARIADB
         else if (connection->GetServerVersion() < MIN_MYSQL_SERVER_VERSION)
-#else
-        else if (connection->GetServerVersion() < MIN_MARIADB_SERVER_VERSION)
-#endif
         {
-#ifndef LIBMARIADB
-            TC_LOG_ERROR("sql.driver", "TrinityCore does not support MySQL versions below " MIN_MYSQL_SERVER_VERSION_STRING " (found id %u, need id >= %u), please update your MySQL server", connection->GetServerVersion(), MIN_MYSQL_SERVER_VERSION);
-#else
-            TC_LOG_ERROR("sql.driver", "TrinityCore does not support MariaDB versions below " MIN_MARIADB_SERVER_VERSION_STRING " (found id %u, need id >= %u), please update your MySQL server", connection->GetServerVersion(), MIN_MARIADB_SERVER_VERSION);
-#endif
-
+            TC_LOG_ERROR("sql.driver", "AzgathCore does not support MySQL versions below 5.1");
             return 1;
         }
         else
@@ -436,23 +410,8 @@ void DatabaseWorkerPool<T>::Enqueue(SQLOperation* op)
 }
 
 template <class T>
-size_t DatabaseWorkerPool<T>::QueueSize() const
-{
-    return _queue->Size();
-}
-
-template <class T>
 T* DatabaseWorkerPool<T>::GetFreeConnection()
 {
-#ifdef TRINITY_DEBUG
-    if (_warnSyncQueries)
-    {
-        std::ostringstream ss;
-        ss << boost::stacktrace::stacktrace();
-        TC_LOG_WARN("sql.performances", "Sync query at:\n%s", ss.str().c_str());
-    }
-#endif
-
     uint8 i = 0;
     auto const num_cons = _connections[IDX_SYNCH].size();
     T* connection = nullptr;

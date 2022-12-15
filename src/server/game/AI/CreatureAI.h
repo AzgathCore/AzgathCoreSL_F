@@ -18,11 +18,10 @@
 #ifndef TRINITY_CREATUREAI_H
 #define TRINITY_CREATUREAI_H
 
-#include "LootItemType.h"
-#include "ObjectDefines.h"
-#include "Optional.h"
-#include "QuestDef.h"
 #include "UnitAI.h"
+#include "Common.h"
+#include "DamageEventMap.h"
+#include "ObjectDefines.h"
 
 class AreaBoundary;
 class AreaTrigger;
@@ -30,29 +29,117 @@ class Creature;
 class DynamicObject;
 class GameObject;
 class PlayerAI;
+class Spell;
 class WorldObject;
 struct Position;
-enum class QuestGiverStatus : uint32;
+struct SpellDestination;
 
-typedef std::vector<AreaBoundary const*> CreatureBoundary;
+typedef std::set<AreaBoundary const*> CreatureBoundary;
 
 #define TIME_INTERVAL_LOOK   5000
 #define VISIBILITY_RANGE    10000
-
-enum Permitions : int32
-{
-    PERMIT_BASE_NO               = -1,
-    PERMIT_BASE_IDLE             = 1,
-    PERMIT_BASE_REACTIVE         = 100,
-    PERMIT_BASE_PROACTIVE        = 200,
-    PERMIT_BASE_FACTION_SPECIFIC = 400,
-    PERMIT_BASE_SPECIAL          = 800
-};
 
 enum SCEquip
 {
     EQUIP_NO_CHANGE = -1,
     EQUIP_UNEQUIP   = 0
+};
+
+class TC_GAME_API SummonList
+{
+public:
+    typedef GuidList StorageType;
+    typedef StorageType::iterator iterator;
+    typedef StorageType::const_iterator const_iterator;
+    typedef StorageType::size_type size_type;
+    typedef StorageType::value_type value_type;
+
+    explicit SummonList(Creature* creature)
+        : me(creature)
+    { }
+
+    // And here we see a problem of original inheritance approach. People started
+    // to exploit presence of std::list members, so I have to provide wrappers
+
+    iterator begin()
+    {
+        return storage_.begin();
+    }
+
+    const_iterator begin() const
+    {
+        return storage_.begin();
+    }
+
+    iterator end()
+    {
+        return storage_.end();
+    }
+
+    const_iterator end() const
+    {
+        return storage_.end();
+    }
+
+    iterator erase(iterator i)
+    {
+        return storage_.erase(i);
+    }
+
+    bool empty() const
+    {
+        return storage_.empty();
+    }
+
+    size_type size() const
+    {
+        return storage_.size();
+    }
+
+    // Clear the underlying storage. This does NOT despawn the creatures - use DespawnAll for that!
+    void clear()
+    {
+        storage_.clear();
+    }
+
+    void Summon(Creature const* summon);
+    void Despawn(Creature const* summon);
+    void DespawnEntry(uint32 entry);
+    void DespawnAll();
+
+    template <typename T>
+    void DespawnIf(T const &predicate)
+    {
+        storage_.remove_if(predicate);
+    }
+
+    template <class Predicate>
+    void DoAction(int32 info, Predicate&& predicate, uint16 max = 0)
+    {
+        // We need to use a copy of SummonList here, otherwise original SummonList would be modified
+        StorageType listCopy = storage_;
+        Trinity::Containers::RandomResize<StorageType, Predicate>(listCopy, std::forward<Predicate>(predicate), max);
+        DoActionImpl(info, listCopy);
+    }
+
+    template <class Predicate>
+    ObjectGuid GetRandomGUID(Predicate&& predicate)
+    {
+        // We need to use a copy of SummonList here, otherwise original SummonList would be modified
+        StorageType listCopy = storage_;
+        Trinity::Containers::RandomResize<StorageType, Predicate>(listCopy, std::forward<Predicate>(predicate), 1);
+        return listCopy.front();
+    }
+
+    void DoZoneInCombat(uint32 entry = 0, float maxRangeToNearestTarget = 250.0f);
+    void RemoveNotExisting();
+    bool HasEntry(uint32 entry) const;
+
+private:
+    void DoActionImpl(int32 action, StorageType const& summons);
+
+    Creature* me;
+    StorageType storage_;
 };
 
 class TC_GAME_API CreatureAI : public UnitAI
@@ -61,37 +148,44 @@ class TC_GAME_API CreatureAI : public UnitAI
         Creature* const me;
 
         bool UpdateVictim();
+        bool UpdateVictimWithGaze();
 
-        Creature* DoSummon(uint32 entry, Position const& pos, Milliseconds despawnTime = 30s, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-        Creature* DoSummon(uint32 entry, WorldObject* obj, float radius = 5.0f, Milliseconds despawnTime = 30s, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-        Creature* DoSummonFlyer(uint32 entry, WorldObject* obj, float flightZ, float radius = 5.0f, Milliseconds despawnTime = 30s, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
+        void SetGazeOn(Unit* target);
 
+        Creature* DoSummon(uint32 entry, Position const& pos, uint32 despawnTime = 30000, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
+        Creature* DoSummon(uint32 entry, WorldObject* obj, float radius = 5.0f, uint32 despawnTime = 30000, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
+        Creature* DoSummonFlyer(uint32 entry, WorldObject* obj, float flightZ, float radius = 5.0f, uint32 despawnTime = 30000, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
+
+        bool CheckBoundary(Position const* who = nullptr) const;
+        void SetBoundary(CreatureBoundary const* boundary);
     public:
-        // EnumUtils: DESCRIBE THIS (in CreatureAI::)
         enum EvadeReason
         {
             EVADE_REASON_NO_HOSTILES,       // the creature's threat list is empty
             EVADE_REASON_BOUNDARY,          // the creature has moved outside its evade boundary
             EVADE_REASON_NO_PATH,           // the creature was unable to reach its target for over 5 seconds
             EVADE_REASON_SEQUENCE_BREAK,    // this is a boss and the pre-requisite encounters for engaging it are not defeated yet
-            EVADE_REASON_OTHER,             // anything else
+            EVADE_REASON_OTHER
         };
 
-        explicit CreatureAI(Creature* creature, uint32 scriptId = {});
+        explicit CreatureAI(Creature* creature);
 
         virtual ~CreatureAI();
 
-        // Gets the id of the AI (script id)
-        uint32 GetId() const { return _scriptId; }
-
-        bool IsEngaged() const { return _isEngaged; }
-
         void Talk(uint8 id, WorldObject const* whisperTarget = nullptr);
+
+        void ZoneTalk(uint8 id, WorldObject const* whisperTarget);
 
         /// == Reactions At =================================
 
         // Called if IsVisible(Unit* who) is true at each who move, reaction at visibility zone enter
         void MoveInLineOfSight_Safe(Unit* who);
+
+        bool CanSeeEvenInPassiveMode() { return m_canSeeEvenInPassiveMode; }
+        void SetCanSeeEvenInPassiveMode(bool canSeeEvenInPassiveMode) { m_canSeeEvenInPassiveMode = canSeeEvenInPassiveMode; }
+
+        // Called in Creature::Update when deathstate = DEAD.
+        virtual bool CanRespawn() { return true; }
 
         // Trigger Creature "Alert" state (creature can see stealthed unit)
         void TriggerAlert(Unit const* who) const;
@@ -99,14 +193,8 @@ class TC_GAME_API CreatureAI : public UnitAI
         // Called for reaction at stopping attack at no attackers or targets
         virtual void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER);
 
-        // Called for reaction whenever we start being in combat (overridden from base UnitAI)
-        void JustEnteredCombat(Unit* /*who*/) override;
-
-        // Called for reaction whenever a new non-offline unit is added to the threat list
-        virtual void JustStartedThreateningMe(Unit* who) { if (!IsEngaged()) EngagementStart(who); }
-
-        // Called for reaction when initially engaged - this will always happen _after_ JustEnteredCombat
-        virtual void JustEngagedWith(Unit* /*who*/) { }
+        // Called for reaction at enter to combat if not in combat yet (enemy can be nullptr)
+        virtual void EnterCombat(Unit* /*victim*/) { }
 
         // Called when the creature is killed
         virtual void JustDied(Unit* /*killer*/) { }
@@ -116,7 +204,8 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         // Called when the creature summon successfully other creature
         virtual void JustSummoned(Creature* /*summon*/) { }
-        virtual void IsSummonedBy(WorldObject* /*summoner*/) { }
+        virtual void IsSummonedBy(Unit* /*summoner*/) { }
+        virtual void IsSummonedBy(Spell const* /*summonSpell*/) { }
 
         virtual void SummonedCreatureDespawn(Creature* /*summon*/) { }
         virtual void SummonedCreatureDies(Creature* /*summon*/, Unit* /*killer*/) { }
@@ -134,51 +223,78 @@ class TC_GAME_API CreatureAI : public UnitAI
         virtual void JustUnregisteredAreaTrigger(AreaTrigger* /*areaTrigger*/) { }
 
         // Called when hit by a spell
-        virtual void SpellHit(WorldObject* /*caster*/, SpellInfo const* /*spellInfo*/) { }
+        virtual void SpellHit(Unit* /*caster*/, SpellInfo const* /*spell*/) { }
 
         // Called when spell hits a target
-        virtual void SpellHitTarget(WorldObject* /*target*/, SpellInfo const* /*spellInfo*/) { }
+        virtual void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) { }
 
-        // Called when a spell finishes
-        virtual void OnSpellCast(SpellInfo const* /*spell*/) { }
+        // Called when spell hits a destination
+        virtual void SpellHitDest(SpellDestination const* /*dest*/, SpellInfo const* /*spellInfo*/) { }
 
-        // Called when a spell fails
-        virtual void OnSpellFailed(SpellInfo const* /*spell*/) { }
+        // Called when spell miss a target
+        virtual void SpellMissTarget(Unit* /*target*/, SpellInfo const* /*spellInfo*/, SpellMissInfo /*missInfo*/) { }
 
-        // Called when a spell starts
-        virtual void OnSpellStart(SpellInfo const* /*spell*/) { }
+        // Called when successful cast a spell
+        virtual void OnSpellCasted(SpellInfo const* /*spellInfo*/) { }
 
-        // Called when a channeled spell finishes
-        virtual void OnChannelFinished(SpellInfo const* /*spell*/) { }
+        // Called when a spell is finished
+        virtual void OnSpellFinished(SpellInfo const* /*spellInfo*/) { }
 
-        // Should return true if the NPC is currently being escorted
+        // Called when an aura is removed
+        virtual void OnAuraRemoved(SpellInfo const* /*spellInfo*/) { }
+
+        // Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc)
+        virtual void AttackedBy(Unit* /*attacker*/) { }
         virtual bool IsEscorted() const { return false; }
 
-        // Called when creature appears in the world (spawn, respawn, grid load etc...)
-        virtual void JustAppeared();
+        // Called when check LOS
+        virtual bool CanBeTargetedOutOfLOS() { return false; }
+        virtual bool CanTargetOutOfLOS() { return false; }
+
+        // Called when creature is spawned or respawned
+        virtual void JustRespawned() { }
 
         // Called at waypoint reached or point movement finished
         virtual void MovementInform(uint32 /*type*/, uint32 /*id*/) { }
 
-        void OnCharmed(bool isNew) override;
+        void OnCharmed(bool apply) override;
+
+        // Called when a spell cast gets interrupted
+        virtual void OnSpellCastInterrupt(SpellInfo const* /*spell*/) { }
+
+        // Called when a spell cast has been successfully finished
+        virtual void OnSuccessfulSpellCast(SpellInfo const* /*spell*/) { }
 
         // Called at reaching home after evade
         virtual void JustReachedHome() { }
 
-        void DoZoneInCombat(Creature* creature = nullptr);
+        void DoZoneInCombat(Creature* creature = nullptr, float maxRangeToNearestTarget = 250.0f);
 
         // Called at text emote receive from player
         virtual void ReceiveEmote(Player* /*player*/, uint32 /*emoteId*/) { }
 
         // Called when owner takes damage
-        virtual void OwnerAttackedBy(Unit* attacker) { OnOwnerCombatInteraction(attacker); }
+        virtual void OwnerAttackedBy(Unit* /*attacker*/) { }
 
         // Called when owner attacks something
-        virtual void OwnerAttacked(Unit* target) { OnOwnerCombatInteraction(target); }
+        virtual void OwnerAttacked(Unit* /*target*/) { }
+
+        // Called when a creature regen one of his power
+        virtual void RegeneratePower(Powers /*power*/, int32& /*value*/) { }
+
+        // Called when the Creature reach splineIndex
+        virtual void OnSplineIndexReached(int /*splineIndex*/) { }
+
+        // Called when the Creature reach spline end
+        virtual void OnSplineEndReached() { }
+
+        // Called when the Creature power changed
+        virtual void OnPowerChanged(Powers /*power*/, int32 /*oldValue*/, int32& /*newValue*/) { }
 
         /// == Triggered Actions Requested ==================
 
         // Called when creature attack expected (if creature can and no have current victim)
+        // Note: for reaction at hostile action must be called AttackedBy function.
         //virtual void AttackStart(Unit*) { }
 
         // Called at World update tick
@@ -195,37 +311,11 @@ class TC_GAME_API CreatureAI : public UnitAI
         // Called when victim entered water and creature can not enter water
         //virtual bool CanReachByRangeAttack(Unit*) { return false; }
 
-        /// == Gossip system ================================
-
-        // Called when the dialog status between a player and the creature is requested.
-        virtual Optional<QuestGiverStatus> GetDialogStatus(Player* player);
-
-        // Called when a player opens a gossip dialog with the creature.
-        virtual bool OnGossipHello(Player* /*player*/) { return false; }
-
-        // Called when a player selects a gossip item in the creature's gossip menu.
-        virtual bool OnGossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) { return false; }
-
-        // Called when a player selects a gossip with a code in the creature's gossip menu.
-        virtual bool OnGossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) { return false; }
-
-        // Called when a player accepts a quest from the creature.
-        virtual void OnQuestAccept(Player* /*player*/, Quest const* /*quest*/) { }
-
-        // Called when a player completes a quest and is rewarded, opt is the selected item's index or 0
-        virtual void OnQuestReward(Player* /*player*/, Quest const* /*quest*/, LootItemType /*type*/, uint32 /*opt*/) { }
-
-        /// == Waypoints system =============================
-
-        virtual void WaypointStarted(uint32 /*nodeId*/, uint32 /*pathId*/) { }
-        virtual void WaypointReached(uint32 /*nodeId*/, uint32 /*pathId*/) { }
-        virtual void WaypointPathEnded(uint32 /*nodeId*/, uint32 /*pathId*/) { }
-
         /// == Fields =======================================
 
         virtual void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool /*apply*/) { }
 
-        virtual void OnSpellClick(Unit* /*clicker*/, bool /*spellClickHandled*/) { }
+        virtual void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) { }
 
         virtual bool CanSeeAlways(WorldObject const* /*obj*/) { return false; }
 
@@ -234,33 +324,40 @@ class TC_GAME_API CreatureAI : public UnitAI
         // Object destruction is handled by Unit::RemoveCharmedBy
         virtual PlayerAI* GetAIForCharmedPlayer(Player* /*who*/) { return nullptr; }
 
-        // intended for encounter design/debugging. do not use for other purposes. expensive.
-        int32 VisualizeBoundary(Seconds duration, Unit* owner = nullptr, bool fill = false) const;
+        // Should return true if the NPC is target of an escort quest
+        // If onlyIfActive is set, should return true only if the escort quest is currently active
+        virtual bool IsEscortNPC(bool /*onlyIfActive*/) const { return false; }
 
-        // boundary system methods
+        // intended for encounter design/debugging. do not use for other purposes. expensive.
+        int32 VisualizeBoundary(uint32 duration, Unit* owner=nullptr, bool fill=false) const;
         virtual bool CheckInRoom();
         CreatureBoundary const* GetBoundary() const { return _boundary; }
-        void SetBoundary(CreatureBoundary const* boundary, bool negativeBoundaries = false);
-
-        static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
-        bool IsInBoundary(Position const* who = nullptr) const;
 
     protected:
-        void EngagementStart(Unit* who);
-        void EngagementOver();
         virtual void MoveInLineOfSight(Unit* /*who*/);
 
         bool _EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER);
 
         CreatureBoundary const* _boundary;
-        bool _negateBoundary;
+
+        SummonList summons;
+        EventMap events;
+        DamageEventMap damageEvents;
+        InstanceScript* const instance;
 
     private:
-        void OnOwnerCombatInteraction(Unit* target);
+        bool m_MoveInLineOfSight_locked;
+        bool m_canSeeEvenInPassiveMode;
+};
 
-        uint32 const _scriptId;
-        bool _isEngaged;
-        bool _moveInLOSLocked;
+enum Permitions
+{
+    PERMIT_BASE_NO                 = -1,
+    PERMIT_BASE_IDLE               = 1,
+    PERMIT_BASE_REACTIVE           = 100,
+    PERMIT_BASE_PROACTIVE          = 200,
+    PERMIT_BASE_FACTION_SPECIFIC   = 400,
+    PERMIT_BASE_SPECIAL            = 800
 };
 
 #endif

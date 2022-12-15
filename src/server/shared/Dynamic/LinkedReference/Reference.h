@@ -18,7 +18,7 @@
 #ifndef _REFERENCE_H
 #define _REFERENCE_H
 
-#include "Dynamic/LinkedList.h"
+#include <LinkedList.h>
 #include "Errors.h" // for ASSERT
 
 //=====================================================

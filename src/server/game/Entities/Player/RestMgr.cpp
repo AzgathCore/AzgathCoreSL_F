@@ -16,7 +16,6 @@
  */
 
 #include "RestMgr.h"
-#include "GameTime.h"
 #include "Log.h"
 #include "Player.h"
 #include "Random.h"
@@ -31,6 +30,8 @@ RestMgr::RestMgr(Player* player) : _player(player), _restTime(0), _innAreaTrigge
 
 void RestMgr::SetRestBonus(RestTypes restType, float restBonus)
 {
+    uint8 rest_rested_offset;
+    uint8 rest_state_offset;
     int32 next_level_xp;
     bool affectedByRaF = false;
 
@@ -38,9 +39,11 @@ void RestMgr::SetRestBonus(RestTypes restType, float restBonus)
     {
         case REST_TYPE_XP:
             // Reset restBonus (XP only) for max level players
-            if (_player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+            if (_player->getLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
                 restBonus = 0;
 
+            rest_rested_offset = REST_RESTED_XP;
+            rest_state_offset = REST_STATE_XP;
             next_level_xp = _player->m_activePlayerData->NextLevelXP;
             affectedByRaF = true;
             break;
@@ -49,6 +52,8 @@ void RestMgr::SetRestBonus(RestTypes restType, float restBonus)
             if (_player->IsMaxHonorLevel())
                 restBonus = 0;
 
+            rest_rested_offset = REST_RESTED_HONOR;
+            rest_state_offset = REST_STATE_HONOR;
             next_level_xp = _player->m_activePlayerData->HonorNextLevel;
             break;
         default:
@@ -87,7 +92,7 @@ void RestMgr::SetRestBonus(RestTypes restType, float restBonus)
 void RestMgr::AddRestBonus(RestTypes restType, float restBonus)
 {
     // Don't add extra rest bonus to max level players. Note: Might need different condition in next expansion for honor XP (PLAYER_LEVEL_MIN_HONOR perhaps).
-    if (_player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+    if (_player->getLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
         restBonus = 0;
 
     float totalRestBonus = GetRestBonus(restType) + restBonus;
@@ -101,8 +106,8 @@ void RestMgr::SetRestFlag(RestFlag restFlag, uint32 triggerID)
 
     if (!oldRestMask && _restFlagMask) // only set flag/time on the first rest state
     {
-        _restTime = GameTime::GetGameTime();
-        _player->SetPlayerFlag(PLAYER_FLAGS_RESTING);
+        _restTime = time(nullptr);
+        _player->AddPlayerFlag(PLAYER_FLAGS_RESTING);
     }
 
     if (triggerID)

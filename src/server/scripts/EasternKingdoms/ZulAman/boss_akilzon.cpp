@@ -44,10 +44,10 @@ class boss_akilzon : public CreatureScript
                 _Reset();
             }
 
-            void JustEngagedWith(Unit* who) override
+            void EnterCombat(Unit* /*who*/) override
             {
                 Talk(SAY_AGGRO);
-                BossAI::JustEngagedWith(who);
+                _EnterCombat();
             }
 
             void JustDied(Unit* /*killer*/) override

@@ -931,7 +931,9 @@ class TC_PROTO_API GameAccountList : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -2341,6 +2343,7 @@ GameAccountList::mutable_game_accounts() {
   return &game_accounts_;
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace Login
@@ -2350,6 +2353,7 @@ GameAccountList::mutable_game_accounts() {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
 template <> struct is_proto_enum< ::Battlenet::JSON::Login::FormType> : ::google::protobuf::internal::true_type {};
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::Battlenet::JSON::Login::FormType>() {
@@ -2360,6 +2364,7 @@ template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::Battlenet::JSON::Login::AuthenticationState>() {
   return ::Battlenet::JSON::Login::AuthenticationState_descriptor();
 }
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

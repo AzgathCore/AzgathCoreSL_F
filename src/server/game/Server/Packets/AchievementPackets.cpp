@@ -33,10 +33,10 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Achievement::CriteriaProg
     data << uint64(criteria.Quantity);
     data << criteria.Player;
     data.AppendPackedTime(criteria.Date);
-    data << criteria.TimeFromStart;
-    data << criteria.TimeFromCreate;
+    data << uint32(criteria.TimeFromStart);
+    data << uint32(criteria.TimeFromCreate);
     data.WriteBits(criteria.Flags, 4);
-    data.WriteBit(criteria.RafAcceptanceID.has_value());
+    data.WriteBit(criteria.RafAcceptanceID.is_initialized());
     data.FlushBits();
 
     if (criteria.RafAcceptanceID)
@@ -66,15 +66,6 @@ WorldPacket const* WorldPackets::Achievement::AllAchievementData::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Achievement::AllAccountCriteria::Write()
-{
-    _worldPacket << uint32(Progress.size());
-    for (WorldPackets::Achievement::CriteriaProgress const& progress : Progress)
-        _worldPacket << progress;
-
-    return &_worldPacket;
-}
-
 WorldPacket const* WorldPackets::Achievement::RespondInspectAchievements::Write()
 {
     _worldPacket << Player;
@@ -90,20 +81,8 @@ WorldPacket const* WorldPackets::Achievement::CriteriaUpdate::Write()
     _worldPacket << PlayerGUID;
     _worldPacket << uint32(Flags);
     _worldPacket.AppendPackedTime(CurrentTime);
-    _worldPacket << ElapsedTime;
-    _worldPacket << CreationTime;
-    _worldPacket.WriteBit(RafAcceptanceID.has_value());
-    _worldPacket.FlushBits();
-
-    if (RafAcceptanceID)
-        _worldPacket << uint64(*RafAcceptanceID);
-
-    return &_worldPacket;
-}
-
-WorldPacket const* WorldPackets::Achievement::AccountCriteriaUpdate::Write()
-{
-    _worldPacket << Progress;
+    _worldPacket << uint32(ElapsedTime);
+    _worldPacket << uint32(CreationTime);
 
     return &_worldPacket;
 }
@@ -155,8 +134,8 @@ WorldPacket const* WorldPackets::Achievement::GuildCriteriaUpdate::Write()
     for (GuildCriteriaProgress const& progress : Progress)
     {
         _worldPacket << int32(progress.CriteriaID);
-        _worldPacket << progress.DateCreated;
-        _worldPacket << progress.DateStarted;
+        _worldPacket << uint32(progress.DateCreated);
+        _worldPacket << uint32(progress.DateStarted);
         _worldPacket.AppendPackedTime(progress.DateUpdated);
         _worldPacket << uint32(0); // this is a hack. this is a packed time written as int64 (progress.DateUpdated)
         _worldPacket << uint64(progress.Quantity);

@@ -64,6 +64,7 @@ const ::google::protobuf::ServiceDescriptor* ConnectionService_descriptor_ = NUL
 
 }  // namespace
 
+
 void protobuf_AssignDesc_connection_5fservice_2eproto() {
   protobuf_AddDesc_connection_5fservice_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -417,6 +418,7 @@ struct StaticDescriptorInitializer_connection_5fservice_2eproto {
     protobuf_AddDesc_connection_5fservice_2eproto();
   }
 } static_descriptor_initializer_connection_5fservice_2eproto_;
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -703,6 +705,7 @@ void ConnectRequest::CopyFrom(const ConnectRequest& from) {
 }
 
 bool ConnectRequest::IsInitialized() const {
+
   if (has_client_id()) {
     if (!this->client_id().IsInitialized()) return false;
   }
@@ -730,6 +733,7 @@ void ConnectRequest::Swap(ConnectRequest* other) {
   metadata.reflection = ConnectRequest_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -928,6 +932,7 @@ void ConnectionMeteringContentHandles::CopyFrom(const ConnectionMeteringContentH
 }
 
 bool ConnectionMeteringContentHandles::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->content_handle())) return false;
   return true;
 }
@@ -948,6 +953,7 @@ void ConnectionMeteringContentHandles::Swap(ConnectionMeteringContentHandles* ot
   metadata.reflection = ConnectionMeteringContentHandles_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1453,6 +1459,7 @@ void ConnectResponse::CopyFrom(const ConnectResponse& from) {
 
 bool ConnectResponse::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
   if (has_server_id()) {
     if (!this->server_id().IsInitialized()) return false;
   }
@@ -1491,6 +1498,7 @@ void ConnectResponse::Swap(ConnectResponse* other) {
   metadata.reflection = ConnectResponse_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1742,6 +1750,7 @@ void BoundService::CopyFrom(const BoundService& from) {
 
 bool BoundService::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
   return true;
 }
 
@@ -1762,6 +1771,7 @@ void BoundService::Swap(BoundService* other) {
   metadata.reflection = BoundService_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2095,6 +2105,7 @@ void BindRequest::CopyFrom(const BindRequest& from) {
 }
 
 bool BindRequest::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->deprecated_exported_service())) return false;
   if (!::google::protobuf::internal::AllAreInitialized(this->exported_service())) return false;
   if (!::google::protobuf::internal::AllAreInitialized(this->imported_service())) return false;
@@ -2120,6 +2131,7 @@ void BindRequest::Swap(BindRequest* other) {
   metadata.reflection = BindRequest_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2342,6 +2354,7 @@ void BindResponse::CopyFrom(const BindResponse& from) {
 }
 
 bool BindResponse::IsInitialized() const {
+
   return true;
 }
 
@@ -2361,6 +2374,7 @@ void BindResponse::Swap(BindResponse* other) {
   metadata.reflection = BindResponse_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2746,6 +2760,7 @@ void EchoRequest::CopyFrom(const EchoRequest& from) {
 }
 
 bool EchoRequest::IsInitialized() const {
+
   if (has_forward()) {
     if (!this->forward().IsInitialized()) return false;
   }
@@ -2772,6 +2787,7 @@ void EchoRequest::Swap(EchoRequest* other) {
   metadata.reflection = EchoRequest_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3020,6 +3036,7 @@ void EchoResponse::CopyFrom(const EchoResponse& from) {
 }
 
 bool EchoResponse::IsInitialized() const {
+
   return true;
 }
 
@@ -3040,6 +3057,7 @@ void EchoResponse::Swap(EchoResponse* other) {
   metadata.reflection = EchoResponse_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3242,6 +3260,7 @@ void DisconnectRequest::CopyFrom(const DisconnectRequest& from) {
 
 bool DisconnectRequest::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
   return true;
 }
 
@@ -3261,6 +3280,7 @@ void DisconnectRequest::Swap(DisconnectRequest* other) {
   metadata.reflection = DisconnectRequest_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3524,6 +3544,7 @@ void DisconnectNotification::CopyFrom(const DisconnectNotification& from) {
 
 bool DisconnectNotification::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
   return true;
 }
 
@@ -3544,6 +3565,7 @@ void DisconnectNotification::Swap(DisconnectNotification* other) {
   metadata.reflection = DisconnectNotification_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3699,6 +3721,7 @@ void EncryptRequest::CopyFrom(const EncryptRequest& from) {
 }
 
 bool EncryptRequest::IsInitialized() const {
+
   return true;
 }
 
@@ -3716,6 +3739,7 @@ void EncryptRequest::Swap(EncryptRequest* other) {
   metadata.reflection = EncryptRequest_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3988,6 +4012,7 @@ uint32 ConnectionService::HandleRequestDisconnect(::bgs::protocol::connection::v
     GetCallerInfo().c_str(), request->ShortDebugString().c_str());
   return ERROR_RPC_NOT_IMPLEMENTED;
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

@@ -171,12 +171,12 @@ namespace VMAP
         exportGameobjectModels();
         // export objects
         std::cout << "\nConverting Model Files" << std::endl;
-        for (std::string const& spawnedModelFile : spawnedModelFiles)
+        for (std::set<std::string>::iterator mfile = spawnedModelFiles.begin(); mfile != spawnedModelFiles.end(); ++mfile)
         {
-            std::cout << "Converting " << spawnedModelFile << std::endl;
-            if (!convertRawFile(spawnedModelFile))
+            std::cout << "Converting " << *mfile << std::endl;
+            if (!convertRawFile(*mfile))
             {
-                std::cout << "error converting " << spawnedModelFile << std::endl;
+                std::cout << "error converting " << *mfile << std::endl;
                 success = false;
                 break;
             }
@@ -247,11 +247,12 @@ namespace VMAP
         if (groups != 1)
             printf("Warning: '%s' does not seem to be a M2 model!\n", modelFilename.c_str());
 
-        AABox rotated_bounds;
-        for (int i = 0; i < 8; ++i)
-            rotated_bounds.merge(modelPosition.transform(raw_model.groupsArray[0].bounds.corner(i)));
+        AABox modelBound;
 
-        spawn.iBound = rotated_bounds + spawn.iPos;
+        modelBound.merge(modelPosition.transform(raw_model.groupsArray[0].bounds.low()));
+        modelBound.merge(modelPosition.transform(raw_model.groupsArray[0].bounds.high()));
+
+        spawn.iBound = modelBound + spawn.iPos;
         spawn.flags |= MOD_HAS_BOUND;
         return true;
     }
@@ -396,6 +397,7 @@ namespace VMAP
         READ_OR_RETURN(&mogpflags, sizeof(uint32));
         READ_OR_RETURN(&GroupWMOID, sizeof(uint32));
 
+
         Vector3 vec1, vec2;
         READ_OR_RETURN(&vec1, sizeof(Vector3));
 
@@ -425,8 +427,8 @@ namespace VMAP
         READ_OR_RETURN(&nindexes, sizeof(uint32));
         if (nindexes >0)
         {
-            uint32 *indexarray = new uint32[nindexes];
-            READ_OR_RETURN_WITH_DELETE(indexarray, nindexes*sizeof(uint32));
+            uint16 *indexarray = new uint16[nindexes];
+            READ_OR_RETURN_WITH_DELETE(indexarray, nindexes*sizeof(uint16));
             triangles.reserve(nindexes / 3);
             for (uint32 i=0; i<nindexes; i+=3)
                 triangles.push_back(MeshTriangle(indexarray[i], indexarray[i+1], indexarray[i+2]));

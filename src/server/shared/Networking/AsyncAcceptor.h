@@ -22,12 +22,16 @@
 #include "IpAddress.h"
 #include "Log.h"
 #include <boost/asio/ip/tcp.hpp>
-#include <atomic>
 #include <functional>
+#include <atomic>
 
 using boost::asio::ip::tcp;
 
+#if BOOST_VERSION >= 106600
 #define TRINITY_MAX_LISTEN_CONNECTIONS boost::asio::socket_base::max_listen_connections
+#else
+#define TRINITY_MAX_LISTEN_CONNECTIONS boost::asio::socket_base::max_connections
+#endif
 
 class AsyncAcceptor
 {
@@ -79,15 +83,6 @@ public:
             TC_LOG_INFO("network", "Failed to open acceptor %s", errorCode.message().c_str());
             return false;
         }
-
-#if TRINITY_PLATFORM != TRINITY_PLATFORM_WINDOWS
-        _acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), errorCode);
-        if (errorCode)
-        {
-            TC_LOG_INFO("network", "Failed to set reuse_address option on acceptor %s", errorCode.message().c_str());
-            return false;
-        }
-#endif
 
         _acceptor.bind(_endpoint, errorCode);
         if (errorCode)

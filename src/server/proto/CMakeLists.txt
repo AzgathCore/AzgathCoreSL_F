@@ -48,6 +48,12 @@ target_link_libraries(proto
     common
     protobuf)
 
+if (MSVC)
+  target_compile_definitions(protobuf
+    PRIVATE
+      -D_SCL_SECURE_NO_WARNINGS)
+endif()
+
 set_target_properties(proto
   PROPERTIES
     FOLDER

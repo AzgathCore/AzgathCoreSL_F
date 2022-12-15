@@ -18,6 +18,7 @@
 #ifndef SC_HYJAL_TRASH_AI_H
 #define SC_HYJAL_TRASH_AI_H
 
+#include "hyjal.h"
 #include "ScriptedEscortAI.h"
 
 struct hyjal_trashAI : public EscortAI
@@ -28,7 +29,7 @@ struct hyjal_trashAI : public EscortAI
 
     void JustDied(Unit* /*killer*/) override;
 
-    void DamageTaken(Unit* done_by, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override;
+    void DamageTaken(Unit* done_by, uint32 &damage) override;
 
     public:
         InstanceScript* instance;

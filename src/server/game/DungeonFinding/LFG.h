@@ -31,7 +31,7 @@ enum LFGEnum
 {
     LFG_TANKS_NEEDED                             = 1,
     LFG_HEALERS_NEEDED                           = 1,
-    LFG_DPS_NEEDED                               = 3
+    LFG_DAMAGES_NEEDED                           = 3
 };
 
 enum LfgRoles
@@ -40,8 +40,7 @@ enum LfgRoles
     PLAYER_ROLE_LEADER                           = 0x01,
     PLAYER_ROLE_TANK                             = 0x02,
     PLAYER_ROLE_HEALER                           = 0x04,
-    PLAYER_ROLE_DAMAGE                           = 0x08,
-    PLAYER_ROLE_ANY                              = PLAYER_ROLE_LEADER | PLAYER_ROLE_TANK | PLAYER_ROLE_HEALER | PLAYER_ROLE_DAMAGE
+    PLAYER_ROLE_DAMAGE                           = 0x08
 };
 
 enum LfgUpdateType
@@ -84,12 +83,11 @@ enum LfgState : uint8
 
 enum LfgQueueType
 {
-    LFG_QUEUE_DUNGEON       = 1,
-    LFG_QUEUE_LFR           = 2,
-    LFG_QUEUE_SCENARIO      = 3,
-    LFG_QUEUE_FLEX          = 4,
-    LFG_QUEUE_WORLD_PVP     = 5,
-    LFG_QUEUE_SCHEDULED_PVP = 6,    // pvp brawl
+    LFG_QUEUE_DUNGEON   = 1,
+    LFG_QUEUE_LFR       = 2,
+    LFG_QUEUE_SCENARIO  = 3,
+    LFG_QUEUE_FLEX      = 4,
+    LFG_QUEUE_WORLD_PVP = 5
 };
 
 /// Instance lock types

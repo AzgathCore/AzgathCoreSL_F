@@ -23,7 +23,9 @@
 #include "Errors.h"
 #include "IpNetwork.h"
 #include "ProtobufJSON.h"
+#include "Realm.h"
 #include "Resolver.h"
+#include "SessionManager.h"
 #include "SslContext.h"
 #include "Util.h"
 #include "httpget.h"
@@ -553,7 +555,7 @@ void LoginRESTService::ResponseCodePlugin::Destroy(soap* s, soap_plugin* p)
     delete data;
 }
 
-int32 LoginRESTService::ResponseCodePlugin::ChangeResponse(soap* s, int32 originalResponse, uint64 contentLength)
+int32 LoginRESTService::ResponseCodePlugin::ChangeResponse(soap* s, int32 originalResponse, size_t contentLength)
 {
     ResponseCodePlugin* self = reinterpret_cast<ResponseCodePlugin*>(soap_lookup_plugin(s, PluginId));
     return self->fresponse(s, self->ErrorCode && originalResponse == SOAP_FILE ? self->ErrorCode : originalResponse, contentLength);

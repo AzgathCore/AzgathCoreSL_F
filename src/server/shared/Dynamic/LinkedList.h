@@ -18,7 +18,7 @@
 #ifndef _LINKEDLIST
 #define _LINKEDLIST
 
-#include "Define.h"
+#include <Define.h>
 #include <iterator>
 
 //============================================
@@ -78,9 +78,7 @@ class LinkedListElement
 
     private:
         LinkedListElement(LinkedListElement const&) = delete;
-        LinkedListElement(LinkedListElement&&) = delete;
         LinkedListElement& operator=(LinkedListElement const&) = delete;
-        LinkedListElement& operator=(LinkedListElement&&) = delete;
 
     protected:
         ~LinkedListElement()
@@ -251,9 +249,7 @@ class LinkedListHead
 
     private:
         LinkedListHead(LinkedListHead const&) = delete;
-        LinkedListHead(LinkedListHead&&) = delete;
         LinkedListHead& operator=(LinkedListHead const&) = delete;
-        LinkedListHead& operator=(LinkedListHead&&) = delete;
 
     protected:
         ~LinkedListHead() { }

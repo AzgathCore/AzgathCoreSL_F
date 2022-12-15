@@ -21,7 +21,6 @@
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
 #include "SpellMgr.h"
-#include "Unit.h"
 #include <sstream>
 #include <string>
 
@@ -35,21 +34,19 @@ bool _SpellScript::_Validate(SpellInfo const* entry)
     return true;
 }
 
-_SpellScript::_SpellScript(): m_currentScriptState(SPELL_SCRIPT_STATE_NONE), m_scriptName(nullptr), m_scriptSpellId(0)
+bool _SpellScript::_ValidateSpellInfo(uint32 const* begin, uint32 const* end)
 {
-}
-
-_SpellScript::~_SpellScript() = default;
-
-bool _SpellScript::_ValidateSpellInfo(uint32 spellId)
-{
-    if (!sSpellMgr->GetSpellInfo(spellId, DIFFICULTY_NONE))
+    bool allValid = true;
+    while (begin != end)
     {
-        TC_LOG_ERROR("scripts.spells", "_SpellScript::ValidateSpellInfo: Spell %u does not exist.", spellId);
-        return false;
+        if (!sSpellMgr->GetSpellInfo(*begin, DIFFICULTY_NONE))
+        {
+            TC_LOG_ERROR("scripts.spells", "_SpellScript::ValidateSpellInfo: Spell %u does not exist.", *begin);
+            allValid = false;
+        }
+        ++begin;
     }
-
-    return true;
+    return allValid;
 }
 
 void _SpellScript::_Register()
@@ -91,10 +88,6 @@ _SpellScript::EffectHook::EffectHook(uint8 _effIndex)
     effIndex = _effIndex;
 }
 
-_SpellScript::EffectHook::EffectHook(EffectHook&& right) noexcept = default;
-_SpellScript::EffectHook& _SpellScript::EffectHook::operator=(EffectHook&& right) noexcept = default;
-_SpellScript::EffectHook::~EffectHook() = default;
-
 uint32 _SpellScript::EffectHook::GetAffectedEffectsMask(SpellInfo const* spellEntry) const
 {
     uint32 mask = 0;
@@ -123,33 +116,32 @@ bool _SpellScript::EffectHook::IsEffectAffected(SpellInfo const* spellEntry, uin
 
 std::string _SpellScript::EffectHook::EffIndexToString() const
 {
-    if (effIndex == EFFECT_ALL)
-        return "EFFECT_ALL";
-    if (effIndex == EFFECT_FIRST_FOUND)
-        return "EFFECT_FIRST_FOUND";
-    if (effIndex < MAX_SPELL_EFFECTS)
-        return Trinity::StringFormat("EFFECT_%u", uint32(effIndex));
+    switch (effIndex)
+    {
+        case EFFECT_ALL:
+            return "EFFECT_ALL";
+        case EFFECT_FIRST_FOUND:
+            return "EFFECT_FIRST_FOUND";
+        case EFFECT_0:
+            return "EFFECT_0";
+        case EFFECT_1:
+            return "EFFECT_1";
+        case EFFECT_2:
+            return "EFFECT_2";
+    }
     return "Invalid Value";
 }
 
-_SpellScript::EffectNameCheck::EffectNameCheck(uint16 _effName) : effName(_effName)
-{
-}
-
-_SpellScript::EffectNameCheck::EffectNameCheck(EffectNameCheck&& right) noexcept = default;
-_SpellScript::EffectNameCheck& _SpellScript::EffectNameCheck::operator=(EffectNameCheck&& right) noexcept = default;
-_SpellScript::EffectNameCheck::~EffectNameCheck() = default;
-
 bool _SpellScript::EffectNameCheck::Check(SpellInfo const* spellEntry, uint8 effIndex) const
 {
-    if (spellEntry->GetEffects().size() <= effIndex)
+    SpellEffectInfo const* effect = spellEntry->GetEffect(effIndex);
+    if (!effect)
         return false;
-    SpellEffectInfo const& spellEffectInfo = spellEntry->GetEffect(SpellEffIndex(effIndex));
-    if (!spellEffectInfo.Effect && !effName)
+    if (!effect->Effect && !effName)
         return true;
-    if (!spellEffectInfo.Effect)
+    if (!effect->Effect)
         return false;
-    return (effName == SPELL_EFFECT_ANY) || (spellEffectInfo.Effect == effName);
+    return (effName == SPELL_EFFECT_ANY) || (effect->Effect == effName);
 }
 
 std::string _SpellScript::EffectNameCheck::ToString() const
@@ -165,24 +157,16 @@ std::string _SpellScript::EffectNameCheck::ToString() const
     }
 }
 
-_SpellScript::EffectAuraNameCheck::EffectAuraNameCheck(uint16 _effAurName) : effAurName(_effAurName)
-{
-}
-
-_SpellScript::EffectAuraNameCheck::EffectAuraNameCheck(EffectAuraNameCheck&& right) noexcept = default;
-_SpellScript::EffectAuraNameCheck& _SpellScript::EffectAuraNameCheck::operator=(EffectAuraNameCheck&& right) noexcept = default;
-_SpellScript::EffectAuraNameCheck::~EffectAuraNameCheck() = default;
-
 bool _SpellScript::EffectAuraNameCheck::Check(SpellInfo const* spellEntry, uint8 effIndex) const
 {
-    if (spellEntry->GetEffects().size() <= effIndex)
+    SpellEffectInfo const* effect = spellEntry->GetEffect(effIndex);
+    if (!effect)
         return false;
-    SpellEffectInfo const& spellEffectInfo = spellEntry->GetEffect(SpellEffIndex(effIndex));
-    if (!spellEffectInfo.ApplyAuraName && !effAurName)
+    if (!effect->ApplyAuraName && !effAurName)
         return true;
-    if (!spellEffectInfo.ApplyAuraName)
+    if (!effect->ApplyAuraName)
         return false;
-    return (effAurName == SPELL_AURA_ANY) || (spellEffectInfo.ApplyAuraName == effAurName);
+    return (effAurName == SPELL_AURA_ANY) || (effect->ApplyAuraName == effAurName);
 }
 
 std::string _SpellScript::EffectAuraNameCheck::ToString() const
@@ -198,54 +182,81 @@ std::string _SpellScript::EffectAuraNameCheck::ToString() const
     }
 }
 
-SpellScript::CastHandler::CastHandler(SpellCastFnType _pCastHandlerScript) : pCastHandlerScript(_pCastHandlerScript)
+SpellScript::CastHandler::CastHandler(SpellCastFnType _pCastHandlerScript)
 {
+    pCastHandlerScript = _pCastHandlerScript;
 }
-
-SpellScript::CastHandler::CastHandler(CastHandler&& right) noexcept = default;
-SpellScript::CastHandler& SpellScript::CastHandler::operator=(CastHandler&& right) noexcept = default;
-SpellScript::CastHandler::~CastHandler() = default;
 
 void SpellScript::CastHandler::Call(SpellScript* spellScript)
 {
     (spellScript->*pCastHandlerScript)();
 }
 
-SpellScript::CheckCastHandler::CheckCastHandler(SpellCheckCastFnType checkCastHandlerScript) : _checkCastHandlerScript(checkCastHandlerScript)
+SpellScript::CheckCastHandler::CheckCastHandler(SpellCheckCastFnType checkCastHandlerScript)
 {
+    _checkCastHandlerScript = checkCastHandlerScript;
 }
-
-SpellScript::CheckCastHandler::CheckCastHandler(CheckCastHandler&& right) noexcept = default;
-SpellScript::CheckCastHandler& SpellScript::CheckCastHandler::operator=(CheckCastHandler&& right) noexcept = default;
-SpellScript::CheckCastHandler::~CheckCastHandler() = default;
 
 SpellCastResult SpellScript::CheckCastHandler::Call(SpellScript* spellScript)
 {
     return (spellScript->*_checkCastHandlerScript)();
 }
 
-SpellScript::OnCalculateResistAbsorbHandler::OnCalculateResistAbsorbHandler(SpellOnResistAbsorbCalculateFnType onResistAbsorbCalculateHandlerScript) :
-    pOnCalculateResistAbsorbHandlerScript(onResistAbsorbCalculateHandlerScript)
+void SpellScript::OnPrepareHandler::Call(SpellScript* spellScript)
 {
+    (spellScript->*_onPrepareHandlerScript)();
 }
 
-SpellScript::OnCalculateResistAbsorbHandler::OnCalculateResistAbsorbHandler(OnCalculateResistAbsorbHandler&& right) noexcept = default;
-SpellScript::OnCalculateResistAbsorbHandler& SpellScript::OnCalculateResistAbsorbHandler::operator=(OnCalculateResistAbsorbHandler&& right) noexcept = default;
-SpellScript::OnCalculateResistAbsorbHandler::~OnCalculateResistAbsorbHandler() = default;
-
-void SpellScript::OnCalculateResistAbsorbHandler::Call(SpellScript* spellScript, DamageInfo const& damageInfo, uint32& resistAmount, int32& absorbAmount)
+SpellScript::OnPrepareHandler::OnPrepareHandler(SpellOnPrepareFnType OnPrepareHandlerScript)
 {
-    return (spellScript->*pOnCalculateResistAbsorbHandlerScript)(damageInfo, resistAmount, absorbAmount);
+    _onPrepareHandlerScript = OnPrepareHandlerScript;
+}
+
+void SpellScript::OnSummonHandler::Call(SpellScript* spellScript, Creature* creature)
+{
+    (spellScript->*_onSummonHandlerScript)(creature);
+}
+
+SpellScript::OnSummonHandler::OnSummonHandler(SpellOnSummonFnType OnSummonHandlerScript)
+{
+    _onSummonHandlerScript = OnSummonHandlerScript;
+}
+
+void SpellScript::OnTakePowerHandler::Call(SpellScript* spellScript, SpellPowerCost& powerCost)
+{
+    (spellScript->*_onTakePowerHandlerScript)(powerCost);
+}
+
+SpellScript::OnTakePowerHandler::OnTakePowerHandler(SpellOnTakePowerFnType OnTakePowerHandlerScript)
+{
+    _onTakePowerHandlerScript = OnTakePowerHandlerScript;
+}
+
+void SpellScript::OnCalcCastTimeHandler::Call(SpellScript* spellScript, int32& castTime)
+{
+    (spellScript->*_onCalcCastTimeHandlerScript)(castTime);
+}
+
+SpellScript::OnCalcCastTimeHandler::OnCalcCastTimeHandler(SpellOnCalcCastTimeFnType OnCalcCastTimeHandlerScript)
+{
+    _onCalcCastTimeHandlerScript = OnCalcCastTimeHandlerScript;
+}
+
+void SpellScript::OnCalcCritChanceHandler::Call(SpellScript* spellScript, Unit* victim, float& chance)
+{
+    (spellScript->*_onCalcCritChanceHandlerScript)(victim, chance);
+}
+
+SpellScript::OnCalcCritChanceHandler::OnCalcCritChanceHandler(SpellOnCalcCritChanceFnType OnCalcCritChanceHandlerScript)
+{
+    _onCalcCritChanceHandlerScript = OnCalcCritChanceHandlerScript;
 }
 
 SpellScript::EffectHandler::EffectHandler(SpellEffectFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : _SpellScript::EffectNameCheck(_effName), _SpellScript::EffectHook(_effIndex), pEffectHandlerScript(_pEffectHandlerScript)
+    : _SpellScript::EffectNameCheck(_effName), _SpellScript::EffectHook(_effIndex)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-SpellScript::EffectHandler::EffectHandler(EffectHandler&& right) noexcept = default;
-SpellScript::EffectHandler& SpellScript::EffectHandler::operator=(EffectHandler&& right) noexcept = default;
-SpellScript::EffectHandler::~EffectHandler() = default;
 
 std::string SpellScript::EffectHandler::ToString() const
 {
@@ -262,52 +273,28 @@ void SpellScript::EffectHandler::Call(SpellScript* spellScript, SpellEffIndex ef
     (spellScript->*pEffectHandlerScript)(effIndexToHandle);
 }
 
-SpellScript::BeforeHitHandler::BeforeHitHandler(SpellBeforeHitFnType pBeforeHitHandlerScript) : _pBeforeHitHandlerScript(pBeforeHitHandlerScript)
+SpellScript::BeforeHitHandler::BeforeHitHandler(SpellBeforeHitFnType pBeforeHitHandlerScript)
 {
+    _pBeforeHitHandlerScript = pBeforeHitHandlerScript;
 }
-
-SpellScript::BeforeHitHandler::BeforeHitHandler(BeforeHitHandler&& right) noexcept = default;
-SpellScript::BeforeHitHandler& SpellScript::BeforeHitHandler::operator=(BeforeHitHandler&& right) noexcept = default;
-SpellScript::BeforeHitHandler::~BeforeHitHandler() = default;
 
 void SpellScript::BeforeHitHandler::Call(SpellScript* spellScript, SpellMissInfo missInfo)
 {
     (spellScript->*_pBeforeHitHandlerScript)(missInfo);
 }
 
-SpellScript::HitHandler::HitHandler(SpellHitFnType _pHitHandlerScript) : pHitHandlerScript(_pHitHandlerScript)
+SpellScript::HitHandler::HitHandler(SpellHitFnType _pHitHandlerScript)
 {
+    pHitHandlerScript = _pHitHandlerScript;
 }
-
-SpellScript::HitHandler::HitHandler(HitHandler&& right) noexcept = default;
-SpellScript::HitHandler& SpellScript::HitHandler::operator=(HitHandler&& right) noexcept = default;
-SpellScript::HitHandler::~HitHandler() = default;
 
 void SpellScript::HitHandler::Call(SpellScript* spellScript)
 {
     (spellScript->*pHitHandlerScript)();
 }
 
-SpellScript::OnCalcCritChanceHandler::OnCalcCritChanceHandler(SpellOnCalcCritChanceFnType onCalcCritChanceHandlerScript) : _onCalcCritChanceHandlerScript(
-    onCalcCritChanceHandlerScript)
-{
-}
-
-SpellScript::OnCalcCritChanceHandler::OnCalcCritChanceHandler(OnCalcCritChanceHandler&& right) noexcept = default;
-SpellScript::OnCalcCritChanceHandler& SpellScript::OnCalcCritChanceHandler::operator=(OnCalcCritChanceHandler&& right) noexcept = default;
-SpellScript::OnCalcCritChanceHandler::~OnCalcCritChanceHandler() = default;
-
-void SpellScript::OnCalcCritChanceHandler::Call(SpellScript* spellScript, Unit const* victim, float& critChance) const
-{
-    (spellScript->*_onCalcCritChanceHandlerScript)(victim, critChance);
-}
-
 SpellScript::TargetHook::TargetHook(uint8 _effectIndex, uint16 _targetType, bool _area, bool _dest)
     : _SpellScript::EffectHook(_effectIndex), targetType(_targetType), area(_area), dest(_dest) { }
-
-SpellScript::TargetHook::TargetHook(TargetHook&& right) noexcept = default;
-SpellScript::TargetHook& SpellScript::TargetHook::operator=(TargetHook&& right) noexcept = default;
-SpellScript::TargetHook::~TargetHook() = default;
 
 std::string SpellScript::TargetHook::ToString() const
 {
@@ -321,12 +308,12 @@ bool SpellScript::TargetHook::CheckEffect(SpellInfo const* spellEntry, uint8 eff
     if (!targetType)
         return false;
 
-    if (spellEntry->GetEffects().size() <= effIndexToCheck)
+    SpellEffectInfo const* effect = spellEntry->GetEffect(effIndexToCheck);
+    if (!effect)
         return false;
 
-    SpellEffectInfo const& spellEffectInfo = spellEntry->GetEffect(SpellEffIndex(effIndexToCheck));
-    if (spellEffectInfo.TargetA.GetTarget() != targetType &&
-        spellEffectInfo.TargetB.GetTarget() != targetType)
+    if (effect->TargetA.GetTarget() != targetType &&
+        effect->TargetB.GetTarget() != targetType)
         return false;
 
     SpellImplicitTargetInfo targetInfo(targetType);
@@ -337,11 +324,8 @@ bool SpellScript::TargetHook::CheckEffect(SpellInfo const* spellEntry, uint8 eff
         case TARGET_SELECT_CATEGORY_NEARBY: // BOTH
             return true;
         case TARGET_SELECT_CATEGORY_CONE: // AREA
-        case TARGET_SELECT_CATEGORY_LINE: // AREA
-            return area;
         case TARGET_SELECT_CATEGORY_AREA: // AREA
-            if (targetInfo.GetObjectType() == TARGET_OBJECT_TYPE_UNIT_AND_DEST)
-                return area || dest;
+        //case TARGET_SELECT_CATEGORY_LINE: //LINE
             return area;
         case TARGET_SELECT_CATEGORY_DEFAULT:
             switch (targetInfo.GetObjectType())
@@ -371,13 +355,10 @@ bool SpellScript::TargetHook::CheckEffect(SpellInfo const* spellEntry, uint8 eff
 }
 
 SpellScript::ObjectAreaTargetSelectHandler::ObjectAreaTargetSelectHandler(SpellObjectAreaTargetSelectFnType _pObjectAreaTargetSelectHandlerScript, uint8 _effIndex, uint16 _targetType)
-    : TargetHook(_effIndex, _targetType, true, false), pObjectAreaTargetSelectHandlerScript(_pObjectAreaTargetSelectHandlerScript)
+    : TargetHook(_effIndex, _targetType, true, false)
 {
+    pObjectAreaTargetSelectHandlerScript = _pObjectAreaTargetSelectHandlerScript;
 }
-
-SpellScript::ObjectAreaTargetSelectHandler::ObjectAreaTargetSelectHandler(ObjectAreaTargetSelectHandler&& right) noexcept = default;
-SpellScript::ObjectAreaTargetSelectHandler& SpellScript::ObjectAreaTargetSelectHandler::operator=(ObjectAreaTargetSelectHandler&& right) noexcept = default;
-SpellScript::ObjectAreaTargetSelectHandler::~ObjectAreaTargetSelectHandler() = default;
 
 void SpellScript::ObjectAreaTargetSelectHandler::Call(SpellScript* spellScript, std::list<WorldObject*>& targets)
 {
@@ -385,13 +366,10 @@ void SpellScript::ObjectAreaTargetSelectHandler::Call(SpellScript* spellScript, 
 }
 
 SpellScript::ObjectTargetSelectHandler::ObjectTargetSelectHandler(SpellObjectTargetSelectFnType _pObjectTargetSelectHandlerScript, uint8 _effIndex, uint16 _targetType)
-    : TargetHook(_effIndex, _targetType, false, false), pObjectTargetSelectHandlerScript(_pObjectTargetSelectHandlerScript)
+    : TargetHook(_effIndex, _targetType, false, false)
 {
+    pObjectTargetSelectHandlerScript = _pObjectTargetSelectHandlerScript;
 }
-
-SpellScript::ObjectTargetSelectHandler::ObjectTargetSelectHandler(ObjectTargetSelectHandler&& right) noexcept = default;
-SpellScript::ObjectTargetSelectHandler& SpellScript::ObjectTargetSelectHandler::operator=(ObjectTargetSelectHandler&& right) noexcept = default;
-SpellScript::ObjectTargetSelectHandler::~ObjectTargetSelectHandler() = default;
 
 void SpellScript::ObjectTargetSelectHandler::Call(SpellScript* spellScript, WorldObject*& target)
 {
@@ -399,13 +377,10 @@ void SpellScript::ObjectTargetSelectHandler::Call(SpellScript* spellScript, Worl
 }
 
 SpellScript::DestinationTargetSelectHandler::DestinationTargetSelectHandler(SpellDestinationTargetSelectFnType _DestinationTargetSelectHandlerScript, uint8 _effIndex, uint16 _targetType)
-    : TargetHook(_effIndex, _targetType, false, true), DestinationTargetSelectHandlerScript(_DestinationTargetSelectHandlerScript)
+    : TargetHook(_effIndex, _targetType, false, true)
 {
+    DestinationTargetSelectHandlerScript = _DestinationTargetSelectHandlerScript;
 }
-
-SpellScript::DestinationTargetSelectHandler::DestinationTargetSelectHandler(DestinationTargetSelectHandler&& right) noexcept = default;
-SpellScript::DestinationTargetSelectHandler& SpellScript::DestinationTargetSelectHandler::operator=(DestinationTargetSelectHandler&& right) noexcept = default;
-SpellScript::DestinationTargetSelectHandler::~DestinationTargetSelectHandler() = default;
 
 void SpellScript::DestinationTargetSelectHandler::Call(SpellScript* spellScript, SpellDestination& target)
 {
@@ -482,7 +457,6 @@ bool SpellScript::IsInCheckCastHook() const
 bool SpellScript::IsAfterTargetSelectionPhase() const
 {
     return IsInHitPhase()
-        || IsInEffectHook()
         || m_currentScriptState == SPELL_SCRIPT_HOOK_ON_CAST
         || m_currentScriptState == SPELL_SCRIPT_HOOK_AFTER_CAST
         || m_currentScriptState == SPELL_SCRIPT_HOOK_CALC_CRIT_CHANCE;
@@ -502,22 +476,6 @@ bool SpellScript::IsInTargetHook() const
     }
     return false;
 }
-
-bool SpellScript::IsInModifiableHook() const
-{
-    // after hit hook executed after damage/healing is already done
-    // modifying it at this point has no effect
-    switch (m_currentScriptState)
-    {
-        case SPELL_SCRIPT_HOOK_EFFECT_LAUNCH_TARGET:
-        case SPELL_SCRIPT_HOOK_EFFECT_HIT_TARGET:
-        case SPELL_SCRIPT_HOOK_BEFORE_HIT:
-        case SPELL_SCRIPT_HOOK_HIT:
-            return true;
-    }
-    return false;
-}
-
 bool SpellScript::IsInHitPhase() const
 {
     return (m_currentScriptState >= HOOK_SPELL_HIT_START && m_currentScriptState < HOOK_SPELL_HIT_END);
@@ -531,32 +489,17 @@ bool SpellScript::IsInEffectHook() const
 
 Unit* SpellScript::GetCaster() const
 {
-    return m_spell->GetCaster()->ToUnit();
-}
-
-GameObject* SpellScript::GetGObjCaster() const
-{
-    return m_spell->GetCaster()->ToGameObject();
+     return m_spell->GetCaster();
 }
 
 Unit* SpellScript::GetOriginalCaster() const
 {
-    return m_spell->GetOriginalCaster();
+     return m_spell->GetOriginalCaster();
 }
 
 SpellInfo const* SpellScript::GetSpellInfo() const
 {
     return m_spell->GetSpellInfo();
-}
-
-SpellEffectInfo const& SpellScript::GetEffectInfo(SpellEffIndex effIndex) const
-{
-    return GetSpellInfo()->GetEffect(effIndex);
-}
-
-SpellValue const* SpellScript::GetSpellValue() const
-{
-    return m_spell->m_spellValue;
 }
 
 WorldLocation const* SpellScript::GetExplTargetDest() const
@@ -624,15 +567,9 @@ int64 SpellScript::GetItemTargetCountForEffect(SpellEffIndex effect) const
     return m_spell->GetItemTargetCountForEffect(effect);
 }
 
-int64 SpellScript::GetCorpseTargetCountForEffect(SpellEffIndex effect) const
+ObjectGuid SpellScript::GetOrigUnitTargetGUID() const
 {
-    if (!IsAfterTargetSelectionPhase())
-    {
-        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::GetCorpseTargetCountForEffect was called, but function has no effect in current hook! (spell has not selected targets yet)",
-            m_scriptName->c_str(), m_scriptSpellId);
-        return 0;
-    }
-    return m_spell->GetCorpseTargetCountForEffect(effect);
+    return m_spell->m_targets.GetOrigUnitTargetGUID();
 }
 
 Unit* SpellScript::GetHitUnit() const
@@ -689,16 +626,6 @@ GameObject* SpellScript::GetHitGObj() const
     return m_spell->gameObjTarget;
 }
 
-Corpse* SpellScript::GetHitCorpse() const
-{
-    if (!IsInTargetHook())
-    {
-        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::GetHitCorpse was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
-        return nullptr;
-    }
-    return m_spell->m_corpseTarget;
-}
-
 WorldLocation* SpellScript::GetHitDest() const
 {
     if (!IsInEffectHook())
@@ -721,7 +648,7 @@ int32 SpellScript::GetHitDamage() const
 
 void SpellScript::SetHitDamage(int32 damage)
 {
-    if (!IsInModifiableHook())
+    if (!IsInTargetHook())
     {
         TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::SetHitDamage was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
         return;
@@ -741,7 +668,7 @@ int32 SpellScript::GetHitHeal() const
 
 void SpellScript::SetHitHeal(int32 heal)
 {
-    if (!IsInModifiableHook())
+    if (!IsInTargetHook())
     {
         TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::SetHitHeal was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
         return;
@@ -749,41 +676,28 @@ void SpellScript::SetHitHeal(int32 heal)
     m_spell->m_healing = heal;
 }
 
-bool SpellScript::IsHitCrit() const
+TargetInfo* SpellScript::GetCurrentTargetInfo() const
 {
     if (!IsInTargetHook())
     {
-        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::IsHitCrit was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
-        return false;
+        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::GetCurrentTargetInfo was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
+        return nullptr;
     }
-    if (Unit* hitUnit = GetHitUnit())
-    {
-        auto itr = std::find_if(m_spell->m_UniqueTargetInfo.begin(), m_spell->m_UniqueTargetInfo.end(), [hitUnit](Spell::TargetInfo const& targetInfo)
-        {
-            return targetInfo.TargetGUID == hitUnit->GetGUID();
-        });
-        ASSERT(itr != m_spell->m_UniqueTargetInfo.end());
-        return itr->IsCrit;
-    }
-    return false;
+    return m_spell->m_currentTargetInfo;
 }
 
-Aura* SpellScript::GetHitAura(bool dynObjAura /*= false*/) const
+Aura* SpellScript::GetHitAura() const
 {
     if (!IsInTargetHook())
     {
         TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::GetHitAura was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
         return nullptr;
     }
-
-    Aura* aura = m_spell->_spellAura;
-    if (dynObjAura)
-        aura = m_spell->_dynObjAura;
-
-    if (!aura || aura->IsRemoved())
+    if (!m_spell->m_spellAura)
         return nullptr;
-
-    return aura;
+    if (m_spell->m_spellAura->IsRemoved())
+        return nullptr;
+    return m_spell->m_spellAura;
 }
 
 void SpellScript::PreventHitAura()
@@ -793,10 +707,8 @@ void SpellScript::PreventHitAura()
         TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::PreventHitAura was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
         return;
     }
-    if (UnitAura* aura = m_spell->_spellAura)
-        aura->Remove();
-    if (DynObjAura* aura = m_spell->_dynObjAura)
-        aura->Remove();
+    if (m_spell->m_spellAura)
+        m_spell->m_spellAura->Remove();
 }
 
 void SpellScript::PreventHitEffect(SpellEffIndex effIndex)
@@ -820,11 +732,11 @@ void SpellScript::PreventHitDefaultEffect(SpellEffIndex effIndex)
     m_hitPreventDefaultEffectMask |= 1 << effIndex;
 }
 
-SpellEffectInfo const& SpellScript::GetEffectInfo() const
+SpellEffectInfo const* SpellScript::GetEffectInfo() const
 {
     ASSERT(IsInEffectHook(), "Script: `%s` Spell: `%u`: function SpellScript::GetEffectInfo was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
 
-    return *m_spell->effectInfo;
+    return m_spell->effectInfo;
 }
 
 int32 SpellScript::GetEffectValue() const
@@ -849,36 +761,14 @@ void SpellScript::SetEffectValue(int32 value)
     m_spell->damage = value;
 }
 
-float SpellScript::GetEffectVariance() const
-{
-    if (!IsInEffectHook())
-    {
-        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::GetEffectVariance was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
-        return 0.0f;
-    }
-
-    return m_spell->variance;
-}
-
-void SpellScript::SetEffectVariance(float variance)
-{
-    if (!IsInEffectHook())
-    {
-        TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u`: function SpellScript::SetEffectVariance was called, but function has no effect in current hook!", m_scriptName->c_str(), m_scriptSpellId);
-        return;
-    }
-
-    m_spell->variance = variance;
-}
-
 Item* SpellScript::GetCastItem() const
 {
     return m_spell->m_CastItem;
 }
 
-void SpellScript::CreateItem(uint32 itemId, ItemContext context)
+void SpellScript::CreateItem(uint32 effIndex, uint32 itemId, ItemContext context)
 {
-    m_spell->DoCreateItem(itemId, context);
+    m_spell->DoCreateItem(effIndex, itemId, context);
 }
 
 SpellInfo const* SpellScript::GetTriggeringSpell() const
@@ -886,7 +776,7 @@ SpellInfo const* SpellScript::GetTriggeringSpell() const
     return m_spell->m_triggeredByAuraSpell;
 }
 
-void SpellScript::FinishCast(SpellCastResult result, int32* param1 /*= nullptr*/, int32* param2 /*= nullptr*/)
+void SpellScript::FinishCast(SpellCastResult result, uint32* param1 /*= nullptr*/, uint32* param2 /*= nullptr*/)
 {
     m_spell->SendCastResult(result, param1, param2);
     m_spell->finish(result == SPELL_CAST_OK);
@@ -903,9 +793,14 @@ void SpellScript::SetCustomCastResultMessage(SpellCustomErrors result)
     m_spell->m_customError = result;
 }
 
-Difficulty SpellScript::GetCastDifficulty() const
+SpellValue const* SpellScript::GetSpellValue() const
 {
-    return m_spell->GetCastDifficulty();
+    return m_spell->m_spellValue;
+}
+
+SpellEffectInfo const* SpellScript::GetEffectInfo(SpellEffIndex effIndex) const
+{
+    return m_spell->GetEffect(effIndex);
 }
 
 bool AuraScript::_Validate(SpellInfo const* entry)
@@ -1013,26 +908,20 @@ bool AuraScript::_Validate(SpellInfo const* entry)
     return _SpellScript::_Validate(entry);
 }
 
-AuraScript::CheckAreaTargetHandler::CheckAreaTargetHandler(AuraCheckAreaTargetFnType _pHandlerScript) : pHandlerScript(_pHandlerScript)
+AuraScript::CheckAreaTargetHandler::CheckAreaTargetHandler(AuraCheckAreaTargetFnType _pHandlerScript)
 {
+    pHandlerScript = _pHandlerScript;
 }
-
-AuraScript::CheckAreaTargetHandler::CheckAreaTargetHandler(CheckAreaTargetHandler&& right) noexcept = default;
-AuraScript::CheckAreaTargetHandler& AuraScript::CheckAreaTargetHandler::operator=(CheckAreaTargetHandler&& right) noexcept = default;
-AuraScript::CheckAreaTargetHandler::~CheckAreaTargetHandler() = default;
 
 bool AuraScript::CheckAreaTargetHandler::Call(AuraScript* auraScript, Unit* _target)
 {
     return (auraScript->*pHandlerScript)(_target);
 }
 
-AuraScript::AuraDispelHandler::AuraDispelHandler(AuraDispelFnType _pHandlerScript) : pHandlerScript(_pHandlerScript)
+AuraScript::AuraDispelHandler::AuraDispelHandler(AuraDispelFnType _pHandlerScript)
 {
+    pHandlerScript = _pHandlerScript;
 }
-
-AuraScript::AuraDispelHandler::AuraDispelHandler(AuraDispelHandler&& right) noexcept = default;
-AuraScript::AuraDispelHandler& AuraScript::AuraDispelHandler::operator=(AuraDispelHandler&& right) noexcept = default;
-AuraScript::AuraDispelHandler::~AuraDispelHandler() = default;
 
 void AuraScript::AuraDispelHandler::Call(AuraScript* auraScript, DispelInfo* _dispelInfo)
 {
@@ -1041,10 +930,6 @@ void AuraScript::AuraDispelHandler::Call(AuraScript* auraScript, DispelInfo* _di
 
 AuraScript::EffectBase::EffectBase(uint8 _effIndex, uint16 _effName)
     : _SpellScript::EffectAuraNameCheck(_effName), _SpellScript::EffectHook(_effIndex) { }
-
-AuraScript::EffectBase::EffectBase(EffectBase&& right) noexcept = default;
-AuraScript::EffectBase& AuraScript::EffectBase::operator=(EffectBase&& right) noexcept = default;
-AuraScript::EffectBase::~EffectBase() = default;
 
 bool AuraScript::EffectBase::CheckEffect(SpellInfo const* spellEntry, uint8 effIndexToCheck) const
 {
@@ -1057,27 +942,42 @@ std::string AuraScript::EffectBase::ToString() const
 }
 
 AuraScript::EffectPeriodicHandler::EffectPeriodicHandler(AuraEffectPeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectPeriodicHandler::EffectPeriodicHandler(EffectPeriodicHandler&& right) noexcept = default;
-AuraScript::EffectPeriodicHandler& AuraScript::EffectPeriodicHandler::operator=(EffectPeriodicHandler&& right) noexcept = default;
-AuraScript::EffectPeriodicHandler::~EffectPeriodicHandler() = default;
 
 void AuraScript::EffectPeriodicHandler::Call(AuraScript* auraScript, AuraEffect const* _aurEff)
 {
     (auraScript->*pEffectHandlerScript)(_aurEff);
 }
 
-AuraScript::EffectUpdatePeriodicHandler::EffectUpdatePeriodicHandler(AuraEffectUpdatePeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript)
+AuraScript::EffectDamageHandler::EffectDamageHandler(AuraEffectDamageFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
 
-AuraScript::EffectUpdatePeriodicHandler::EffectUpdatePeriodicHandler(EffectUpdatePeriodicHandler&& right) noexcept = default;
-AuraScript::EffectUpdatePeriodicHandler& AuraScript::EffectUpdatePeriodicHandler::operator=(EffectUpdatePeriodicHandler&& right) noexcept = default;
-AuraScript::EffectUpdatePeriodicHandler::~EffectUpdatePeriodicHandler() = default;
+void AuraScript::EffectDamageHandler::Call(AuraScript* auraScript, AuraEffect const* _aurEff, Unit * target, uint32 & damage)
+{
+    (auraScript->*pEffectHandlerScript)(_aurEff, target, damage);
+}
+
+AuraScript::AuraUpdateHandler::AuraUpdateHandler(AuraUpdateFnType _pEffectHandlerScript)
+{
+    pEffectHandlerScript = _pEffectHandlerScript;
+}
+
+void AuraScript::AuraUpdateHandler::Call(AuraScript* auraScript, uint32 diff)
+{
+    (auraScript->*pEffectHandlerScript)(diff);
+}
+
+AuraScript::EffectUpdatePeriodicHandler::EffectUpdatePeriodicHandler(AuraEffectUpdatePeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
+    : AuraScript::EffectBase(_effIndex, _effName)
+{
+    pEffectHandlerScript = _pEffectHandlerScript;
+}
 
 void AuraScript::EffectUpdatePeriodicHandler::Call(AuraScript* auraScript, AuraEffect* aurEff)
 {
@@ -1085,13 +985,10 @@ void AuraScript::EffectUpdatePeriodicHandler::Call(AuraScript* auraScript, AuraE
 }
 
 AuraScript::EffectCalcAmountHandler::EffectCalcAmountHandler(AuraEffectCalcAmountFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectCalcAmountHandler::EffectCalcAmountHandler(EffectCalcAmountHandler&& right) noexcept = default;
-AuraScript::EffectCalcAmountHandler& AuraScript::EffectCalcAmountHandler::operator=(EffectCalcAmountHandler&& right) noexcept = default;
-AuraScript::EffectCalcAmountHandler::~EffectCalcAmountHandler() = default;
 
 void AuraScript::EffectCalcAmountHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, int32& amount, bool& canBeRecalculated)
 {
@@ -1099,13 +996,10 @@ void AuraScript::EffectCalcAmountHandler::Call(AuraScript* auraScript, AuraEffec
 }
 
 AuraScript::EffectCalcPeriodicHandler::EffectCalcPeriodicHandler(AuraEffectCalcPeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectCalcPeriodicHandler::EffectCalcPeriodicHandler(EffectCalcPeriodicHandler&& right) noexcept = default;
-AuraScript::EffectCalcPeriodicHandler& AuraScript::EffectCalcPeriodicHandler::operator=(EffectCalcPeriodicHandler&& right) noexcept = default;
-AuraScript::EffectCalcPeriodicHandler::~EffectCalcPeriodicHandler() = default;
 
 void AuraScript::EffectCalcPeriodicHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, bool& isPeriodic, int32& periodicTimer)
 {
@@ -1113,41 +1007,33 @@ void AuraScript::EffectCalcPeriodicHandler::Call(AuraScript* auraScript, AuraEff
 }
 
 AuraScript::EffectCalcSpellModHandler::EffectCalcSpellModHandler(AuraEffectCalcSpellModFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectCalcSpellModHandler::EffectCalcSpellModHandler(EffectCalcSpellModHandler&& right) noexcept = default;
-AuraScript::EffectCalcSpellModHandler& AuraScript::EffectCalcSpellModHandler::operator=(EffectCalcSpellModHandler&& right) noexcept = default;
-AuraScript::EffectCalcSpellModHandler::~EffectCalcSpellModHandler() = default;
 
 void AuraScript::EffectCalcSpellModHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, SpellModifier*& spellMod)
 {
     (auraScript->*pEffectHandlerScript)(aurEff, spellMod);
 }
 
-AuraScript::EffectCalcCritChanceHandler::EffectCalcCritChanceHandler(AuraEffectCalcCritChanceFnType effectHandlerScript, uint8 effIndex, uint16 effName)
-    : AuraScript::EffectBase(effIndex, effName), _effectHandlerScript(effectHandlerScript)
+AuraScript::EffectCalcCritChanceHandler::EffectCalcCritChanceHandler(AuraEffectCalcCritChanceFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
 
-AuraScript::EffectCalcCritChanceHandler::EffectCalcCritChanceHandler(EffectCalcCritChanceHandler&& right) noexcept = default;
-AuraScript::EffectCalcCritChanceHandler& AuraScript::EffectCalcCritChanceHandler::operator=(EffectCalcCritChanceHandler&& right) noexcept = default;
-AuraScript::EffectCalcCritChanceHandler::~EffectCalcCritChanceHandler() = default;
-
-void AuraScript::EffectCalcCritChanceHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, Unit const* victim, float& critChance) const
+void AuraScript::EffectCalcCritChanceHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, Unit* victim, float& chance)
 {
-    (auraScript->*_effectHandlerScript)(aurEff, victim, critChance);
+    (auraScript->*pEffectHandlerScript)(aurEff, victim, chance);
 }
 
 AuraScript::EffectApplyHandler::EffectApplyHandler(AuraEffectApplicationModeFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName, AuraEffectHandleModes _mode)
-    : AuraScript::EffectBase(_effIndex, _effName), pEffectHandlerScript(_pEffectHandlerScript), mode(_mode)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
+    mode = _mode;
 }
-
-AuraScript::EffectApplyHandler::EffectApplyHandler(EffectApplyHandler&& right) noexcept = default;
-AuraScript::EffectApplyHandler& AuraScript::EffectApplyHandler::operator=(EffectApplyHandler&& right) noexcept = default;
-AuraScript::EffectApplyHandler::~EffectApplyHandler() = default;
 
 void AuraScript::EffectApplyHandler::Call(AuraScript* auraScript, AuraEffect const* _aurEff, AuraEffectHandleModes _mode)
 {
@@ -1155,39 +1041,44 @@ void AuraScript::EffectApplyHandler::Call(AuraScript* auraScript, AuraEffect con
         (auraScript->*pEffectHandlerScript)(_aurEff, _mode);
 }
 
-AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex, bool overKill)
-    : AuraScript::EffectBase(_effIndex, overKill ? SPELL_AURA_SCHOOL_ABSORB_OVERKILL : SPELL_AURA_SCHOOL_ABSORB), pEffectHandlerScript(_pEffectHandlerScript)
+AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)
+    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SCHOOL_ABSORB)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(EffectAbsorbHandler&& right) noexcept = default;
-AuraScript::EffectAbsorbHandler& AuraScript::EffectAbsorbHandler::operator=(EffectAbsorbHandler&& right) noexcept = default;
-AuraScript::EffectAbsorbHandler::~EffectAbsorbHandler() = default;
 
 void AuraScript::EffectAbsorbHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
 {
     (auraScript->*pEffectHandlerScript)(aurEff, dmgInfo, absorbAmount);
 }
 
-AuraScript::EffectAbsorbHealHandler::EffectAbsorbHealHandler(AuraEffectAbsorbHealFnType _pEffectHandlerScript, uint8 _effIndex)
-    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SCHOOL_HEAL_ABSORB)
+AuraScript::EffectNameAbsorbHandler::EffectNameAbsorbHandler(AuraEffectNameAbsorbFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
+    : AuraScript::EffectBase(_effIndex, _effName)
 {
     pEffectHandlerScript = _pEffectHandlerScript;
 }
 
-void AuraScript::EffectAbsorbHealHandler::Call(AuraScript * auraScript, AuraEffect * aurEff, HealInfo & healInfo, uint32 & absorbAmount)
+void AuraScript::EffectNameAbsorbHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+{
+    (auraScript->*pEffectHandlerScript)(aurEff, dmgInfo, absorbAmount);
+}
+
+AuraScript::EffectManaShieldHandler::EffectManaShieldHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)
+    : AuraScript::EffectBase(_effIndex, SPELL_AURA_MANA_SHIELD)
+{
+    pEffectHandlerScript = _pEffectHandlerScript;
+}
+
+void AuraScript::EffectHealAbsorbHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, HealInfo& healInfo, uint32& absorbAmount)
 {
     (auraScript->*pEffectHandlerScript)(aurEff, healInfo, absorbAmount);
 }
 
-AuraScript::EffectManaShieldHandler::EffectManaShieldHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)
-    : AuraScript::EffectBase(_effIndex, SPELL_AURA_MANA_SHIELD), pEffectHandlerScript(_pEffectHandlerScript)
+AuraScript::EffectHealAbsorbHandler::EffectHealAbsorbHandler(AuraEffectHealAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)
+    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SCHOOL_HEAL_ABSORB)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectManaShieldHandler::EffectManaShieldHandler(EffectManaShieldHandler&& right) noexcept = default;
-AuraScript::EffectManaShieldHandler& AuraScript::EffectManaShieldHandler::operator=(EffectManaShieldHandler&& right) noexcept = default;
-AuraScript::EffectManaShieldHandler::~EffectManaShieldHandler() = default;
 
 void AuraScript::EffectManaShieldHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
 {
@@ -1195,26 +1086,20 @@ void AuraScript::EffectManaShieldHandler::Call(AuraScript* auraScript, AuraEffec
 }
 
 AuraScript::EffectSplitHandler::EffectSplitHandler(AuraEffectSplitFnType _pEffectHandlerScript, uint8 _effIndex)
-    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SPLIT_DAMAGE_PCT), pEffectHandlerScript(_pEffectHandlerScript)
+    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SPLIT_DAMAGE_PCT)
 {
+    pEffectHandlerScript = _pEffectHandlerScript;
 }
-
-AuraScript::EffectSplitHandler::EffectSplitHandler(EffectSplitHandler&& right) noexcept = default;
-AuraScript::EffectSplitHandler& AuraScript::EffectSplitHandler::operator=(EffectSplitHandler&& right) noexcept = default;
-AuraScript::EffectSplitHandler::~EffectSplitHandler() = default;
 
 void AuraScript::EffectSplitHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& splitAmount)
 {
     (auraScript->*pEffectHandlerScript)(aurEff, dmgInfo, splitAmount);
 }
 
-AuraScript::CheckProcHandler::CheckProcHandler(AuraCheckProcFnType handlerScript) : _HandlerScript(handlerScript)
+AuraScript::CheckProcHandler::CheckProcHandler(AuraCheckProcFnType handlerScript)
 {
+    _HandlerScript = handlerScript;
 }
-
-AuraScript::CheckProcHandler::CheckProcHandler(CheckProcHandler&& right) noexcept = default;
-AuraScript::CheckProcHandler& AuraScript::CheckProcHandler::operator=(CheckProcHandler&& right) noexcept = default;
-AuraScript::CheckProcHandler::~CheckProcHandler() = default;
 
 bool AuraScript::CheckProcHandler::Call(AuraScript* auraScript, ProcEventInfo& eventInfo)
 {
@@ -1222,26 +1107,20 @@ bool AuraScript::CheckProcHandler::Call(AuraScript* auraScript, ProcEventInfo& e
 }
 
 AuraScript::CheckEffectProcHandler::CheckEffectProcHandler(AuraCheckEffectProcFnType handlerScript, uint8 effIndex, uint16 effName)
-    : AuraScript::EffectBase(effIndex, effName), _HandlerScript(handlerScript)
+    : AuraScript::EffectBase(effIndex, effName)
 {
+    _HandlerScript = handlerScript;
 }
-
-AuraScript::CheckEffectProcHandler::CheckEffectProcHandler(CheckEffectProcHandler&& right) noexcept = default;
-AuraScript::CheckEffectProcHandler& AuraScript::CheckEffectProcHandler::operator=(CheckEffectProcHandler&& right) noexcept = default;
-AuraScript::CheckEffectProcHandler::~CheckEffectProcHandler() = default;
 
 bool AuraScript::CheckEffectProcHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, ProcEventInfo& eventInfo)
 {
     return (auraScript->*_HandlerScript)(aurEff, eventInfo);
 }
 
-AuraScript::AuraProcHandler::AuraProcHandler(AuraProcFnType handlerScript) : _HandlerScript(handlerScript)
+AuraScript::AuraProcHandler::AuraProcHandler(AuraProcFnType handlerScript)
 {
+    _HandlerScript = handlerScript;
 }
-
-AuraScript::AuraProcHandler::AuraProcHandler(AuraProcHandler&& right) noexcept = default;
-AuraScript::AuraProcHandler& AuraScript::AuraProcHandler::operator=(AuraProcHandler&& right) noexcept = default;
-AuraScript::AuraProcHandler::~AuraProcHandler() = default;
 
 void AuraScript::AuraProcHandler::Call(AuraScript* auraScript, ProcEventInfo& eventInfo)
 {
@@ -1249,30 +1128,14 @@ void AuraScript::AuraProcHandler::Call(AuraScript* auraScript, ProcEventInfo& ev
 }
 
 AuraScript::EffectProcHandler::EffectProcHandler(AuraEffectProcFnType effectHandlerScript, uint8 effIndex, uint16 effName)
-    : AuraScript::EffectBase(effIndex, effName), _EffectHandlerScript(effectHandlerScript)
+    : AuraScript::EffectBase(effIndex, effName)
 {
+    _EffectHandlerScript = effectHandlerScript;
 }
 
-AuraScript::EffectProcHandler::EffectProcHandler(EffectProcHandler&& right) noexcept = default;
-AuraScript::EffectProcHandler& AuraScript::EffectProcHandler::operator=(EffectProcHandler&& right) noexcept = default;
-AuraScript::EffectProcHandler::~EffectProcHandler() = default;
-
-void AuraScript::EffectProcHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, ProcEventInfo& eventInfo)
+void AuraScript::EffectProcHandler::Call(AuraScript* auraScript, AuraEffect const* aurEff, ProcEventInfo& eventInfo)
 {
     (auraScript->*_EffectHandlerScript)(aurEff, eventInfo);
-}
-
-AuraScript::EnterLeaveCombatHandler::EnterLeaveCombatHandler(AuraEnterLeaveCombatFnType handlerScript) : _handlerScript(handlerScript)
-{
-}
-
-AuraScript::EnterLeaveCombatHandler::EnterLeaveCombatHandler(EnterLeaveCombatHandler&& right) noexcept = default;
-AuraScript::EnterLeaveCombatHandler& AuraScript::EnterLeaveCombatHandler::operator=(EnterLeaveCombatHandler&& right) noexcept = default;
-AuraScript::EnterLeaveCombatHandler::~EnterLeaveCombatHandler() = default;
-
-void AuraScript::EnterLeaveCombatHandler::Call(AuraScript* auraScript, bool isNowInCombat) const
-{
-    (auraScript->*_handlerScript)(isNowInCombat);
 }
 
 bool AuraScript::_Load(Aura* aura)
@@ -1315,7 +1178,7 @@ bool AuraScript::_IsDefaultActionPrevented() const
         case AURA_SCRIPT_HOOK_EFFECT_PROC:
             return m_defaultActionPrevented;
         default:
-            ABORT_MSG("AuraScript::_IsDefaultActionPrevented is called in a wrong place");
+            ASSERT(false && "AuraScript::_IsDefaultActionPrevented is called in a wrong place");
             return false;
     }
 }
@@ -1345,9 +1208,9 @@ SpellInfo const* AuraScript::GetSpellInfo() const
     return m_aura->GetSpellInfo();
 }
 
-SpellEffectInfo const& AuraScript::GetEffectInfo(SpellEffIndex effIndex) const
+SpellEffectInfo const* AuraScript::GetEffectInfo(SpellEffIndex effIndex) const
 {
-    return m_aura->GetSpellInfo()->GetEffect(effIndex);
+    return GetSpellInfo()->GetEffect(effIndex);
 }
 
 uint32 AuraScript::GetId() const
@@ -1362,16 +1225,7 @@ ObjectGuid AuraScript::GetCasterGUID() const
 
 Unit* AuraScript::GetCaster() const
 {
-    if (WorldObject* caster = m_aura->GetCaster())
-        return caster->ToUnit();
-    return nullptr;
-}
-
-GameObject* AuraScript::GetGObjCaster() const
-{
-    if (WorldObject* caster = m_aura->GetCaster())
-        return caster->ToGameObject();
-    return nullptr;
+    return m_aura->GetCaster();
 }
 
 WorldObject* AuraScript::GetOwner() const
@@ -1411,6 +1265,18 @@ int32 AuraScript::GetDuration() const
 
 void AuraScript::SetDuration(int32 duration, bool withMods)
 {
+    m_aura->SetDuration(duration, withMods);
+}
+
+void AuraScript::ModDuration(int32 duration, int32 maxDuration /*= 0*/, bool withMods /*= false*/)
+{
+    duration = GetDuration() + duration;
+    if (maxDuration != 0)
+        duration = std::min(duration, maxDuration);
+
+    if (maxDuration && duration > m_aura->GetMaxDuration())
+        m_aura->SetMaxDuration(duration);
+
     m_aura->SetDuration(duration, withMods);
 }
 
@@ -1484,9 +1350,9 @@ void AuraScript::SetStackAmount(uint8 num)
     m_aura->SetStackAmount(num);
 }
 
-bool AuraScript::ModStackAmount(int32 num, AuraRemoveMode removeMode)
+bool AuraScript::ModStackAmount(int32 num, AuraRemoveMode removeMode /*= AURA_REMOVE_BY_DEFAULT*/, bool resetPeriodicTimer /*= true*/, bool refresh /*= true*/)
 {
-    return m_aura->ModStackAmount(num, removeMode);
+    return m_aura->ModStackAmount(num, removeMode, resetPeriodicTimer, refresh);
 }
 
 bool AuraScript::IsPassive() const
@@ -1535,7 +1401,6 @@ Unit* AuraScript::GetTarget() const
         case AURA_SCRIPT_HOOK_AFTER_PROC:
         case AURA_SCRIPT_HOOK_EFFECT_PROC:
         case AURA_SCRIPT_HOOK_EFFECT_AFTER_PROC:
-        case AURA_SCRIPT_HOOK_ENTER_LEAVE_COMBAT:
             return m_auraApplication->GetTarget();
         default:
             TC_LOG_ERROR("scripts", "Script: `%s` Spell: `%u` AuraScript::GetTarget called in a hook in which the call won't have effect!", m_scriptName->c_str(), m_scriptSpellId);
@@ -1547,9 +1412,4 @@ Unit* AuraScript::GetTarget() const
 AuraApplication const* AuraScript::GetTargetApplication() const
 {
     return m_auraApplication;
-}
-
-Difficulty AuraScript::GetCastDifficulty() const
-{
-    return GetAura()->GetCastDifficulty();
 }

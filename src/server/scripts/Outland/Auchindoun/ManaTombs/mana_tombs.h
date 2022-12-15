@@ -34,17 +34,10 @@ enum MTDataTypes
     DATA_YOR                    = 3
 };
 
-enum MTCreatureIds
+template<typename AI>
+inline AI* GetManaTombsAI(Creature* creature)
 {
-    NPC_TAVAROK = 18343
-};
-
-template <class AI, class T>
-inline AI* GetManaTombsAI(T* obj)
-{
-    return GetInstanceAI<AI>(obj, MTScriptName);
+    return GetInstanceAI<AI>(creature, MTScriptName);
 }
-
-#define RegisterManaTombsCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetManaTombsAI)
 
 #endif // MANA_TOMBS_H_

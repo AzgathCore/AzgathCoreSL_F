@@ -43,7 +43,7 @@ private:
 public:
     ModelHeader header;
     Vec3D* vertices;
-    uint32* indices;
+    uint16* indices;
     AaBox3D bounds;
 
     bool open();

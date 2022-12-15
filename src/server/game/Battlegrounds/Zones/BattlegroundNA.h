@@ -18,7 +18,6 @@
 #define __BATTLEGROUNDNA_H
 
 #include "Arena.h"
-#include "EventMap.h"
 
 enum BattlegroundNAObjectTypes
 {
@@ -41,17 +40,10 @@ enum BattlegroundNAGameObjects
     BG_NA_OBJECT_TYPE_BUFF_2    = 184664
 };
 
-inline constexpr Seconds BG_NA_REMOVE_DOORS_TIMER    = 5s;
-
-enum BattlegroundNAEvents
-{
-    BG_NA_EVENT_REMOVE_DOORS    = 1
-};
-
 class BattlegroundNA : public Arena
 {
     public:
-        BattlegroundNA(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundNA();
 
         /* inherited from BattlegroundClass */
         void StartingEventCloseDoors() override;
@@ -59,10 +51,6 @@ class BattlegroundNA : public Arena
 
         void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
         bool SetupBattleground() override;
-
-    private:
-        void PostUpdateImpl(uint32 diff) override;
-
-        EventMap _events;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
 };
 #endif

@@ -82,13 +82,13 @@ public:
             Initialize();
 
             if (IsEvent)
-                instance->SetBossState(DATA_ANETHERON, NOT_STARTED);
+                instance->SetData(DATA_ANETHERONEVENT, NOT_STARTED);
         }
 
-        void JustEngagedWith(Unit* /*who*/) override
+        void EnterCombat(Unit* /*who*/) override
         {
             if (IsEvent)
-                instance->SetBossState(DATA_ANETHERON, IN_PROGRESS);
+                instance->SetData(DATA_ANETHERONEVENT, IN_PROGRESS);
 
             Talk(SAY_ONAGGRO);
         }
@@ -99,13 +99,13 @@ public:
                 Talk(SAY_ONSLAY);
         }
 
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
+        void WaypointReached(uint32 waypointId) override
         {
             if (waypointId == 7)
             {
-                Creature* target = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
+                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                 if (target && target->IsAlive())
-                    AddThreat(target, 0.0f);
+                    me->AddThreat(target, 0.0f);
             }
         }
 
@@ -113,7 +113,7 @@ public:
         {
             hyjal_trashAI::JustDied(killer);
             if (IsEvent)
-                instance->SetBossState(DATA_ANETHERON, DONE);
+                instance->SetData(DATA_ANETHERONEVENT, DONE);
             Talk(SAY_ONDEATH);
         }
 
@@ -145,7 +145,7 @@ public:
 
             if (SwarmTimer <= diff)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
+                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
                     DoCast(target, SPELL_CARRION_SWARM);
 
                 SwarmTimer = urand(45000, 60000);
@@ -156,7 +156,7 @@ public:
             {
                 for (uint8 i = 0; i < 3; ++i)
                 {
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
                         target->CastSpell(target, SPELL_SLEEP, true);
                 }
                 SleepTimer = 60000;
@@ -169,7 +169,7 @@ public:
             } else AuraTimer -= diff;
             if (InfernoTimer <= diff)
             {
-                DoCast(SelectTarget(SelectTargetMethod::Random, 0, 100, true), SPELL_INFERNO);
+                DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_INFERNO);
                 InfernoTimer = 45000;
                 Talk(SAY_INFERNO);
             } else InfernoTimer -= diff;
@@ -177,6 +177,7 @@ public:
             DoMeleeAttackIfReady();
         }
     };
+
 };
 
 class npc_towering_infernal : public CreatureScript
@@ -196,10 +197,12 @@ public:
             ImmolationTimer = 5000;
             CheckTimer = 5000;
             instance = creature->GetInstanceScript();
+            AnetheronGUID = instance->GetGuidData(DATA_ANETHERON);
         }
 
         uint32 ImmolationTimer;
         uint32 CheckTimer;
+        ObjectGuid AnetheronGUID;
         InstanceScript* instance;
 
         void Reset() override
@@ -209,7 +212,7 @@ public:
             CheckTimer = 5000;
         }
 
-        void JustEngagedWith(Unit* /*who*/) override
+        void EnterCombat(Unit* /*who*/) override
         {
         }
 
@@ -232,11 +235,14 @@ public:
         {
             if (CheckTimer <= diff)
             {
-                Creature* boss = instance->GetCreature(DATA_ANETHERON);
-                if (!boss || boss->isDead())
+                if (!AnetheronGUID.IsEmpty())
                 {
-                    me->DespawnOrUnsummon();
-                    return;
+                    Creature* boss = ObjectAccessor::GetCreature(*me, AnetheronGUID);
+                    if (!boss || boss->isDead())
+                    {
+                        me->DespawnOrUnsummon();
+                        return;
+                    }
                 }
                 CheckTimer = 5000;
             } else CheckTimer -= diff;
@@ -254,9 +260,9 @@ public:
             DoMeleeAttackIfReady();
         }
     };
+
 };
 
-// 38196 - Vampiric Aura
 class spell_anetheron_vampiric_aura : public SpellScriptLoader
 {
     public:
@@ -271,17 +277,15 @@ class spell_anetheron_vampiric_aura : public SpellScriptLoader
                 return ValidateSpellInfo({ SPELL_VAMPIRIC_AURA_HEAL });
             }
 
-            void HandleProc(AuraEffect* aurEff, ProcEventInfo& eventInfo)
+            void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
                 DamageInfo* damageInfo = eventInfo.GetDamageInfo();
                 if (!damageInfo || !damageInfo->GetDamage())
                     return;
 
-                Unit* actor = eventInfo.GetActor();
-                CastSpellExtraArgs args(aurEff);
-                args.AddSpellMod(SPELLVALUE_BASE_POINT0, damageInfo->GetDamage() * 3);
-                actor->CastSpell(actor, SPELL_VAMPIRIC_AURA_HEAL, args);
+                int32 bp = damageInfo->GetDamage() * 3;
+                eventInfo.GetActor()->CastCustomSpell(SPELL_VAMPIRIC_AURA_HEAL, SPELLVALUE_BASE_POINT0, bp, eventInfo.GetActor(), true, nullptr, aurEff);
             }
 
             void Register() override

@@ -36,6 +36,7 @@ const ::google::protobuf::EnumDescriptor* AttributeFilter_Operation_descriptor_ 
 
 }  // namespace
 
+
 void protobuf_AssignDesc_attribute_5ftypes_2eproto() {
   protobuf_AddDesc_attribute_5ftypes_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -169,6 +170,7 @@ struct StaticDescriptorInitializer_attribute_5ftypes_2eproto {
     protobuf_AddDesc_attribute_5ftypes_2eproto();
   }
 } static_descriptor_initializer_attribute_5ftypes_2eproto_;
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -750,6 +752,7 @@ void Variant::CopyFrom(const Variant& from) {
 }
 
 bool Variant::IsInitialized() const {
+
   if (has_entity_id_value()) {
     if (!this->entity_id_value().IsInitialized()) return false;
   }
@@ -780,6 +783,7 @@ void Variant::Swap(Variant* other) {
   metadata.reflection = Variant_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1048,6 +1052,7 @@ void Attribute::CopyFrom(const Attribute& from) {
 
 bool Attribute::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+
   if (has_value()) {
     if (!this->value().IsInitialized()) return false;
   }
@@ -1071,6 +1076,7 @@ void Attribute::Swap(Attribute* other) {
   metadata.reflection = Attribute_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1342,6 +1348,7 @@ void AttributeFilter::CopyFrom(const AttributeFilter& from) {
 
 bool AttributeFilter::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
   if (!::google::protobuf::internal::AllAreInitialized(this->attribute())) return false;
   return true;
 }
@@ -1363,6 +1370,7 @@ void AttributeFilter::Swap(AttributeFilter* other) {
   metadata.reflection = AttributeFilter_reflection_;
   return metadata;
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

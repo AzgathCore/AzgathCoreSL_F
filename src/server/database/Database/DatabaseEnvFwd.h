@@ -75,8 +75,8 @@ using LoginDatabaseTransaction = SQLTransaction<LoginDatabaseConnection>;
 using WorldDatabaseTransaction = SQLTransaction<WorldDatabaseConnection>;
 
 class SQLQueryHolderBase;
-using QueryResultHolderFuture = std::future<void>;
-using QueryResultHolderPromise = std::promise<void>;
+using QueryResultHolderFuture = std::future<SQLQueryHolderBase*>;
+using QueryResultHolderPromise = std::promise<SQLQueryHolderBase*>;
 
 template<typename T>
 class SQLQueryHolder;
@@ -85,8 +85,6 @@ using CharacterDatabaseQueryHolder = SQLQueryHolder<CharacterDatabaseConnection>
 using HotfixDatabaseQueryHolder = SQLQueryHolder<HotfixDatabaseConnection>;
 using LoginDatabaseQueryHolder = SQLQueryHolder<LoginDatabaseConnection>;
 using WorldDatabaseQueryHolder = SQLQueryHolder<WorldDatabaseConnection>;
-
-class SQLQueryHolderCallback;
 
 // mysql
 struct MySQLHandle;

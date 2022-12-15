@@ -69,7 +69,7 @@ namespace WorldPackets
             void Read() override;
 
             ObjectGuid Guid;
-            Timestamp<> LastUpdateID;
+            uint32 LastUpdateID = 0;
         };
 
         class BlackMarketRequestItemsResult final : public ServerPacket
@@ -79,7 +79,7 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-            Timestamp<> LastUpdateID;
+            int32 LastUpdateID = 0;
             std::vector<BlackMarketItem> Items;
         };
 

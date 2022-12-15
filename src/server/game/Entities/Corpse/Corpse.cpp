@@ -20,14 +20,13 @@
 #include "Corpse.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
-#include "GameTime.h"
 #include "Log.h"
-#include "Loot.h"
 #include "Map.h"
+#include "ObjectAccessor.h"
 #include "PhasingHandler.h"
 #include "Player.h"
-#include "StringConvert.h"
 #include "UpdateData.h"
+#include "World.h"
 #include <sstream>
 
 Corpse::Corpse(CorpseType type) : WorldObject(type != CORPSE_BONES), m_type(type)
@@ -37,7 +36,7 @@ Corpse::Corpse(CorpseType type) : WorldObject(type != CORPSE_BONES), m_type(type
 
     m_updateFlag.Stationary = true;
 
-    m_time = GameTime::GetGameTime();
+    m_time = time(nullptr);
 
     lootRecipient = nullptr;
 }
@@ -93,14 +92,6 @@ bool Corpse::Create(ObjectGuid::LowType guidlow, Player* owner)
     return true;
 }
 
-void Corpse::Update(uint32 diff)
-{
-    WorldObject::Update(diff);
-
-    if (m_loot)
-        m_loot->Update();
-}
-
 void Corpse::SaveToDB()
 {
     // prevent DB data inconsistence problems and duplicates
@@ -153,12 +144,12 @@ void Corpse::SaveToDB()
     CharacterDatabase.CommitTransaction(trans);
 }
 
-void Corpse::DeleteFromDB(CharacterDatabaseTransaction trans)
+void Corpse::DeleteFromDB(CharacterDatabaseTransaction& trans)
 {
     DeleteFromDB(GetOwnerGUID(), trans);
 }
 
-void Corpse::DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransaction trans)
+void Corpse::DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransaction& trans)
 {
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE);
     stmt->setUInt64(0, ownerGuid.GetCounter());
@@ -171,11 +162,6 @@ void Corpse::DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransact
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE_CUSTOMIZATIONS);
     stmt->setUInt64(0, ownerGuid.GetCounter());
     CharacterDatabase.ExecuteOrAppend(trans, stmt);
-}
-
-void Corpse::ResetGhostTime()
-{
-    m_time = GameTime::GetGameTime();
 }
 
 bool Corpse::LoadCorpseFromDB(ObjectGuid::LowType guid, Field* fields)
@@ -193,16 +179,16 @@ bool Corpse::LoadCorpseFromDB(ObjectGuid::LowType guid, Field* fields)
 
     SetObjectScale(1.0f);
     SetDisplayId(fields[5].GetUInt32());
-    std::vector<std::string_view> items = Trinity::Tokenize(fields[6].GetStringView(), ' ', false);
+    Tokenizer items(fields[6].GetString(), ' ', EQUIPMENT_SLOT_END);
     if (items.size() == EQUIPMENT_SLOT_END)
         for (uint32 index = 0; index < EQUIPMENT_SLOT_END; ++index)
-            SetItem(index, Trinity::StringTo<uint32>(items[index]).value_or(0));
+            SetItem(index, atoul(items[index]));
 
     SetRace(fields[7].GetUInt8());
     SetClass(fields[8].GetUInt8());
     SetSex(fields[9].GetUInt8());
-    ReplaceAllFlags(fields[10].GetUInt8());
-    ReplaceAllCorpseDynamicFlags(CorpseDynFlags(fields[11].GetUInt8()));
+    SetFlags(fields[10].GetUInt8());
+    SetCorpseDynamicFlags(CorpseDynFlags(fields[11].GetUInt8()));
     SetOwnerGUID(ObjectGuid::Create<HighGuid::Player>(fields[15].GetUInt64()));
     SetFactionTemplate(sChrRacesStore.AssertEntry(m_corpseData->RaceID)->FactionID);
 
@@ -275,7 +261,7 @@ void Corpse::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData
     if (requestedCorpseMask.IsAnySet())
         valuesMask.Set(TYPEID_CORPSE);
 
-    ByteBuffer& buffer = PrepareValuesUpdateBuffer(data);
+    ByteBuffer buffer = PrepareValuesUpdateBuffer();
     std::size_t sizePos = buffer.wpos();
     buffer << uint32(0);
     buffer << uint32(valuesMask.GetBlock(0));
@@ -288,18 +274,7 @@ void Corpse::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData
 
     buffer.put<uint32>(sizePos, buffer.wpos() - sizePos - 4);
 
-    data->AddUpdateBlock();
-}
-
-void Corpse::ValuesUpdateForPlayerWithMaskSender::operator()(Player const* player) const
-{
-    UpdateData udata(Owner->GetMapId());
-    WorldPacket packet;
-
-    Owner->BuildValuesUpdateForPlayerWithMask(&udata, ObjectMask.GetChangesMask(), CorpseMask.GetChangesMask(), player);
-
-    udata.BuildPacket(&packet);
-    player->SendDirectMessage(&packet);
+    data->AddUpdateBlock(buffer);
 }
 
 void Corpse::ClearUpdateMask(bool remove)

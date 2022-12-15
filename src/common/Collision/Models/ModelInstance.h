@@ -39,35 +39,28 @@ namespace VMAP
         MOD_PARENT_SPAWN = 1 << 2
     };
 
-    struct ModelMinimalData
+    class TC_COMMON_API ModelSpawn
     {
-            //Flags, ID, Pos, Rot, Scale, Bound_lo, Bound_hi
-            uint8 flags;
-            uint8 adtId;
+        public:
+            //mapID, tileX, tileY, Flags, ID, Pos, Rot, Scale, Bound_lo, Bound_hi, name
+            uint32 flags;
+            uint16 adtId;
             uint32 ID;
             G3D::Vector3 iPos;
+            G3D::Vector3 iRot;
             float iScale;
             G3D::AABox iBound;
-#ifdef VMAP_DEBUG
             std::string name;
-#endif
-
-            bool operator==(ModelMinimalData const& other) const { return ID == other.ID; }
+            bool operator==(ModelSpawn const& other) const { return ID == other.ID; }
+            //uint32 hashCode() const { return ID; }
+            // temp?
             G3D::AABox const& getBounds() const { return iBound; }
-    };
-
-    struct TC_COMMON_API ModelSpawn : public ModelMinimalData
-    {
-            G3D::Vector3 iRot;
-#ifndef VMAP_DEBUG
-            std::string name;
-#endif
 
             static bool readFromFile(FILE* rf, ModelSpawn& spawn);
             static bool writeToFile(FILE* rw, ModelSpawn const& spawn);
     };
 
-    class TC_COMMON_API ModelInstance : public ModelMinimalData
+    class TC_COMMON_API ModelInstance : public ModelSpawn
     {
         public:
             ModelInstance() : iInvScale(0.0f), iModel(nullptr) { }
@@ -77,7 +70,6 @@ namespace VMAP
             void intersectPoint(G3D::Vector3 const& p, AreaInfo& info) const;
             bool GetLocationInfo(G3D::Vector3 const& p, LocationInfo& info) const;
             bool GetLiquidLevel(G3D::Vector3 const& p, LocationInfo& info, float& liqHeight) const;
-            G3D::Matrix3 const& GetInvRot() { return iInvRot; }
             WorldModel* getWorldModel() { return iModel; }
         protected:
             G3D::Matrix3 iInvRot;

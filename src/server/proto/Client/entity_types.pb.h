@@ -224,7 +224,9 @@ class TC_PROTO_API Identity : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -364,6 +366,7 @@ inline void Identity::set_allocated_game_account_id(::bgs::protocol::EntityId* g
   // @@protoc_insertion_point(field_set_allocated:bgs.protocol.Identity.game_account_id)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace protocol
@@ -372,6 +375,8 @@ inline void Identity::set_allocated_game_account_id(::bgs::protocol::EntityId* g
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

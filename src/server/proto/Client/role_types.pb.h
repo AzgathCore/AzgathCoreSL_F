@@ -393,7 +393,9 @@ class TC_PROTO_API RoleState : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -987,6 +989,7 @@ RoleState::mutable_mentionable_role() {
   return &mentionable_role_;
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace protocol
@@ -995,6 +998,8 @@ RoleState::mutable_mentionable_role() {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

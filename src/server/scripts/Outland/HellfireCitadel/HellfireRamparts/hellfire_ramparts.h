@@ -48,10 +48,10 @@ enum HRGameobjectIds
     GO_FEL_IRON_CHEST_HEROIC      = 185169
 };
 
-template <class AI, class T>
-inline AI* GetHellfireRampartsAI(T* obj)
+template<typename AI>
+inline AI* GetHellfireRampartsAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, HRScriptName);
+    return GetInstanceAI<AI>(creature, HRScriptName);
 }
 
 #endif

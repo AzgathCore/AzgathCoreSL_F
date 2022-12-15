@@ -19,7 +19,6 @@
 #define ClientConfigPackets_h__
 
 #include "Packet.h"
-#include "PacketUtilities.h"
 #include "WorldSession.h"
 
 namespace WorldPackets
@@ -29,13 +28,13 @@ namespace WorldPackets
         class AccountDataTimes final : public ServerPacket
         {
         public:
-            AccountDataTimes() : ServerPacket(SMSG_ACCOUNT_DATA_TIMES, 16 + 8 + 8 * NUM_ACCOUNT_DATA_TYPES) { }
+            AccountDataTimes() : ServerPacket(SMSG_ACCOUNT_DATA_TIMES, 4 + 4 * NUM_ACCOUNT_DATA_TYPES) { }
 
             WorldPacket const* Write() override;
 
             ObjectGuid PlayerGuid;
-            Timestamp<> ServerTime;
-            std::array<Timestamp<>, NUM_ACCOUNT_DATA_TYPES> AccountTimes = { };
+            uint32 ServerTime = 0;
+            std::array<uint32, NUM_ACCOUNT_DATA_TYPES> AccountTimes = { };
         };
 
         class ClientCacheVersion final : public ServerPacket
@@ -67,7 +66,7 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             ObjectGuid Player;
-            Timestamp<> Time;
+            uint32 Time    = 0; ///< UnixTime
             uint32 Size    = 0; ///< decompressed size
             uint8 DataType = 0; ///< @see enum AccountDataType
             ByteBuffer CompressedData;
@@ -81,7 +80,7 @@ namespace WorldPackets
             void Read() override;
 
             ObjectGuid PlayerGuid;
-            Timestamp<> Time;
+            uint32 Time    = 0; ///< UnixTime
             uint32 Size    = 0; ///< decompressed size
             uint8 DataType = 0; ///< @see enum AccountDataType
             ByteBuffer CompressedData;
@@ -96,6 +95,17 @@ namespace WorldPackets
 
             bool Enable = false;
         };
+
+        class GetRemainingGameTime  final : public ClientPacket
+        {
+        public:
+            GetRemainingGameTime(WorldPacket&& packet) : ClientPacket(CMSG_GET_REMAINING_GAME_TIME, std::move(packet)) { }
+
+            void Read() override;
+
+            uint32 Time = 0;
+        };
+
     }
 }
 

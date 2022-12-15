@@ -18,11 +18,11 @@
 #ifndef WMO_H
 #define WMO_H
 
-#include "vec3d.h"
-#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "vec3d.h"
+#include "cascfile.h"
 
 // MOPY flags
 enum MopyFlags
@@ -125,7 +125,8 @@ public:
     // MOGP
 
     char* MOPY;
-    std::unique_ptr<uint32[]> MOVX;
+    uint16* MOVI;
+    uint16* MoviEx;
     float* MOVT;
     uint16* MOBA;
     int* MobaEx;

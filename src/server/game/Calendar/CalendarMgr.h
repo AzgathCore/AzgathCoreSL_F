@@ -65,7 +65,7 @@ enum CalendarEventType
     CALENDAR_TYPE_PVP               = 2,
     CALENDAR_TYPE_MEETING           = 3,
     CALENDAR_TYPE_OTHER             = 4,
-    CALENDAR_TYPE_HEROIC            = 5
+    CALENDAR_TYPE_HEROIC            = 5 // deprecated
 };
 
 enum CalendarRepeatType
@@ -92,51 +92,62 @@ enum CalendarInviteStatus
 
 enum CalendarError
 {
-    CALENDAR_OK                                 = 0,
-    CALENDAR_ERROR_GUILD_EVENTS_EXCEEDED        = 1,
+    CALENDAR_ERROR_SUCCESS                      = 0,
+    CALENDAR_ERROR_COMMUNITY_EVENTS_EXCEEDED    = 1,
     CALENDAR_ERROR_EVENTS_EXCEEDED              = 2,
     CALENDAR_ERROR_SELF_INVITES_EXCEEDED        = 3,
     CALENDAR_ERROR_OTHER_INVITES_EXCEEDED       = 4,
-    CALENDAR_ERROR_PERMISSIONS                  = 5,
+    CALENDAR_ERROR_NO_PERMISSION                = 5,
     CALENDAR_ERROR_EVENT_INVALID                = 6,
     CALENDAR_ERROR_NOT_INVITED                  = 7,
-    CALENDAR_ERROR_INTERNAL                     = 8,
-    CALENDAR_ERROR_GUILD_PLAYER_NOT_IN_GUILD    = 9,
-    CALENDAR_ERROR_ALREADY_INVITED_TO_EVENT_S   = 10,
-    CALENDAR_ERROR_PLAYER_NOT_FOUND             = 11,
-    CALENDAR_ERROR_NOT_ALLIED                   = 12,
-    CALENDAR_ERROR_IGNORING_YOU_S               = 13,
-    CALENDAR_ERROR_INVITES_EXCEEDED             = 14,
-    CALENDAR_ERROR_INVALID_DATE                 = 16,
-    CALENDAR_ERROR_INVALID_TIME                 = 17,
-
-    CALENDAR_ERROR_NEEDS_TITLE                  = 19,
-    CALENDAR_ERROR_EVENT_PASSED                 = 20,
-    CALENDAR_ERROR_EVENT_LOCKED                 = 21,
-    CALENDAR_ERROR_DELETE_CREATOR_FAILED        = 22,
-    CALENDAR_ERROR_SYSTEM_DISABLED              = 24,
-    CALENDAR_ERROR_RESTRICTED_ACCOUNT           = 25,
-    CALENDAR_ERROR_ARENA_EVENTS_EXCEEDED        = 26,
-    CALENDAR_ERROR_RESTRICTED_LEVEL             = 27,
-    CALENDAR_ERROR_USER_SQUELCHED               = 28,
-    CALENDAR_ERROR_NO_INVITE                    = 29,
-
-    CALENDAR_ERROR_EVENT_WRONG_SERVER           = 36,
-    CALENDAR_ERROR_INVITE_WRONG_SERVER          = 37,
-    CALENDAR_ERROR_NO_GUILD_INVITES             = 38,
+    CALENDAR_ERROR_UNKNOWN_ERROR                = 8,
+    CALENDAR_ERROR_NOT_IN_GUILD                 = 9,
+    CALENDAR_ERROR_NOT_IN_COMMUNITY             = 10,
+    CALENDAR_ERROR_TARGET_ALREADY_INVITED       = 11,
+    CALENDAR_ERROR_NAME_NOT_FOUND               = 12,
+    CALENDAR_ERROR_WRONG_FACTION                = 13,
+    CALENDAR_ERROR_IGNORED                      = 14,
+    CALENDAR_ERROR_INVITES_EXCEEDED             = 15,
+    CALENDAR_ERROR_INVALID_MAX_SIZE             = 16,
+    CALENDAR_ERROR_INVALID_DATE                 = 17,
+    CALENDAR_ERROR_INVALID_TIME                 = 18,
+    CALENDAR_ERROR_NO_INVITES                   = 19,
+    CALENDAR_ERROR_NEEDS_TITLE                  = 20,
+    CALENDAR_ERROR_EVENT_PASSED                 = 21,
+    CALENDAR_ERROR_EVENT_LOCKED                 = 22,
+    CALENDAR_ERROR_DELETE_CREATOR_FAILED        = 23,
+    CALENDAR_ERROR_DATA_ALREADY_SET             = 24,
+    CALENDAR_ERROR_CALENDAR_DISABLED            = 25,
+    CALENDAR_ERROR_RESTRICTED_ACCOUNT           = 26,
+    CALENDAR_ERROR_ARENA_EVENTS_EXCEEDED        = 27,
+    CALENDAR_ERROR_RESTRICTED_LEVEL             = 28,
+    CALENDAR_ERROR_SQUELCHED                    = 29,
+    CALENDAR_ERROR_NO_INVITE                    = 30,
+    CALENDAR_ERROR_COMPLAINT_DISABLED           = 31,
+    CALENDAR_ERROR_COMPLAINT_SELF               = 32,
+    CALENDAR_ERROR_COMPLAINT_SAME_GUILD         = 33,
+    CALENDAR_ERROR_COMPLAINT_GM                 = 34,
+    CALENDAR_ERROR_COMPLAINT_LIMIT              = 35,
+    CALENDAR_ERROR_COMPLAINT_NOT_FOUND          = 36,
+    CALENDAR_ERROR_EVENT_WRONG_SERVER           = 37,
+    CALENDAR_ERROR_NO_COMMUNITY_INVITES         = 38,
     CALENDAR_ERROR_INVALID_SIGNUP               = 39,
-    CALENDAR_ERROR_NO_MODERATOR                 = 40
+    CALENDAR_ERROR_NO_MODERATOR                 = 40,
+    CALENDAR_ERROR_MODERATOR_RESTRICTED         = 41,
+    CALENDAR_ERROR_INVALID_NOTES                = 42,
+    CALENDAR_ERROR_INVALID_TITLE                = 43,
+    CALENDAR_ERROR_INVALID_DESCRIPTION          = 44,
+    CALENDAR_ERROR_INVALID_CLUB                 = 45,
+    CALENDAR_ERROR_CREATOR_NOT_FOUND            = 46,
+    CALENDAR_ERROR_EVENT_THROTTLED              = 47,
+    CALENDAR_ERROR_INVITE_THROTTLED             = 48,
+    CALENDAR_ERROR_INTERNAL                     = 49,
+    CALENDAR_ERROR_COMPLAINT_ADDED              = 50
 };
 
-enum CalendarLimits
-{
-    CALENDAR_MAX_EVENTS = 30,
-    CALENDAR_MAX_GUILD_EVENTS = 100,
-    CALENDAR_MAX_INVITES = 100,
-    CALENDAR_CREATE_EVENT_COOLDOWN = 5,
-    CALENDAR_OLD_EVENTS_DELETION_TIME = 1 * MONTH,
-};
-
+#define CALENDAR_MAX_EVENTS             30
+#define CALENDAR_MAX_GUILD_EVENTS       100
+#define CALENDAR_MAX_INVITES            100
 #define CALENDAR_DEFAULT_RESPONSE_TIME  946684800 // 01/01/2000 00:00:00
 
 struct TC_GAME_API CalendarInvite
@@ -154,7 +165,8 @@ struct TC_GAME_API CalendarInvite
             _note = calendarInvite.GetNote();
         }
 
-        CalendarInvite();
+        CalendarInvite() : _inviteId(1), _eventId(0), _invitee(), _senderGUID(), _responseTime(0),
+            _status(CALENDAR_STATUS_INVITED), _rank(CALENDAR_RANK_PLAYER), _note("") { }
 
         CalendarInvite(uint64 inviteId, uint64 eventId, ObjectGuid invitee, ObjectGuid senderGUID, time_t responseTime,
             CalendarInviteStatus status, CalendarModerationRank rank, std::string note) :
@@ -259,9 +271,6 @@ struct TC_GAME_API CalendarEvent
         void SetLockDate(time_t lockDate) { _lockDate = lockDate; }
         time_t GetLockDate() const { return _lockDate; }
 
-        static bool IsGuildEvent(uint32 flags) { return (flags & CALENDAR_FLAG_GUILD_EVENT) != 0; }
-        static bool IsGuildAnnouncement(uint32 flags) { return (flags & CALENDAR_FLAG_WITHOUT_INVITES) != 0; }
-
         std::string BuildCalendarMailSubject(ObjectGuid remover) const;
         std::string BuildCalendarMailBody() const;
 
@@ -302,9 +311,7 @@ class TC_GAME_API CalendarMgr
 
         CalendarEvent* GetEvent(uint64 eventId) const;
         CalendarEventStore const& GetEvents() const { return _events; }
-        CalendarEventStore GetEventsCreatedBy(ObjectGuid guid, bool includeGuildEvents = false);
         CalendarEventStore GetPlayerEvents(ObjectGuid guid);
-        CalendarEventStore GetGuildEvents(ObjectGuid::LowType guildId);
 
         CalendarInvite* GetInvite(uint64 inviteId) const;
         CalendarEventInviteStore const& GetInvites() const { return _invites; }
@@ -316,18 +323,17 @@ class TC_GAME_API CalendarMgr
         void FreeInviteId(uint64 id);
         uint64 GetFreeInviteId();
 
-        void DeleteOldEvents();
-
         uint32 GetPlayerNumPending(ObjectGuid guid);
 
         void AddEvent(CalendarEvent* calendarEvent, CalendarSendEventType sendType);
         void RemoveEvent(uint64 eventId, ObjectGuid remover);
-        void RemoveEvent(CalendarEvent* calendarEvent, ObjectGuid remover);
         void UpdateEvent(CalendarEvent* calendarEvent);
 
-        void AddInvite(CalendarEvent* calendarEvent, CalendarInvite* invite, CharacterDatabaseTransaction trans = nullptr);
+        void AddInvite(CalendarEvent* calendarEvent, CalendarInvite* invite);
+        void AddInvite(CalendarEvent* calendarEvent, CalendarInvite* invite, CharacterDatabaseTransaction& trans);
         void RemoveInvite(uint64 inviteId, uint64 eventId, ObjectGuid remover);
-        void UpdateInvite(CalendarInvite* invite, CharacterDatabaseTransaction trans = nullptr);
+        void UpdateInvite(CalendarInvite* invite);
+        void UpdateInvite(CalendarInvite* invite, CharacterDatabaseTransaction& trans);
 
         void RemoveAllPlayerEventsAndInvites(ObjectGuid guid);
         void RemovePlayerGuildEventsAndSignups(ObjectGuid guid, ObjectGuid::LowType guildId);

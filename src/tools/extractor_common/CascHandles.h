@@ -20,6 +20,7 @@
 
 #include "Define.h"
 #include <CascPort.h>
+#include <memory>
 
 namespace boost
 {
@@ -41,7 +42,6 @@ namespace CASC
         ~Storage();
 
         static Storage* Open(boost::filesystem::path const& path, uint32 localeMask, char const* product);
-        static Storage* OpenRemote(boost::filesystem::path const& path, uint32 localeMask, char const* product, char const* region);
 
         uint32 GetBuildNumber() const;
         uint32 GetInstalledLocalesMask() const;

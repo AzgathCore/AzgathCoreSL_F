@@ -21,9 +21,9 @@
  */
 
 #include "ScriptMgr.h"
-#include "Creature.h"
 #include "PassiveAI.h"
 #include "PetAI.h"
+#include "ScriptedCreature.h"
 
 enum PriestSpells
 {
@@ -32,41 +32,65 @@ enum PriestSpells
     SPELL_PRIEST_LIGHTWELL_CHARGES          = 59907
 };
 
-struct npc_pet_pri_lightwell : public PassiveAI
+class npc_pet_pri_lightwell : public CreatureScript
 {
-    npc_pet_pri_lightwell(Creature* creature) : PassiveAI(creature)
-    {
-        DoCast(me, SPELL_PRIEST_LIGHTWELL_CHARGES, false);
-    }
+    public:
+        npc_pet_pri_lightwell() : CreatureScript("npc_pet_pri_lightwell") { }
 
-    void EnterEvadeMode(EvadeReason /*why*/) override
-    {
-        if (!me->IsAlive())
-            return;
+        struct npc_pet_pri_lightwellAI : public PassiveAI
+        {
+            npc_pet_pri_lightwellAI(Creature* creature) : PassiveAI(creature)
+            {
+                DoCast(me, SPELL_PRIEST_LIGHTWELL_CHARGES, false);
+            }
 
-        me->CombatStop(true);
-        EngagementOver();
-        me->ResetPlayerDamageReq();
-    }
+            void EnterEvadeMode(EvadeReason /*why*/) override
+            {
+                if (!me->IsAlive())
+                    return;
+
+                me->DeleteThreatList();
+                me->CombatStop(true);
+                me->ResetPlayerDamageReq();
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_pet_pri_lightwellAI(creature);
+        }
 };
 
+//19668
 struct npc_pet_pri_shadowfiend : public PetAI
 {
     npc_pet_pri_shadowfiend(Creature* creature) : PetAI(creature) { }
 
-    void IsSummonedBy(WorldObject* summonerWO) override
+    bool CanAIAttack(Unit const* target) const override
     {
-        Unit* summoner = summonerWO->ToUnit();
-        if (!summoner)
-            return;
+        if (!target)
+            return false;
+        Unit* owner = me->GetOwner();
+        if (owner && !target->IsInCombatWith(owner))
+            return false;
 
+        return PetAI::CanAIAttack(target);
+    }
+
+     void IsSummonedBy(Unit* summoner) override
+     {
         if (summoner->HasAura(SPELL_PRIEST_GLYPH_OF_SHADOWFIEND))
             DoCastAOE(SPELL_PRIEST_SHADOWFIEND_DEATH);
-    }
+
+         me->InitCharmInfo();
+         me->SetReactState(REACT_DEFENSIVE);
+         if (Unit* target = summoner->ToPlayer()->GetSelectedUnit())
+             me->AI()->AttackStart(target);
+     }
 };
 
 void AddSC_priest_pet_scripts()
 {
-    RegisterCreatureAI(npc_pet_pri_lightwell);
+    new npc_pet_pri_lightwell();
     RegisterCreatureAI(npc_pet_pri_shadowfiend);
 }

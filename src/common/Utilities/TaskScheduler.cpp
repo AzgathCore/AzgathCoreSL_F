@@ -97,7 +97,7 @@ void TaskScheduler::Dispatch(success_t const& callback)
 
         // Perfect forward the context to the handler
         // Use weak references to catch destruction before callbacks.
-        TaskContext context(_task_holder.Pop(), std::weak_ptr<TaskScheduler>(self_reference));
+        TaskContext context(_task_holder.Pop(), std::weak_ptr<TaskScheduler>(self_reference), GetSchedulerUnit(), GetSchedulerGameObject());
 
         // Invoke the context
         context.Invoke();
@@ -188,7 +188,7 @@ TaskContext& TaskContext::SetGroup(TaskScheduler::group_t const group)
 
 TaskContext& TaskContext::ClearGroup()
 {
-    _task->_group = std::nullopt;
+    _task->_group = boost::none;
     return *this;
 }
 

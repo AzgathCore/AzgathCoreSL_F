@@ -20,7 +20,7 @@
 
 #include "CreatureTextMgr.h"
 #include "CellImpl.h"
-#include "ChatTextBuilder.h"
+#include "ChatPackets.h"
 #include "GridNotifiers.h"
 #include "Group.h"
 #include "World.h"
@@ -30,30 +30,38 @@ template<class Builder>
 class CreatureTextLocalizer
 {
 public:
-    CreatureTextLocalizer(Builder const& builder, ChatMsg msgType) : _cache(), _builder(builder), _msgType(msgType)
+    CreatureTextLocalizer(Builder const& builder, ChatMsg msgType) : _builder(builder), _msgType(msgType)
     {
+        _packetCache.resize(TOTAL_LOCALES, nullptr);
+    }
+
+    ~CreatureTextLocalizer()
+    {
+        for (size_t i = 0; i < _packetCache.size(); ++i)
+            delete _packetCache[i];
     }
 
     void operator()(Player const* player) const
     {
         LocaleConstant loc_idx = player->GetSession()->GetSessionDbLocaleIndex();
-        Trinity::ChatPacketSender* sender;
+        WorldPackets::Chat::Chat* messageTemplate;
 
         // create if not cached yet
-        if (!_cache[loc_idx])
+        if (!_packetCache[loc_idx])
         {
-            sender = _builder(loc_idx);
-            _cache[loc_idx].reset(sender);
+            messageTemplate = static_cast<WorldPackets::Chat::Chat*>(_builder(loc_idx));
+            messageTemplate->Write();
+            _packetCache[loc_idx] = messageTemplate;
         }
         else
-            sender = _cache[loc_idx].get();
+            messageTemplate = _packetCache[loc_idx];
 
         switch (_msgType)
         {
             case CHAT_MSG_MONSTER_WHISPER:
             case CHAT_MSG_RAID_BOSS_WHISPER:
             {
-                WorldPackets::Chat::Chat message(sender->UntranslatedPacket);
+                WorldPackets::Chat::Chat message(*messageTemplate);
                 message.SetReceiver(player, loc_idx);
                 player->SendDirectMessage(message.Write());
                 return;
@@ -62,11 +70,11 @@ public:
                 break;
         }
 
-        (*sender)(player);
+        player->SendDirectMessage(messageTemplate->GetRawPacket());
     }
 
 private:
-    mutable std::array<std::unique_ptr<Trinity::ChatPacketSender>, TOTAL_LOCALES> _cache;
+    mutable std::vector<WorldPackets::Chat::Chat*> _packetCache;
     Builder const& _builder;
     ChatMsg _msgType;
 };
@@ -115,7 +123,7 @@ void CreatureTextMgr::SendChatPacket(WorldObject* source, Builder const& builder
             uint32 areaId = source->GetAreaId();
             Map::PlayerList const& players = source->GetMap()->GetPlayers();
             for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                if (itr->GetSource()->GetAreaId() == areaId && (!team || Team(itr->GetSource()->GetEffectiveTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
+                if (itr->GetSource()->GetAreaId() == areaId && (!team || Team(itr->GetSource()->GetTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
                     localizer(itr->GetSource());
             return;
         }
@@ -124,7 +132,7 @@ void CreatureTextMgr::SendChatPacket(WorldObject* source, Builder const& builder
             uint32 zoneId = source->GetZoneId();
             Map::PlayerList const& players = source->GetMap()->GetPlayers();
             for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                if (itr->GetSource()->GetZoneId() == zoneId && (!team || Team(itr->GetSource()->GetEffectiveTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
+                if (itr->GetSource()->GetZoneId() == zoneId && (!team || Team(itr->GetSource()->GetTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
                     localizer(itr->GetSource());
             return;
         }
@@ -132,7 +140,7 @@ void CreatureTextMgr::SendChatPacket(WorldObject* source, Builder const& builder
         {
             Map::PlayerList const& players = source->GetMap()->GetPlayers();
             for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                if ((!team || Team(itr->GetSource()->GetEffectiveTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
+                if ((!team || Team(itr->GetSource()->GetTeam()) == team) && (!gmOnly || itr->GetSource()->IsGameMaster()))
                     localizer(itr->GetSource());
             return;
         }
@@ -145,12 +153,6 @@ void CreatureTextMgr::SendChatPacket(WorldObject* source, Builder const& builder
                         localizer(player);
             return;
         }
-        case TEXT_RANGE_PERSONAL:
-            if (!whisperTarget || !whisperTarget->IsPlayer())
-                return;
-
-            localizer(whisperTarget->ToPlayer());
-            return;
         case TEXT_RANGE_NORMAL:
         default:
             break;

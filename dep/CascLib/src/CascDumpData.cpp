@@ -508,7 +508,6 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "IndexPath: %s\n", StringFromLPTSTR(hs->szIndexPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "BuildFile: %s\n", StringFromLPTSTR(hs->szBuildFile, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "CDN Server: %s\n", StringFromLPTSTR(hs->szCdnServers, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "CDN Host Url: %s\n", StringFromLPTSTR(hs->szCdnHostUrl, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "CDN Path: %s\n", StringFromLPTSTR(hs->szCdnPath, szStringBuff, sizeof(szStringBuff)));
         DumpKey(fp, "CDN Config Key: %s\n", hs->CdnConfigKey.pbData, hs->CdnConfigKey.cbData);
         DumpKey(fp, "CDN Build Key:  %s\n", hs->CdnBuildKey.pbData, hs->CdnBuildKey.cbData);
@@ -530,10 +529,5 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         CloseDumpFile(szDumpFile, fp);
     }
 }
-
-#else // _DEBUG
-
-// so linker won't mind this .cpp file is empty in non-DEBUG builds
-void unused_symbol() { }
 
 #endif // _DEBUG

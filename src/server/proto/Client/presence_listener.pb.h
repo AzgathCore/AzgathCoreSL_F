@@ -262,6 +262,7 @@ class TC_PROTO_API PresenceListener : public ServiceBase
 
 // ===================================================================
 
+
 // ===================================================================
 
 // SubscribeNotification
@@ -412,6 +413,7 @@ StateChangedNotification::mutable_state() {
   return &state_;
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace v1
@@ -422,6 +424,8 @@ StateChangedNotification::mutable_state() {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

@@ -22,10 +22,10 @@
 
 #define MaraudonScriptName "instance_maraudon"
 
-template <class AI, class T>
-inline AI* GetMaraudonAI(T* obj)
+template<typename AI>
+inline AI* GetMaraudonAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, MaraudonScriptName);
+    return GetInstanceAI<AI>(creature, MaraudonScriptName);
 }
 
 #endif // maraudon_h__

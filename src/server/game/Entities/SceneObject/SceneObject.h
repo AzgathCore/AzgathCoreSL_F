@@ -15,74 +15,48 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SceneObject_h__
-#define SceneObject_h__
+#ifndef TRINITYCORE_SCENEOBJECT_H
+#define TRINITYCORE_SCENEOBJECT_H
 
 #include "Object.h"
-#include "GridObject.h"
+#include <cstring>
 
-struct SceneTemplate;
-
-enum class SceneType : uint32
-{
-    Normal      = 0,
-    PetBattle   = 1
-};
+class Unit;
+class SpellInfo;
 
 class TC_GAME_API SceneObject : public WorldObject, public GridObject<SceneObject>
 {
-public:
-    SceneObject();
-    ~SceneObject();
+    public:
+        SceneObject();
+        ~SceneObject();
 
-protected:
-    void BuildValuesCreate(ByteBuffer* data, Player const* target) const override;
-    void BuildValuesUpdate(ByteBuffer* data, Player const* target) const override;
-    void ClearUpdateMask(bool remove) override;
+        void AddToWorld() override;
+        void RemoveFromWorld() override;
 
-public:
-    void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
-        UF::SceneObjectData::Mask const& requestedSceneObjectMask, Player const* target) const;
+        void BuildValuesCreate(ByteBuffer* data, Player const* target) const override;
+        void BuildValuesUpdate(ByteBuffer* data, Player const* target) const override;
+        void ClearUpdateMask(bool remove) override;
 
-    struct ValuesUpdateForPlayerWithMaskSender // sender compatible with MessageDistDeliverer
-    {
-        explicit ValuesUpdateForPlayerWithMaskSender(SceneObject const* owner) : Owner(owner) { }
+        bool IsNeverVisibleFor(WorldObject const* seer) const override;
 
-        SceneObject const* Owner;
-        UF::ObjectData::Base ObjectMask;
-        UF::SceneObjectData::Base SceneObjectMask;
+        void Update(uint32 diff) override;
+        void Remove();
+        int32 GetDuration() const { return _duration; }
 
-        void operator()(Player const* player) const;
-    };
+        static SceneObject* CreateScene(uint32 sceneId, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* spellInfo = nullptr);
+        bool Create(ObjectGuid::LowType lowGuid, uint32 sceneId, Map* map, Unit* creator, Position const& pos, GuidUnorderedSet&& participants, SpellInfo const* spellInfo = nullptr);
+        void AddParticipant(ObjectGuid const& participantGuid);
 
-    void AddToWorld() override;
-    void RemoveFromWorld() override;
+        ObjectGuid const& GetCreatorGuid() const { return _creatorGuid; }
 
-    void Update(uint32 diff) override;
-    void Remove();
+        uint32 GetScriptId() const;
 
-    static SceneObject* CreateSceneObject(uint32 sceneId, Unit* creator, Position const& pos, ObjectGuid privateObjectOwner);
-    bool Create(ObjectGuid::LowType lowGuid, SceneType type, uint32 sceneId, uint32 scriptPackageId, Map* map, Unit* creator,
-        Position const& pos, ObjectGuid privateObjectOwner);
+        UF::UpdateField<UF::SceneObjectData, 0, TYPEID_SCENEOBJECT> m_sceneObjectData;
 
-    ObjectGuid GetOwnerGUID() const override { return *m_sceneObjectData->CreatedBy; }
-    uint32 GetFaction() const override { return 0; }
-
-    float GetStationaryX() const override { return _stationaryPosition.GetPositionX(); }
-    float GetStationaryY() const override { return _stationaryPosition.GetPositionY(); }
-    float GetStationaryZ() const override { return _stationaryPosition.GetPositionZ(); }
-    float GetStationaryO() const override { return _stationaryPosition.GetOrientation(); }
-    void RelocateStationaryPosition(Position const& pos) { _stationaryPosition.Relocate(pos); }
-
-    void SetCreatedBySpellCast(ObjectGuid castId) { _createdBySpellCast = castId; }
-
-    UF::UpdateField<UF::SceneObjectData, 0, TYPEID_SCENEOBJECT> m_sceneObjectData;
-
-private:
-    bool ShouldBeRemoved() const;
-
-    Position _stationaryPosition;
-    ObjectGuid _createdBySpellCast;
+    private:
+        ObjectGuid _creatorGuid;
+        uint32 _duration;
+        GuidUnorderedSet _participants;
 };
 
-#endif // SceneObject_h__
+#endif // TRINITYCORE_SCENEOBJECT_H

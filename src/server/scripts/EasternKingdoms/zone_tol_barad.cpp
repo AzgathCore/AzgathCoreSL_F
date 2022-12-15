@@ -17,7 +17,8 @@
 
 #include "ScriptMgr.h"
 #include "Battlefield.h"
-#include "Battlefield/BattlefieldTB.h"
+#include "BattlefieldMgr.h"
+#include "BattlefieldTB.h"
 #include "DB2Stores.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -25,6 +26,7 @@
 #include "ScriptedGossip.h"
 #include "ScriptSystem.h"
 #include "SpellScript.h"
+#include "WorldSession.h"
 
 enum TBSpiritGuide
 {
@@ -53,7 +55,7 @@ class npc_tb_spirit_guide : public CreatureScript
                     DoCast(me, SPELL_CHANNEL_SPIRIT_HEAL);
             }
 
-            bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+            bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
             {
                 player->PlayerTalkClass->SendCloseGossip();
 
@@ -85,7 +87,7 @@ class npc_tb_spirit_guide : public CreatureScript
                 if (WorldSafeLocsEntry const* safeLoc = sObjectMgr->GetWorldSafeLoc(areaId))
                     player->TeleportTo(safeLoc->Loc);
 
-                return false;
+                return true;
             }
         };
 

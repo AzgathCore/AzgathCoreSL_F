@@ -20,9 +20,8 @@
 WorldPacket const* WorldPackets::ClientConfig::AccountDataTimes::Write()
 {
     _worldPacket << PlayerGuid;
-    _worldPacket << ServerTime;
-    for (Timestamp<> const& accountDataTime : AccountTimes)
-        _worldPacket << accountDataTime;
+    _worldPacket << uint32(ServerTime);
+    _worldPacket.append(AccountTimes.data(), AccountTimes.size());
 
     return &_worldPacket;
 }
@@ -37,15 +36,15 @@ WorldPacket const* WorldPackets::ClientConfig::ClientCacheVersion::Write()
 void WorldPackets::ClientConfig::RequestAccountData::Read()
 {
     _worldPacket >> PlayerGuid;
-    DataType = _worldPacket.ReadBits(4);
+    DataType = _worldPacket.ReadBits(3);
 }
 
 WorldPacket const* WorldPackets::ClientConfig::UpdateAccountData::Write()
 {
     _worldPacket << Player;
-    _worldPacket << Time;
+    _worldPacket << uint32(Time);
     _worldPacket << uint32(Size);
-    _worldPacket.WriteBits(DataType, 4);
+    _worldPacket.WriteBits(DataType, 3);
     _worldPacket << uint32(CompressedData.size());
     _worldPacket.append(CompressedData);
 
@@ -57,7 +56,7 @@ void WorldPackets::ClientConfig::UserClientUpdateAccountData::Read()
     _worldPacket >> PlayerGuid;
     _worldPacket >> Time;
     _worldPacket >> Size;
-    DataType = _worldPacket.ReadBits(4);
+    DataType = _worldPacket.ReadBits(3);
 
     uint32 compressedSize = _worldPacket.read<uint32>();
     if (compressedSize > _worldPacket.size() - _worldPacket.rpos())
@@ -73,4 +72,9 @@ void WorldPackets::ClientConfig::UserClientUpdateAccountData::Read()
 void WorldPackets::ClientConfig::SetAdvancedCombatLogging::Read()
 {
     Enable = _worldPacket.ReadBit();
+}
+
+void WorldPackets::ClientConfig::GetRemainingGameTime::Read()
+{
+    _worldPacket >> Time;
 }

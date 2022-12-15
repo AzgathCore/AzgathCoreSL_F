@@ -55,6 +55,7 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 
 }  // namespace
 
+
 void protobuf_AssignDesc_club_5fmembership_5ftypes_2eproto() {
   protobuf_AddDesc_club_5fmembership_5ftypes_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -327,6 +328,7 @@ struct StaticDescriptorInitializer_club_5fmembership_5ftypes_2eproto {
     protobuf_AddDesc_club_5fmembership_5ftypes_2eproto();
   }
 } static_descriptor_initializer_club_5fmembership_5ftypes_2eproto_;
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -577,6 +579,7 @@ void ClubMembershipFilter::CopyFrom(const ClubMembershipFilter& from) {
 }
 
 bool ClubMembershipFilter::IsInitialized() const {
+
   if (has_member_id()) {
     if (!this->member_id().IsInitialized()) return false;
   }
@@ -600,6 +603,7 @@ void ClubMembershipFilter::Swap(ClubMembershipFilter* other) {
   metadata.reflection = ClubMembershipFilter_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -798,6 +802,7 @@ void ClubMembershipSubscribeOptions::CopyFrom(const ClubMembershipSubscribeOptio
 }
 
 bool ClubMembershipSubscribeOptions::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->filter())) return false;
   return true;
 }
@@ -818,6 +823,7 @@ void ClubMembershipSubscribeOptions::Swap(ClubMembershipSubscribeOptions* other)
   metadata.reflection = ClubMembershipSubscribeOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1016,6 +1022,7 @@ void ClubMembershipGetStateOptions::CopyFrom(const ClubMembershipGetStateOptions
 }
 
 bool ClubMembershipGetStateOptions::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->filter())) return false;
   return true;
 }
@@ -1036,6 +1043,7 @@ void ClubMembershipGetStateOptions::Swap(ClubMembershipGetStateOptions* other) {
   metadata.reflection = ClubMembershipGetStateOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1287,6 +1295,7 @@ void ClubMembershipDescription::CopyFrom(const ClubMembershipDescription& from) 
 }
 
 bool ClubMembershipDescription::IsInitialized() const {
+
   if (has_member_id()) {
     if (!this->member_id().IsInitialized()) return false;
   }
@@ -1313,6 +1322,7 @@ void ClubMembershipDescription::Swap(ClubMembershipDescription* other) {
   metadata.reflection = ClubMembershipDescription_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1641,6 +1651,7 @@ void ClubMembershipState::CopyFrom(const ClubMembershipState& from) {
 }
 
 bool ClubMembershipState::IsInitialized() const {
+
   if (!::google::protobuf::internal::AllAreInitialized(this->description())) return false;
   if (!::google::protobuf::internal::AllAreInitialized(this->invitation())) return false;
   return true;
@@ -1665,6 +1676,7 @@ void ClubMembershipState::Swap(ClubMembershipState* other) {
   metadata.reflection = ClubMembershipState_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1887,6 +1899,7 @@ void ClubPosition::CopyFrom(const ClubPosition& from) {
 }
 
 bool ClubPosition::IsInitialized() const {
+
   return true;
 }
 
@@ -1906,6 +1919,7 @@ void ClubPosition::Swap(ClubPosition* other) {
   metadata.reflection = ClubPosition_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2112,6 +2126,7 @@ void ClubSharedSettings::CopyFrom(const ClubSharedSettings& from) {
 }
 
 bool ClubSharedSettings::IsInitialized() const {
+
   return true;
 }
 
@@ -2131,6 +2146,7 @@ void ClubSharedSettings::Swap(ClubSharedSettings* other) {
   metadata.reflection = ClubSharedSettings_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2337,6 +2353,7 @@ void ClubSharedSettingsOptions::CopyFrom(const ClubSharedSettingsOptions& from) 
 }
 
 bool ClubSharedSettingsOptions::IsInitialized() const {
+
   return true;
 }
 
@@ -2356,6 +2373,7 @@ void ClubSharedSettingsOptions::Swap(ClubSharedSettingsOptions* other) {
   metadata.reflection = ClubSharedSettingsOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2562,6 +2580,7 @@ void ClubSharedSettingsAssignment::CopyFrom(const ClubSharedSettingsAssignment& 
 }
 
 bool ClubSharedSettingsAssignment::IsInitialized() const {
+
   return true;
 }
 
@@ -2581,6 +2600,7 @@ void ClubSharedSettingsAssignment::Swap(ClubSharedSettingsAssignment* other) {
   metadata.reflection = ClubSharedSettingsAssignment_reflection_;
   return metadata;
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

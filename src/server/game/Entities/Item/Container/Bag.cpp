@@ -23,7 +23,6 @@
 #include "Log.h"
 #include "UpdateData.h"
 #include "Player.h"
-#include <sstream>
 
 Bag::Bag(): Item()
 {
@@ -105,14 +104,14 @@ bool Bag::Create(ObjectGuid::LowType guidlow, uint32 itemid, ItemContext context
     return true;
 }
 
-void Bag::SaveToDB(CharacterDatabaseTransaction trans)
+void Bag::SaveToDB(CharacterDatabaseTransaction& trans)
 {
     Item::SaveToDB(trans);
 }
 
-bool Bag::LoadFromDB(ObjectGuid::LowType guid, ObjectGuid owner_guid, Field* fields, uint32 entry)
+bool Bag::LoadFromDB(ObjectGuid::LowType guid, ObjectGuid owner_guid, Field* fields, uint32 entry, Player const* owner/* = nullptr*/)
 {
-    if (!Item::LoadFromDB(guid, owner_guid, fields, entry))
+    if (!Item::LoadFromDB(guid, owner_guid, fields, entry, owner))
         return false;
 
     ItemTemplate const* itemProto = GetTemplate(); // checked in Item::LoadFromDB
@@ -128,7 +127,7 @@ bool Bag::LoadFromDB(ObjectGuid::LowType guid, ObjectGuid owner_guid, Field* fie
     return true;
 }
 
-void Bag::DeleteFromDB(CharacterDatabaseTransaction trans)
+void Bag::DeleteFromDB(CharacterDatabaseTransaction& trans)
 {
     for (uint8 i = 0; i < MAX_BAG_SIZE; ++i)
         if (m_bagslot[i])
@@ -162,7 +161,7 @@ void Bag::StoreItem(uint8 slot, Item* pItem, bool /*update*/)
 {
     ASSERT(slot < MAX_BAG_SIZE);
 
-    if (pItem && pItem->GetGUID() != GetGUID())
+    if (pItem && pItem->GetGUID() != this->GetGUID())
     {
         m_bagslot[slot] = pItem;
         SetSlot(slot, pItem->GetGUID());
@@ -229,7 +228,7 @@ void Bag::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::M
     if (requestedContainerMask.IsAnySet())
         valuesMask.Set(TYPEID_CONTAINER);
 
-    ByteBuffer& buffer = PrepareValuesUpdateBuffer(data);
+    ByteBuffer buffer = PrepareValuesUpdateBuffer();
     std::size_t sizePos = buffer.wpos();
     buffer << uint32(0);
     buffer << uint32(valuesMask.GetBlock(0));
@@ -245,18 +244,7 @@ void Bag::BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::M
 
     buffer.put<uint32>(sizePos, buffer.wpos() - sizePos - 4);
 
-    data->AddUpdateBlock();
-}
-
-void Bag::ValuesUpdateForPlayerWithMaskSender::operator()(Player const* player) const
-{
-    UpdateData udata(player->GetMapId());
-    WorldPacket packet;
-
-    Owner->BuildValuesUpdateForPlayerWithMask(&udata, ObjectMask.GetChangesMask(), ItemMask.GetChangesMask(), ContainerMask.GetChangesMask(), player);
-
-    udata.BuildPacket(&packet);
-    player->SendDirectMessage(&packet);
+    data->AddUpdateBlock(buffer);
 }
 
 void Bag::ClearUpdateMask(bool remove)
@@ -275,6 +263,43 @@ bool Bag::IsEmpty() const
     return true;
 }
 
+uint32 Bag::GetItemCount(uint32 item, Item* eItem) const
+{
+    Item* pItem;
+    uint32 count = 0;
+    for (uint32 i=0; i < GetBagSize(); ++i)
+    {
+        pItem = m_bagslot[i];
+        if (pItem && pItem != eItem && pItem->GetEntry() == item)
+            count += pItem->GetCount();
+    }
+
+    if (eItem && eItem->GetTemplate()->GetGemProperties())
+    {
+        for (uint32 i=0; i < GetBagSize(); ++i)
+        {
+            pItem = m_bagslot[i];
+            if (pItem && pItem != eItem && pItem->GetSocketColor(0))
+                count += pItem->GetGemCountWithID(item);
+        }
+    }
+
+    return count;
+}
+
+uint32 Bag::GetItemCountWithLimitCategory(uint32 limitCategory, Item* skipItem) const
+{
+    uint32 count = 0;
+    for (uint32 i = 0; i < GetBagSize(); ++i)
+        if (Item* pItem = m_bagslot[i])
+            if (pItem != skipItem)
+                if (ItemTemplate const* pProto = pItem->GetTemplate())
+                    if (pProto->GetItemLimitCategory() == limitCategory)
+                        count += m_bagslot[i]->GetCount();
+
+    return count;
+}
+
 uint8 Bag::GetSlotByItemGUID(ObjectGuid guid) const
 {
     for (uint32 i = 0; i < GetBagSize(); ++i)
@@ -291,21 +316,4 @@ Item* Bag::GetItemByPos(uint8 slot) const
         return m_bagslot[slot];
 
     return nullptr;
-}
-
-std::string Bag::GetDebugInfo() const
-{
-    std::stringstream sstr;
-    sstr << Item::GetDebugInfo();
-    return sstr.str();
-}
-
-uint32 GetBagSize(Bag const* bag)
-{
-    return bag->GetBagSize();
-}
-
-Item* GetItemInBag(Bag const* bag, uint8 slot)
-{
-    return bag->GetItemByPos(slot);
 }

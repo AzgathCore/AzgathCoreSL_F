@@ -308,7 +308,9 @@ class TC_PROTO_API FloatRange : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -466,6 +468,7 @@ inline void FloatRange::set_max(float value) {
   // @@protoc_insertion_point(field_set:bgs.protocol.FloatRange.max)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace protocol
@@ -474,6 +477,8 @@ inline void FloatRange::set_max(float value) {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

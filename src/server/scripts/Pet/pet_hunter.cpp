@@ -24,6 +24,7 @@
 #include "CreatureAIImpl.h"
 #include "ScriptedCreature.h"
 #include "TemporarySummon.h"
+#include "PetAI.h"
 
 enum HunterSpells
 {
@@ -37,93 +38,137 @@ enum HunterCreatures
     NPC_HUNTER_VIPER                    = 19921
 };
 
-struct npc_pet_hunter_snake_trap : public ScriptedAI
+class npc_pet_hunter_snake_trap : public CreatureScript
 {
-    npc_pet_hunter_snake_trap(Creature* creature) : ScriptedAI(creature), _isViper(false), _spellTimer(0) { }
+    public:
+        npc_pet_hunter_snake_trap() : CreatureScript("npc_pet_hunter_snake_trap") { }
 
-    void JustEngagedWith(Unit* /*who*/) override { }
-
-    void JustAppeared() override
-    {
-        _isViper = me->GetEntry() == NPC_HUNTER_VIPER ? true : false;
-
-        me->SetMaxHealth(uint32(107 * (me->GetLevel() - 40) * 0.025f));
-        // Add delta to make them not all hit the same time
-        me->SetBaseAttackTime(BASE_ATTACK, me->GetBaseAttackTime(BASE_ATTACK) + urandms(0,6));
-
-        if (!_isViper && !me->HasAura(SPELL_HUNTER_DEADLY_POISON_PASSIVE))
-            DoCast(me, SPELL_HUNTER_DEADLY_POISON_PASSIVE, true);
-    }
-
-    // Redefined for random target selection:
-    void MoveInLineOfSight(Unit* /*who*/) override { }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (me->GetVictim() && me->GetVictim()->HasBreakableByDamageCrowdControlAura())
-        { // don't break cc
-            me->GetThreatManager().ClearFixate();
-            me->InterruptNonMeleeSpells(false);
-            me->AttackStop();
-            return;
-        }
-
-        if (me->IsSummon() && !me->GetThreatManager().GetFixateTarget())
-        { // find new target
-            Unit* summoner = me->ToTempSummon()->GetSummonerUnit();
-
-            std::vector<Unit*> targets;
-
-            auto addTargetIfValid = [this, &targets, summoner](CombatReference* ref) mutable
-            {
-                Unit* enemy = ref->GetOther(summoner);
-                if (!enemy->HasBreakableByDamageCrowdControlAura() && me->CanCreatureAttack(enemy) && me->IsWithinDistInMap(enemy, me->GetAttackDistance(enemy)))
-                    targets.push_back(enemy);
-            };
-
-            for (std::pair<ObjectGuid const, PvPCombatReference*> const& pair : summoner->GetCombatManager().GetPvPCombatRefs())
-                addTargetIfValid(pair.second);
-
-            if (targets.empty())
-                for (std::pair<ObjectGuid const, CombatReference*> const& pair : summoner->GetCombatManager().GetPvECombatRefs())
-                    addTargetIfValid(pair.second);
-
-            for (Unit* target : targets)
-                me->EngageWithTarget(target);
-
-            if (!targets.empty())
-            {
-                Unit* target = Trinity::Containers::SelectRandomContainerElement(targets);
-                me->GetThreatManager().FixateTarget(target);
-            }
-        }
-
-        if (!UpdateVictim())
-            return;
-
-        // Viper
-        if (_isViper)
+        struct npc_pet_hunter_snake_trapAI : public ScriptedAI
         {
-            if (_spellTimer <= diff)
+            npc_pet_hunter_snake_trapAI(Creature* creature) : ScriptedAI(creature)
             {
-                if (!urand(0, 2)) // 33% chance to cast
-                    DoCastVictim(RAND(SPELL_HUNTER_MIND_NUMBING_POISON, SPELL_HUNTER_CRIPPLING_POISON));
-
-                _spellTimer = 3000;
+                Initialize();
             }
-            else
-                _spellTimer -= diff;
-        }
 
-        DoMeleeAttackIfReady();
+            void Initialize()
+            {
+                _spellTimer = 0;
+                _isViper = false;
+            }
+
+            void EnterCombat(Unit* /*who*/) override { }
+
+            void Reset() override
+            {
+                Initialize();
+
+                CreatureTemplate const* Info = me->GetCreatureTemplate();
+
+                _isViper = Info->Entry == NPC_HUNTER_VIPER ? true : false;
+
+                me->SetMaxHealth(uint32(107 * (me->getLevel() - 40) * 0.025f));
+                // Add delta to make them not all hit the same time
+                uint32 delta = (rand32() % 7) * 100;
+                me->SetBaseAttackTime(BASE_ATTACK, Info->BaseAttackTime + delta);
+                //me->SetStatFloatValue(UNIT_FIELD_RANGED_ATTACK_POWER, float(Info->attackpower));
+
+                // Start attacking attacker of owner on first ai update after spawn - move in line of sight may choose better target
+                if (!me->GetVictim() && me->IsSummon())
+                    if (Unit* Owner = me->ToTempSummon()->GetSummoner())
+                        if (Owner->getAttackerForHelper())
+                            AttackStart(Owner->getAttackerForHelper());
+
+                if (!_isViper)
+                    DoCast(me, SPELL_HUNTER_DEADLY_POISON_PASSIVE, true);
+            }
+
+            // Redefined for random target selection:
+            void MoveInLineOfSight(Unit* who) override
+            {
+                if (!me->GetVictim() && me->CanCreatureAttack(who))
+                {
+                    if (me->GetDistanceZ(who) > CREATURE_Z_ATTACK_RANGE)
+                        return;
+
+                    float attackRadius = me->GetAttackDistance(who);
+                    if (me->IsWithinDistInMap(who, attackRadius) && me->IsWithinLOSInMap(who))
+                    {
+                        if (!(rand32() % 5))
+                        {
+                            me->setAttackTimer(BASE_ATTACK, (rand32() % 10) * 100);
+                            _spellTimer = (rand32() % 10) * 100;
+                            AttackStart(who);
+                        }
+                    }
+                }
+            }
+
+            void UpdateAI(uint32 diff) override
+            {
+                if (!UpdateVictim() || !me->GetVictim())
+                    return;
+
+                if (me->EnsureVictim()->HasBreakableByDamageCrowdControlAura(me))
+                {
+                    me->InterruptNonMeleeSpells(false);
+                    return;
+                }
+
+                // Viper
+                if (_isViper)
+                {
+                    if (_spellTimer <= diff)
+                    {
+                        if (urand(0, 2) == 0) // 33% chance to cast
+                            DoCastVictim(RAND(SPELL_HUNTER_MIND_NUMBING_POISON, SPELL_HUNTER_CRIPPLING_POISON));
+
+                        _spellTimer = 3000;
+                    }
+                    else
+                        _spellTimer -= diff;
+                }
+
+                DoMeleeAttackIfReady();
+            }
+
+        private:
+            bool _isViper;
+            uint32 _spellTimer;
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_pet_hunter_snake_trapAI(creature);
+        }
+};
+
+//104493
+struct npc_hun_spitting_cobra : public PetAI
+{
+    npc_hun_spitting_cobra(Creature* creature) : PetAI(creature) { }
+
+    bool CanAIAttack(Unit const* target) const override
+    {
+        if (!target)
+            return false;
+        Unit* owner = me->GetOwner();
+        if (owner && !target->IsInCombatWith(owner))
+            return false;
+
+        return PetAI::CanAIAttack(target);
     }
 
-private:
-    bool _isViper;
-    uint32 _spellTimer;
+    void IsSummonedBy(Unit* summoner) override
+    {
+        me->InitCharmInfo();
+        me->SetReactState(REACT_DEFENSIVE);
+        if (Unit* target = summoner->ToPlayer()->GetSelectedUnit())
+            me->AI()->AttackStart(target);
+    }
 };
 
 void AddSC_hunter_pet_scripts()
 {
-    RegisterCreatureAI(npc_pet_hunter_snake_trap);
+    new npc_pet_hunter_snake_trap();
+    RegisterCreatureAI(npc_hun_spitting_cobra);
 }

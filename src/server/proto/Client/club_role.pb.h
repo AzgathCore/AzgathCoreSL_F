@@ -146,13 +146,6 @@ class TC_PROTO_API ClubPrivilegeSet : public ::google::protobuf::Message {
   inline bool can_set_privacy_level() const;
   inline void set_can_set_privacy_level(bool value);
 
-  // optional bool can_add_member = 29;
-  inline bool has_can_add_member() const;
-  inline void clear_can_add_member();
-  static const int kCanAddMemberFieldNumber = 29;
-  inline bool can_add_member() const;
-  inline void set_can_add_member(bool value);
-
   // optional bool can_kick_member = 30;
   inline bool has_can_kick_member() const;
   inline void clear_can_kick_member();
@@ -456,8 +449,6 @@ class TC_PROTO_API ClubPrivilegeSet : public ::google::protobuf::Message {
   inline void clear_has_can_set_broadcast();
   inline void set_has_can_set_privacy_level();
   inline void clear_has_can_set_privacy_level();
-  inline void set_has_can_add_member();
-  inline void clear_has_can_add_member();
   inline void set_has_can_kick_member();
   inline void clear_has_can_kick_member();
   inline void set_has_can_set_own_member_attribute();
@@ -551,7 +542,6 @@ class TC_PROTO_API ClubPrivilegeSet : public ::google::protobuf::Message {
   bool can_set_avatar_;
   bool can_set_broadcast_;
   bool can_set_privacy_level_;
-  bool can_add_member_;
   bool can_kick_member_;
   bool can_set_own_member_attribute_;
   bool can_set_other_member_attribute_;
@@ -847,7 +837,9 @@ class TC_PROTO_API ClubRoleSet : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+
 // ===================================================================
+
 
 // ===================================================================
 
@@ -1021,39 +1013,15 @@ inline void ClubPrivilegeSet::set_can_set_privacy_level(bool value) {
   // @@protoc_insertion_point(field_set:bgs.protocol.club.v1.ClubPrivilegeSet.can_set_privacy_level)
 }
 
-// optional bool can_add_member = 29;
-inline bool ClubPrivilegeSet::has_can_add_member() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void ClubPrivilegeSet::set_has_can_add_member() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void ClubPrivilegeSet::clear_has_can_add_member() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void ClubPrivilegeSet::clear_can_add_member() {
-  can_add_member_ = false;
-  clear_has_can_add_member();
-}
-inline bool ClubPrivilegeSet::can_add_member() const {
-  // @@protoc_insertion_point(field_get:bgs.protocol.club.v1.ClubPrivilegeSet.can_add_member)
-  return can_add_member_;
-}
-inline void ClubPrivilegeSet::set_can_add_member(bool value) {
-  set_has_can_add_member();
-  can_add_member_ = value;
-  // @@protoc_insertion_point(field_set:bgs.protocol.club.v1.ClubPrivilegeSet.can_add_member)
-}
-
 // optional bool can_kick_member = 30;
 inline bool ClubPrivilegeSet::has_can_kick_member() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_kick_member() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void ClubPrivilegeSet::clear_has_can_kick_member() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void ClubPrivilegeSet::clear_can_kick_member() {
   can_kick_member_ = false;
@@ -1071,13 +1039,13 @@ inline void ClubPrivilegeSet::set_can_kick_member(bool value) {
 
 // optional bool can_set_own_member_attribute = 31;
 inline bool ClubPrivilegeSet::has_can_set_own_member_attribute() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_own_member_attribute() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_own_member_attribute() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void ClubPrivilegeSet::clear_can_set_own_member_attribute() {
   can_set_own_member_attribute_ = false;
@@ -1095,13 +1063,13 @@ inline void ClubPrivilegeSet::set_can_set_own_member_attribute(bool value) {
 
 // optional bool can_set_other_member_attribute = 32;
 inline bool ClubPrivilegeSet::has_can_set_other_member_attribute() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_other_member_attribute() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_other_member_attribute() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void ClubPrivilegeSet::clear_can_set_other_member_attribute() {
   can_set_other_member_attribute_ = false;
@@ -1119,13 +1087,13 @@ inline void ClubPrivilegeSet::set_can_set_other_member_attribute(bool value) {
 
 // optional bool can_set_own_voice_state = 33;
 inline bool ClubPrivilegeSet::has_can_set_own_voice_state() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_own_voice_state() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_own_voice_state() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void ClubPrivilegeSet::clear_can_set_own_voice_state() {
   can_set_own_voice_state_ = false;
@@ -1143,13 +1111,13 @@ inline void ClubPrivilegeSet::set_can_set_own_voice_state(bool value) {
 
 // optional bool can_set_own_presence_level = 34;
 inline bool ClubPrivilegeSet::has_can_set_own_presence_level() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_own_presence_level() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_own_presence_level() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void ClubPrivilegeSet::clear_can_set_own_presence_level() {
   can_set_own_presence_level_ = false;
@@ -1167,13 +1135,13 @@ inline void ClubPrivilegeSet::set_can_set_own_presence_level(bool value) {
 
 // optional bool can_set_own_whisper_level = 35;
 inline bool ClubPrivilegeSet::has_can_set_own_whisper_level() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_own_whisper_level() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_own_whisper_level() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void ClubPrivilegeSet::clear_can_set_own_whisper_level() {
   can_set_own_whisper_level_ = false;
@@ -1191,13 +1159,13 @@ inline void ClubPrivilegeSet::set_can_set_own_whisper_level(bool value) {
 
 // optional bool can_set_own_member_note = 36;
 inline bool ClubPrivilegeSet::has_can_set_own_member_note() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_own_member_note() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_own_member_note() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void ClubPrivilegeSet::clear_can_set_own_member_note() {
   can_set_own_member_note_ = false;
@@ -1215,13 +1183,13 @@ inline void ClubPrivilegeSet::set_can_set_own_member_note(bool value) {
 
 // optional bool can_set_other_member_note = 37;
 inline bool ClubPrivilegeSet::has_can_set_other_member_note() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_other_member_note() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_other_member_note() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void ClubPrivilegeSet::clear_can_set_other_member_note() {
   can_set_other_member_note_ = false;
@@ -1239,13 +1207,13 @@ inline void ClubPrivilegeSet::set_can_set_other_member_note(bool value) {
 
 // optional bool can_use_voice = 50;
 inline bool ClubPrivilegeSet::has_can_use_voice() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
+  return (_has_bits_[0] & 0x00008000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_use_voice() {
-  _has_bits_[0] |= 0x00010000u;
+  _has_bits_[0] |= 0x00008000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_use_voice() {
-  _has_bits_[0] &= ~0x00010000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline void ClubPrivilegeSet::clear_can_use_voice() {
   can_use_voice_ = false;
@@ -1263,13 +1231,13 @@ inline void ClubPrivilegeSet::set_can_use_voice(bool value) {
 
 // optional bool can_voice_mute_member_for_all = 51;
 inline bool ClubPrivilegeSet::has_can_voice_mute_member_for_all() const {
-  return (_has_bits_[0] & 0x00020000u) != 0;
+  return (_has_bits_[0] & 0x00010000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_voice_mute_member_for_all() {
-  _has_bits_[0] |= 0x00020000u;
+  _has_bits_[0] |= 0x00010000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_voice_mute_member_for_all() {
-  _has_bits_[0] &= ~0x00020000u;
+  _has_bits_[0] &= ~0x00010000u;
 }
 inline void ClubPrivilegeSet::clear_can_voice_mute_member_for_all() {
   can_voice_mute_member_for_all_ = false;
@@ -1287,13 +1255,13 @@ inline void ClubPrivilegeSet::set_can_voice_mute_member_for_all(bool value) {
 
 // optional bool can_get_invitation = 70;
 inline bool ClubPrivilegeSet::has_can_get_invitation() const {
-  return (_has_bits_[0] & 0x00040000u) != 0;
+  return (_has_bits_[0] & 0x00020000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_get_invitation() {
-  _has_bits_[0] |= 0x00040000u;
+  _has_bits_[0] |= 0x00020000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_get_invitation() {
-  _has_bits_[0] &= ~0x00040000u;
+  _has_bits_[0] &= ~0x00020000u;
 }
 inline void ClubPrivilegeSet::clear_can_get_invitation() {
   can_get_invitation_ = false;
@@ -1311,13 +1279,13 @@ inline void ClubPrivilegeSet::set_can_get_invitation(bool value) {
 
 // optional bool can_send_invitation = 71;
 inline bool ClubPrivilegeSet::has_can_send_invitation() const {
-  return (_has_bits_[0] & 0x00080000u) != 0;
+  return (_has_bits_[0] & 0x00040000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_send_invitation() {
-  _has_bits_[0] |= 0x00080000u;
+  _has_bits_[0] |= 0x00040000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_send_invitation() {
-  _has_bits_[0] &= ~0x00080000u;
+  _has_bits_[0] &= ~0x00040000u;
 }
 inline void ClubPrivilegeSet::clear_can_send_invitation() {
   can_send_invitation_ = false;
@@ -1335,13 +1303,13 @@ inline void ClubPrivilegeSet::set_can_send_invitation(bool value) {
 
 // optional bool can_send_guest_invitation = 72;
 inline bool ClubPrivilegeSet::has_can_send_guest_invitation() const {
-  return (_has_bits_[0] & 0x00100000u) != 0;
+  return (_has_bits_[0] & 0x00080000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_send_guest_invitation() {
-  _has_bits_[0] |= 0x00100000u;
+  _has_bits_[0] |= 0x00080000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_send_guest_invitation() {
-  _has_bits_[0] &= ~0x00100000u;
+  _has_bits_[0] &= ~0x00080000u;
 }
 inline void ClubPrivilegeSet::clear_can_send_guest_invitation() {
   can_send_guest_invitation_ = false;
@@ -1359,13 +1327,13 @@ inline void ClubPrivilegeSet::set_can_send_guest_invitation(bool value) {
 
 // optional bool can_revoke_own_invitation = 73;
 inline bool ClubPrivilegeSet::has_can_revoke_own_invitation() const {
-  return (_has_bits_[0] & 0x00200000u) != 0;
+  return (_has_bits_[0] & 0x00100000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_revoke_own_invitation() {
-  _has_bits_[0] |= 0x00200000u;
+  _has_bits_[0] |= 0x00100000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_revoke_own_invitation() {
-  _has_bits_[0] &= ~0x00200000u;
+  _has_bits_[0] &= ~0x00100000u;
 }
 inline void ClubPrivilegeSet::clear_can_revoke_own_invitation() {
   can_revoke_own_invitation_ = false;
@@ -1383,13 +1351,13 @@ inline void ClubPrivilegeSet::set_can_revoke_own_invitation(bool value) {
 
 // optional bool can_revoke_other_invitation = 74;
 inline bool ClubPrivilegeSet::has_can_revoke_other_invitation() const {
-  return (_has_bits_[0] & 0x00400000u) != 0;
+  return (_has_bits_[0] & 0x00200000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_revoke_other_invitation() {
-  _has_bits_[0] |= 0x00400000u;
+  _has_bits_[0] |= 0x00200000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_revoke_other_invitation() {
-  _has_bits_[0] &= ~0x00400000u;
+  _has_bits_[0] &= ~0x00200000u;
 }
 inline void ClubPrivilegeSet::clear_can_revoke_other_invitation() {
   can_revoke_other_invitation_ = false;
@@ -1407,13 +1375,13 @@ inline void ClubPrivilegeSet::set_can_revoke_other_invitation(bool value) {
 
 // optional bool can_get_suggestion = 90;
 inline bool ClubPrivilegeSet::has_can_get_suggestion() const {
-  return (_has_bits_[0] & 0x00800000u) != 0;
+  return (_has_bits_[0] & 0x00400000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_get_suggestion() {
-  _has_bits_[0] |= 0x00800000u;
+  _has_bits_[0] |= 0x00400000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_get_suggestion() {
-  _has_bits_[0] &= ~0x00800000u;
+  _has_bits_[0] &= ~0x00400000u;
 }
 inline void ClubPrivilegeSet::clear_can_get_suggestion() {
   can_get_suggestion_ = false;
@@ -1431,13 +1399,13 @@ inline void ClubPrivilegeSet::set_can_get_suggestion(bool value) {
 
 // optional bool can_suggest_member = 91;
 inline bool ClubPrivilegeSet::has_can_suggest_member() const {
-  return (_has_bits_[0] & 0x01000000u) != 0;
+  return (_has_bits_[0] & 0x00800000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_suggest_member() {
-  _has_bits_[0] |= 0x01000000u;
+  _has_bits_[0] |= 0x00800000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_suggest_member() {
-  _has_bits_[0] &= ~0x01000000u;
+  _has_bits_[0] &= ~0x00800000u;
 }
 inline void ClubPrivilegeSet::clear_can_suggest_member() {
   can_suggest_member_ = false;
@@ -1455,13 +1423,13 @@ inline void ClubPrivilegeSet::set_can_suggest_member(bool value) {
 
 // optional bool can_approve_member = 92;
 inline bool ClubPrivilegeSet::has_can_approve_member() const {
-  return (_has_bits_[0] & 0x02000000u) != 0;
+  return (_has_bits_[0] & 0x01000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_approve_member() {
-  _has_bits_[0] |= 0x02000000u;
+  _has_bits_[0] |= 0x01000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_approve_member() {
-  _has_bits_[0] &= ~0x02000000u;
+  _has_bits_[0] &= ~0x01000000u;
 }
 inline void ClubPrivilegeSet::clear_can_approve_member() {
   can_approve_member_ = false;
@@ -1479,13 +1447,13 @@ inline void ClubPrivilegeSet::set_can_approve_member(bool value) {
 
 // optional bool can_get_ticket = 110;
 inline bool ClubPrivilegeSet::has_can_get_ticket() const {
-  return (_has_bits_[0] & 0x04000000u) != 0;
+  return (_has_bits_[0] & 0x02000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_get_ticket() {
-  _has_bits_[0] |= 0x04000000u;
+  _has_bits_[0] |= 0x02000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_get_ticket() {
-  _has_bits_[0] &= ~0x04000000u;
+  _has_bits_[0] &= ~0x02000000u;
 }
 inline void ClubPrivilegeSet::clear_can_get_ticket() {
   can_get_ticket_ = false;
@@ -1503,13 +1471,13 @@ inline void ClubPrivilegeSet::set_can_get_ticket(bool value) {
 
 // optional bool can_create_ticket = 111;
 inline bool ClubPrivilegeSet::has_can_create_ticket() const {
-  return (_has_bits_[0] & 0x08000000u) != 0;
+  return (_has_bits_[0] & 0x04000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_create_ticket() {
-  _has_bits_[0] |= 0x08000000u;
+  _has_bits_[0] |= 0x04000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_create_ticket() {
-  _has_bits_[0] &= ~0x08000000u;
+  _has_bits_[0] &= ~0x04000000u;
 }
 inline void ClubPrivilegeSet::clear_can_create_ticket() {
   can_create_ticket_ = false;
@@ -1527,13 +1495,13 @@ inline void ClubPrivilegeSet::set_can_create_ticket(bool value) {
 
 // optional bool can_destroy_ticket = 112;
 inline bool ClubPrivilegeSet::has_can_destroy_ticket() const {
-  return (_has_bits_[0] & 0x10000000u) != 0;
+  return (_has_bits_[0] & 0x08000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_destroy_ticket() {
-  _has_bits_[0] |= 0x10000000u;
+  _has_bits_[0] |= 0x08000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_destroy_ticket() {
-  _has_bits_[0] &= ~0x10000000u;
+  _has_bits_[0] &= ~0x08000000u;
 }
 inline void ClubPrivilegeSet::clear_can_destroy_ticket() {
   can_destroy_ticket_ = false;
@@ -1551,13 +1519,13 @@ inline void ClubPrivilegeSet::set_can_destroy_ticket(bool value) {
 
 // optional bool can_get_ban = 130;
 inline bool ClubPrivilegeSet::has_can_get_ban() const {
-  return (_has_bits_[0] & 0x20000000u) != 0;
+  return (_has_bits_[0] & 0x10000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_get_ban() {
-  _has_bits_[0] |= 0x20000000u;
+  _has_bits_[0] |= 0x10000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_get_ban() {
-  _has_bits_[0] &= ~0x20000000u;
+  _has_bits_[0] &= ~0x10000000u;
 }
 inline void ClubPrivilegeSet::clear_can_get_ban() {
   can_get_ban_ = false;
@@ -1575,13 +1543,13 @@ inline void ClubPrivilegeSet::set_can_get_ban(bool value) {
 
 // optional bool can_add_ban = 131;
 inline bool ClubPrivilegeSet::has_can_add_ban() const {
-  return (_has_bits_[0] & 0x40000000u) != 0;
+  return (_has_bits_[0] & 0x20000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_add_ban() {
-  _has_bits_[0] |= 0x40000000u;
+  _has_bits_[0] |= 0x20000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_add_ban() {
-  _has_bits_[0] &= ~0x40000000u;
+  _has_bits_[0] &= ~0x20000000u;
 }
 inline void ClubPrivilegeSet::clear_can_add_ban() {
   can_add_ban_ = false;
@@ -1599,13 +1567,13 @@ inline void ClubPrivilegeSet::set_can_add_ban(bool value) {
 
 // optional bool can_remove_ban = 132;
 inline bool ClubPrivilegeSet::has_can_remove_ban() const {
-  return (_has_bits_[0] & 0x80000000u) != 0;
+  return (_has_bits_[0] & 0x40000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_remove_ban() {
-  _has_bits_[0] |= 0x80000000u;
+  _has_bits_[0] |= 0x40000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_remove_ban() {
-  _has_bits_[0] &= ~0x80000000u;
+  _has_bits_[0] &= ~0x40000000u;
 }
 inline void ClubPrivilegeSet::clear_can_remove_ban() {
   can_remove_ban_ = false;
@@ -1623,13 +1591,13 @@ inline void ClubPrivilegeSet::set_can_remove_ban(bool value) {
 
 // optional bool can_create_stream = 140;
 inline bool ClubPrivilegeSet::has_can_create_stream() const {
-  return (_has_bits_[1] & 0x00000001u) != 0;
+  return (_has_bits_[0] & 0x80000000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_create_stream() {
-  _has_bits_[1] |= 0x00000001u;
+  _has_bits_[0] |= 0x80000000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_create_stream() {
-  _has_bits_[1] &= ~0x00000001u;
+  _has_bits_[0] &= ~0x80000000u;
 }
 inline void ClubPrivilegeSet::clear_can_create_stream() {
   can_create_stream_ = false;
@@ -1647,13 +1615,13 @@ inline void ClubPrivilegeSet::set_can_create_stream(bool value) {
 
 // optional bool can_destroy_stream = 141;
 inline bool ClubPrivilegeSet::has_can_destroy_stream() const {
-  return (_has_bits_[1] & 0x00000002u) != 0;
+  return (_has_bits_[1] & 0x00000001u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_destroy_stream() {
-  _has_bits_[1] |= 0x00000002u;
+  _has_bits_[1] |= 0x00000001u;
 }
 inline void ClubPrivilegeSet::clear_has_can_destroy_stream() {
-  _has_bits_[1] &= ~0x00000002u;
+  _has_bits_[1] &= ~0x00000001u;
 }
 inline void ClubPrivilegeSet::clear_can_destroy_stream() {
   can_destroy_stream_ = false;
@@ -1671,13 +1639,13 @@ inline void ClubPrivilegeSet::set_can_destroy_stream(bool value) {
 
 // optional bool can_set_stream_position = 142;
 inline bool ClubPrivilegeSet::has_can_set_stream_position() const {
-  return (_has_bits_[1] & 0x00000004u) != 0;
+  return (_has_bits_[1] & 0x00000002u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_position() {
-  _has_bits_[1] |= 0x00000004u;
+  _has_bits_[1] |= 0x00000002u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_position() {
-  _has_bits_[1] &= ~0x00000004u;
+  _has_bits_[1] &= ~0x00000002u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_position() {
   can_set_stream_position_ = false;
@@ -1695,13 +1663,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_position(bool value) {
 
 // optional bool can_set_stream_attribute = 143;
 inline bool ClubPrivilegeSet::has_can_set_stream_attribute() const {
-  return (_has_bits_[1] & 0x00000008u) != 0;
+  return (_has_bits_[1] & 0x00000004u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_attribute() {
-  _has_bits_[1] |= 0x00000008u;
+  _has_bits_[1] |= 0x00000004u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_attribute() {
-  _has_bits_[1] &= ~0x00000008u;
+  _has_bits_[1] &= ~0x00000004u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_attribute() {
   can_set_stream_attribute_ = false;
@@ -1719,13 +1687,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_attribute(bool value) {
 
 // optional bool can_set_stream_name = 144;
 inline bool ClubPrivilegeSet::has_can_set_stream_name() const {
-  return (_has_bits_[1] & 0x00000010u) != 0;
+  return (_has_bits_[1] & 0x00000008u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_name() {
-  _has_bits_[1] |= 0x00000010u;
+  _has_bits_[1] |= 0x00000008u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_name() {
-  _has_bits_[1] &= ~0x00000010u;
+  _has_bits_[1] &= ~0x00000008u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_name() {
   can_set_stream_name_ = false;
@@ -1743,13 +1711,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_name(bool value) {
 
 // optional bool can_set_stream_subject = 145;
 inline bool ClubPrivilegeSet::has_can_set_stream_subject() const {
-  return (_has_bits_[1] & 0x00000020u) != 0;
+  return (_has_bits_[1] & 0x00000010u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_subject() {
-  _has_bits_[1] |= 0x00000020u;
+  _has_bits_[1] |= 0x00000010u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_subject() {
-  _has_bits_[1] &= ~0x00000020u;
+  _has_bits_[1] &= ~0x00000010u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_subject() {
   can_set_stream_subject_ = false;
@@ -1767,13 +1735,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_subject(bool value) {
 
 // optional bool can_set_stream_access = 146;
 inline bool ClubPrivilegeSet::has_can_set_stream_access() const {
-  return (_has_bits_[1] & 0x00000040u) != 0;
+  return (_has_bits_[1] & 0x00000020u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_access() {
-  _has_bits_[1] |= 0x00000040u;
+  _has_bits_[1] |= 0x00000020u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_access() {
-  _has_bits_[1] &= ~0x00000040u;
+  _has_bits_[1] &= ~0x00000020u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_access() {
   can_set_stream_access_ = false;
@@ -1791,13 +1759,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_access(bool value) {
 
 // optional bool can_set_stream_voice_level = 147;
 inline bool ClubPrivilegeSet::has_can_set_stream_voice_level() const {
-  return (_has_bits_[1] & 0x00000080u) != 0;
+  return (_has_bits_[1] & 0x00000040u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_set_stream_voice_level() {
-  _has_bits_[1] |= 0x00000080u;
+  _has_bits_[1] |= 0x00000040u;
 }
 inline void ClubPrivilegeSet::clear_has_can_set_stream_voice_level() {
-  _has_bits_[1] &= ~0x00000080u;
+  _has_bits_[1] &= ~0x00000040u;
 }
 inline void ClubPrivilegeSet::clear_can_set_stream_voice_level() {
   can_set_stream_voice_level_ = false;
@@ -1815,13 +1783,13 @@ inline void ClubPrivilegeSet::set_can_set_stream_voice_level(bool value) {
 
 // optional bool can_create_message = 180;
 inline bool ClubPrivilegeSet::has_can_create_message() const {
-  return (_has_bits_[1] & 0x00000100u) != 0;
+  return (_has_bits_[1] & 0x00000080u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_create_message() {
-  _has_bits_[1] |= 0x00000100u;
+  _has_bits_[1] |= 0x00000080u;
 }
 inline void ClubPrivilegeSet::clear_has_can_create_message() {
-  _has_bits_[1] &= ~0x00000100u;
+  _has_bits_[1] &= ~0x00000080u;
 }
 inline void ClubPrivilegeSet::clear_can_create_message() {
   can_create_message_ = false;
@@ -1839,13 +1807,13 @@ inline void ClubPrivilegeSet::set_can_create_message(bool value) {
 
 // optional bool can_destroy_own_message = 181;
 inline bool ClubPrivilegeSet::has_can_destroy_own_message() const {
-  return (_has_bits_[1] & 0x00000200u) != 0;
+  return (_has_bits_[1] & 0x00000100u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_destroy_own_message() {
-  _has_bits_[1] |= 0x00000200u;
+  _has_bits_[1] |= 0x00000100u;
 }
 inline void ClubPrivilegeSet::clear_has_can_destroy_own_message() {
-  _has_bits_[1] &= ~0x00000200u;
+  _has_bits_[1] &= ~0x00000100u;
 }
 inline void ClubPrivilegeSet::clear_can_destroy_own_message() {
   can_destroy_own_message_ = false;
@@ -1863,13 +1831,13 @@ inline void ClubPrivilegeSet::set_can_destroy_own_message(bool value) {
 
 // optional bool can_destroy_other_message = 182;
 inline bool ClubPrivilegeSet::has_can_destroy_other_message() const {
-  return (_has_bits_[1] & 0x00000400u) != 0;
+  return (_has_bits_[1] & 0x00000200u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_destroy_other_message() {
-  _has_bits_[1] |= 0x00000400u;
+  _has_bits_[1] |= 0x00000200u;
 }
 inline void ClubPrivilegeSet::clear_has_can_destroy_other_message() {
-  _has_bits_[1] &= ~0x00000400u;
+  _has_bits_[1] &= ~0x00000200u;
 }
 inline void ClubPrivilegeSet::clear_can_destroy_other_message() {
   can_destroy_other_message_ = false;
@@ -1887,13 +1855,13 @@ inline void ClubPrivilegeSet::set_can_destroy_other_message(bool value) {
 
 // optional bool can_edit_own_message = 183;
 inline bool ClubPrivilegeSet::has_can_edit_own_message() const {
-  return (_has_bits_[1] & 0x00000800u) != 0;
+  return (_has_bits_[1] & 0x00000400u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_edit_own_message() {
-  _has_bits_[1] |= 0x00000800u;
+  _has_bits_[1] |= 0x00000400u;
 }
 inline void ClubPrivilegeSet::clear_has_can_edit_own_message() {
-  _has_bits_[1] &= ~0x00000800u;
+  _has_bits_[1] &= ~0x00000400u;
 }
 inline void ClubPrivilegeSet::clear_can_edit_own_message() {
   can_edit_own_message_ = false;
@@ -1911,13 +1879,13 @@ inline void ClubPrivilegeSet::set_can_edit_own_message(bool value) {
 
 // optional bool can_pin_message = 184;
 inline bool ClubPrivilegeSet::has_can_pin_message() const {
-  return (_has_bits_[1] & 0x00001000u) != 0;
+  return (_has_bits_[1] & 0x00000800u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_pin_message() {
-  _has_bits_[1] |= 0x00001000u;
+  _has_bits_[1] |= 0x00000800u;
 }
 inline void ClubPrivilegeSet::clear_has_can_pin_message() {
-  _has_bits_[1] &= ~0x00001000u;
+  _has_bits_[1] &= ~0x00000800u;
 }
 inline void ClubPrivilegeSet::clear_can_pin_message() {
   can_pin_message_ = false;
@@ -1935,13 +1903,13 @@ inline void ClubPrivilegeSet::set_can_pin_message(bool value) {
 
 // optional bool can_mention_all = 185;
 inline bool ClubPrivilegeSet::has_can_mention_all() const {
-  return (_has_bits_[1] & 0x00002000u) != 0;
+  return (_has_bits_[1] & 0x00001000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_mention_all() {
-  _has_bits_[1] |= 0x00002000u;
+  _has_bits_[1] |= 0x00001000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_mention_all() {
-  _has_bits_[1] &= ~0x00002000u;
+  _has_bits_[1] &= ~0x00001000u;
 }
 inline void ClubPrivilegeSet::clear_can_mention_all() {
   can_mention_all_ = false;
@@ -1959,13 +1927,13 @@ inline void ClubPrivilegeSet::set_can_mention_all(bool value) {
 
 // optional bool can_mention_here = 186;
 inline bool ClubPrivilegeSet::has_can_mention_here() const {
-  return (_has_bits_[1] & 0x00004000u) != 0;
+  return (_has_bits_[1] & 0x00002000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_mention_here() {
-  _has_bits_[1] |= 0x00004000u;
+  _has_bits_[1] |= 0x00002000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_mention_here() {
-  _has_bits_[1] &= ~0x00004000u;
+  _has_bits_[1] &= ~0x00002000u;
 }
 inline void ClubPrivilegeSet::clear_can_mention_here() {
   can_mention_here_ = false;
@@ -1983,13 +1951,13 @@ inline void ClubPrivilegeSet::set_can_mention_here(bool value) {
 
 // optional bool can_mention_member = 187;
 inline bool ClubPrivilegeSet::has_can_mention_member() const {
-  return (_has_bits_[1] & 0x00008000u) != 0;
+  return (_has_bits_[1] & 0x00004000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_mention_member() {
-  _has_bits_[1] |= 0x00008000u;
+  _has_bits_[1] |= 0x00004000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_mention_member() {
-  _has_bits_[1] &= ~0x00008000u;
+  _has_bits_[1] &= ~0x00004000u;
 }
 inline void ClubPrivilegeSet::clear_can_mention_member() {
   can_mention_member_ = false;
@@ -2007,13 +1975,13 @@ inline void ClubPrivilegeSet::set_can_mention_member(bool value) {
 
 // optional bool can_mention_role = 188;
 inline bool ClubPrivilegeSet::has_can_mention_role() const {
-  return (_has_bits_[1] & 0x00010000u) != 0;
+  return (_has_bits_[1] & 0x00008000u) != 0;
 }
 inline void ClubPrivilegeSet::set_has_can_mention_role() {
-  _has_bits_[1] |= 0x00010000u;
+  _has_bits_[1] |= 0x00008000u;
 }
 inline void ClubPrivilegeSet::clear_has_can_mention_role() {
-  _has_bits_[1] &= ~0x00010000u;
+  _has_bits_[1] &= ~0x00008000u;
 }
 inline void ClubPrivilegeSet::clear_can_mention_role() {
   can_mention_role_ = false;
@@ -2351,6 +2319,7 @@ inline void ClubRoleSet::set_allocated_subtype(::std::string* subtype) {
   // @@protoc_insertion_point(field_set_allocated:bgs.protocol.club.v1.ClubRoleSet.subtype)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace v1
@@ -2361,6 +2330,8 @@ inline void ClubRoleSet::set_allocated_subtype(::std::string* subtype) {
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

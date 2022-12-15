@@ -31,20 +31,17 @@ SceneMgr::SceneMgr(Player* player) : _player(player)
     _isDebuggingScenes = false;
 }
 
-SceneMgr::~SceneMgr() = default;
-
-uint32 SceneMgr::PlayScene(uint32 sceneId, Position const* position /*= nullptr*/)
+uint32 SceneMgr::PlayScene(uint32 sceneId, Position const* position /*= nullptr*/, ObjectGuid const* transportGuid /*= nullptr*/)
 {
-    SceneTemplate const* sceneTemplate = sObjectMgr->GetSceneTemplate(sceneId);
-    return PlaySceneByTemplate(sceneTemplate, position);
+    if (SceneTemplate const* sceneTemplate = sObjectMgr->GetSceneTemplate(sceneId))
+        return PlaySceneByTemplate(*sceneTemplate, position, transportGuid);
+
+    return 0;
 }
-
-uint32 SceneMgr::PlaySceneByTemplate(SceneTemplate const* sceneTemplate, Position const* position /*= nullptr*/)
+// TODO: change SceneMgr::PlaySceneByTemplate "const sceneTemplate" to "const* sceneTemplate".
+uint32 SceneMgr::PlaySceneByTemplate(SceneTemplate const sceneTemplate, Position const* position /*= nullptr*/, ObjectGuid const* transportGuid /*= nullptr*/)
 {
-    if (!sceneTemplate)
-        return 0;
-
-    SceneScriptPackageEntry const* entry = sSceneScriptPackageStore.LookupEntry(sceneTemplate->ScenePackageId);
+    SceneScriptPackageEntry const* entry = sSceneScriptPackageStore.LookupEntry(sceneTemplate.ScenePackageId);
     if (!entry)
         return 0;
 
@@ -52,34 +49,38 @@ uint32 SceneMgr::PlaySceneByTemplate(SceneTemplate const* sceneTemplate, Positio
     if (!position)
         position = GetPlayer();
 
+    ObjectGuid plrTransGuid = GetPlayer()->GetTransGUID();
+    // By default, take player transport guid
+    if (!transportGuid)
+        transportGuid = &plrTransGuid;
+
     uint32 sceneInstanceID = GetNewStandaloneSceneInstanceID();
 
     if (_isDebuggingScenes)
-        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(LANG_COMMAND_SCENE_DEBUG_PLAY, sceneInstanceID, sceneTemplate->ScenePackageId, sceneTemplate->PlaybackFlags.AsUnderlyingType());
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(LANG_COMMAND_SCENE_DEBUG_PLAY, sceneInstanceID, sceneTemplate.ScenePackageId, sceneTemplate.PlaybackFlags);
 
     WorldPackets::Scenes::PlayScene playScene;
-    playScene.SceneID              = sceneTemplate->SceneId;
-    playScene.PlaybackFlags        = sceneTemplate->PlaybackFlags.AsUnderlyingType();
+    playScene.SceneID              = sceneTemplate.SceneId;
+    playScene.PlaybackFlags        = sceneTemplate.PlaybackFlags;
     playScene.SceneInstanceID      = sceneInstanceID;
-    playScene.SceneScriptPackageID = sceneTemplate->ScenePackageId;
+    playScene.SceneScriptPackageID = sceneTemplate.ScenePackageId;
     playScene.Location             = *position;
     playScene.TransportGUID        = GetPlayer()->GetTransGUID();
-    playScene.Encrypted            = sceneTemplate->Encrypted;
-    playScene.Write();
+    playScene.Encrypted            = sceneTemplate.Encrypted;
 
-    if (GetPlayer()->IsInWorld())
-        GetPlayer()->SendDirectMessage(playScene.GetRawPacket());
-    else
-        _delayedScenes.push_back(playScene.Move());
+    GetPlayer()->SendDirectMessage(playScene.Write());
 
     AddInstanceIdToSceneMap(sceneInstanceID, sceneTemplate);
 
-    sScriptMgr->OnSceneStart(GetPlayer(), sceneInstanceID, sceneTemplate);
+    sScriptMgr->OnSceneStart(GetPlayer(), sceneInstanceID, &sceneTemplate);
+
+    // Legacy PlayerScript
+    sScriptMgr->OnSceneStart(GetPlayer(), sceneInstanceID, sceneTemplate.ScenePackageId);
 
     return sceneInstanceID;
 }
 
-uint32 SceneMgr::PlaySceneByPackageId(uint32 sceneScriptPackageId, EnumFlag<SceneFlag> playbackflags /*= SCENEFLAG_UNK16*/, Position const* position /*= nullptr*/)
+uint32 SceneMgr::PlaySceneByPackageId(uint32 sceneScriptPackageId, uint32 playbackflags /*= SCENEFLAG_UNK16*/, Position const* position /*= nullptr*/)
 {
     SceneTemplate sceneTemplate;
     sceneTemplate.SceneId           = 0;
@@ -88,7 +89,7 @@ uint32 SceneMgr::PlaySceneByPackageId(uint32 sceneScriptPackageId, EnumFlag<Scen
     sceneTemplate.Encrypted         = false;
     sceneTemplate.ScriptId          = 0;
 
-    return PlaySceneByTemplate(&sceneTemplate, position);
+    return PlaySceneByTemplate(sceneTemplate, position);
 }
 
 void SceneMgr::CancelScene(uint32 sceneInstanceID, bool removeFromMap /*= true*/)
@@ -111,6 +112,9 @@ void SceneMgr::OnSceneTrigger(uint32 sceneInstanceID, std::string const& trigger
 
     SceneTemplate const* sceneTemplate = GetSceneTemplateFromInstanceId(sceneInstanceID);
     sScriptMgr->OnSceneTrigger(GetPlayer(), sceneInstanceID, sceneTemplate, triggerName);
+
+    // Legacy PlayerScript
+    sScriptMgr->OnSceneTriggerEvent(GetPlayer(), sceneInstanceID, triggerName);
 }
 
 void SceneMgr::OnSceneCancel(uint32 sceneInstanceID)
@@ -122,19 +126,22 @@ void SceneMgr::OnSceneCancel(uint32 sceneInstanceID)
         ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(LANG_COMMAND_SCENE_DEBUG_CANCEL, sceneInstanceID);
 
     SceneTemplate const* sceneTemplate = GetSceneTemplateFromInstanceId(sceneInstanceID);
-    if (sceneTemplate->PlaybackFlags.HasFlag(SceneFlag::NotCancelable))
-        return;
-
-    // Must be done before removing aura
-    RemoveSceneInstanceId(sceneInstanceID);
-
-    if (sceneTemplate->SceneId != 0)
-        RemoveAurasDueToSceneId(sceneTemplate->SceneId);
+    uint32 const sceneId = sceneTemplate->SceneId;
 
     sScriptMgr->OnSceneCancel(GetPlayer(), sceneInstanceID, sceneTemplate);
 
-    if (sceneTemplate->PlaybackFlags.HasFlag(SceneFlag::FadeToBlackscreenOnCancel))
+    // Legacy PlayerScript
+    sScriptMgr->OnSceneCancel(GetPlayer(), sceneInstanceID);
+
+    if (sceneTemplate->PlaybackFlags & SCENEFLAG_CANCEL_AT_END)
         CancelScene(sceneInstanceID, false);
+
+    // Must be done before removing aura but after every use of sceneTemplate,
+    // this will invalidate the pointer
+    RemoveSceneInstanceId(sceneInstanceID);
+
+    if (sceneId != 0)
+        RemoveAurasDueToSceneId(sceneId);
 }
 
 void SceneMgr::OnSceneComplete(uint32 sceneInstanceID)
@@ -146,17 +153,22 @@ void SceneMgr::OnSceneComplete(uint32 sceneInstanceID)
         ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(LANG_COMMAND_SCENE_DEBUG_COMPLETE, sceneInstanceID);
 
     SceneTemplate const* sceneTemplate = GetSceneTemplateFromInstanceId(sceneInstanceID);
-
-    // Must be done before removing aura
-    RemoveSceneInstanceId(sceneInstanceID);
-
-    if (sceneTemplate->SceneId != 0)
-        RemoveAurasDueToSceneId(sceneTemplate->SceneId);
+    uint32 const sceneId = sceneTemplate->SceneId;
 
     sScriptMgr->OnSceneComplete(GetPlayer(), sceneInstanceID, sceneTemplate);
 
-    if (sceneTemplate->PlaybackFlags.HasFlag(SceneFlag::FadeToBlackscreenOnComplete))
+    // Legacy PlayerScript
+    sScriptMgr->OnSceneComplete(GetPlayer(), sceneInstanceID);
+
+    if (sceneTemplate->PlaybackFlags & SCENEFLAG_CANCEL_AT_END)
         CancelScene(sceneInstanceID, false);
+
+    // Must be done before removing aura but after every use of sceneTemplate,
+    // this will invalidate the pointer
+    RemoveSceneInstanceId(sceneInstanceID);
+
+    if (sceneId != 0)
+        RemoveAurasDueToSceneId(sceneId);
 }
 
 bool SceneMgr::HasScene(uint32 sceneInstanceID, uint32 sceneScriptPackageId /*= 0*/) const
@@ -164,14 +176,23 @@ bool SceneMgr::HasScene(uint32 sceneInstanceID, uint32 sceneScriptPackageId /*= 
     auto itr = _scenesByInstance.find(sceneInstanceID);
 
     if (itr != _scenesByInstance.end())
-        return !sceneScriptPackageId || sceneScriptPackageId == itr->second->ScenePackageId;
+        return !sceneScriptPackageId || sceneScriptPackageId == itr->second.ScenePackageId;
 
     return false;
 }
 
-void SceneMgr::AddInstanceIdToSceneMap(uint32 sceneInstanceID, SceneTemplate const* sceneTemplate)
+bool SceneMgr::HasSceneWithPackageId(uint32 sceneScriptPackageId) const
 {
-    _scenesByInstance[sceneInstanceID] = std::make_unique<SceneTemplate>(*sceneTemplate);
+    for (auto scene : _scenesByInstance)
+        if (scene.second.ScenePackageId == sceneScriptPackageId)
+            return true;
+
+    return false;
+}
+
+void SceneMgr::AddInstanceIdToSceneMap(uint32 sceneInstanceID, SceneTemplate const sceneTemplate)
+{
+    _scenesByInstance[sceneInstanceID] = sceneTemplate;
 }
 
 void SceneMgr::CancelSceneBySceneId(uint32 sceneId)
@@ -179,7 +200,7 @@ void SceneMgr::CancelSceneBySceneId(uint32 sceneId)
     std::vector<uint32> instancesIds;
 
     for (auto const& itr : _scenesByInstance)
-        if (itr.second->SceneId == sceneId)
+        if (itr.second.SceneId == sceneId)
             instancesIds.push_back(itr.first);
 
     for (uint32 sceneInstanceID : instancesIds)
@@ -190,8 +211,8 @@ void SceneMgr::CancelSceneByPackageId(uint32 sceneScriptPackageId)
 {
     std::vector<uint32> instancesIds;
 
-    for (auto const& itr : _scenesByInstance)
-        if (itr.second->ScenePackageId == sceneScriptPackageId)
+    for (auto itr : _scenesByInstance)
+        if (itr.second.ScenePackageId == sceneScriptPackageId)
             instancesIds.push_back(itr.first);
 
     for (uint32 sceneInstanceID : instancesIds)
@@ -221,7 +242,7 @@ SceneTemplate const* SceneMgr::GetSceneTemplateFromInstanceId(uint32 sceneInstan
     auto itr = _scenesByInstance.find(sceneInstanceID);
 
     if (itr != _scenesByInstance.end())
-        return itr->second.get();
+        return &(itr->second);
 
     return nullptr;
 }
@@ -230,17 +251,9 @@ uint32 SceneMgr::GetActiveSceneCount(uint32 sceneScriptPackageId /*= 0*/) const
 {
     uint32 activeSceneCount = 0;
 
-    for (auto const& itr : _scenesByInstance)
-        if (!sceneScriptPackageId || itr.second->ScenePackageId == sceneScriptPackageId)
+    for (auto itr : _scenesByInstance)
+        if (!sceneScriptPackageId || itr.second.ScenePackageId == sceneScriptPackageId)
             ++activeSceneCount;
 
     return activeSceneCount;
-}
-
-void SceneMgr::TriggerDelayedScenes()
-{
-    for (WorldPacket& playScene : _delayedScenes)
-        GetPlayer()->SendDirectMessage(&playScene);
-
-    _delayedScenes.clear();
 }

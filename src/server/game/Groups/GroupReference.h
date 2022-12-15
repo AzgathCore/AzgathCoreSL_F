@@ -18,7 +18,7 @@
 #ifndef _GROUPREFERENCE_H
 #define _GROUPREFERENCE_H
 
-#include "LinkedReference/Reference.h"
+#include "Dynamic/LinkedReference/Reference.h"
 
 class Group;
 class Player;

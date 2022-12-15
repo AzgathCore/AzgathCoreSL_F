@@ -52,7 +52,7 @@ namespace ADT
 
 struct ADTOutputCache
 {
-    uint8 Flags;
+    uint32 Flags;
     std::vector<uint8> Data;
 };
 

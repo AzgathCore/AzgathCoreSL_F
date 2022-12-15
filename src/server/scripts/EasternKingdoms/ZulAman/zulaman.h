@@ -21,7 +21,7 @@
 #include "CreatureAIImpl.h"
 
 uint32 const EncounterCount = 6;
-#define ZulamanScriptName "instance_zulaman"
+#define ZulAmanScriptName "instance_zulaman"
 #define DataHeader "ZA"
 
 enum ZADataTypes
@@ -80,10 +80,10 @@ enum ZAWorldStates
     WORLD_STATE_ZULAMAN_TIMER           = 3106,
 };
 
-template <class AI, class T>
-inline AI* GetZulAmanAI(T* obj)
+template<typename AI>
+CreatureAI* GetZulAmanAI(Creature* creature)
 {
-    return GetInstanceAI<AI>(obj, ZulamanScriptName);
+    return GetInstanceAI<AI>(creature, ZulAmanScriptName);
 }
 
 #endif

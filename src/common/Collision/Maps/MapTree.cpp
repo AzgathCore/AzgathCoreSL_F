@@ -16,17 +16,17 @@
  */
 
 #include "MapTree.h"
-#include "Errors.h"
-#include "Log.h"
-#include "Metric.h"
 #include "ModelInstance.h"
-#include "VMapDefinitions.h"
 #include "VMapManager2.h"
-#include "WorldModel.h"
+#include "VMapDefinitions.h"
+#include "Log.h"
+#include "Errors.h"
+#include "Metric.h"
+
+#include <string>
+#include <sstream>
 #include <iomanip>
 #include <limits>
-#include <sstream>
-#include <string>
 
 using G3D::Vector3;
 
@@ -351,12 +351,12 @@ namespace VMAP
 
     void StaticMapTree::UnloadMap(VMapManager2* vm)
     {
-        for (std::pair<uint32 const, uint32>& iLoadedSpawn : iLoadedSpawns)
+        for (loadedSpawnMap::iterator i = iLoadedSpawns.begin(); i != iLoadedSpawns.end(); ++i)
         {
-            for (uint32 refCount = 0; refCount < iLoadedSpawn.second; ++refCount)
-                vm->releaseModelInstance(iTreeValues[iLoadedSpawn.first].getWorldModel()->GetName());
+            for (uint32 refCount = 0; refCount < i->second; ++refCount)
+                vm->releaseModelInstance(iTreeValues[i->first].name);
 
-            iTreeValues[iLoadedSpawn.first].setUnloaded();
+            iTreeValues[i->first].setUnloaded();
         }
         iLoadedSpawns.clear();
         iLoadedTiles.clear();

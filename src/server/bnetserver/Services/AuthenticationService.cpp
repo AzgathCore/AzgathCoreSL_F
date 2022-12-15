@@ -31,8 +31,3 @@ uint32 Battlenet::Services::Authentication::HandleVerifyWebCredentials(authentic
 {
     return _session->HandleVerifyWebCredentials(request, continuation);
 }
-
-uint32 Battlenet::Services::Authentication::HandleGenerateWebCredentials(authentication::v1::GenerateWebCredentialsRequest const* request, authentication::v1::GenerateWebCredentialsResponse* /*response*/, std::function<void(ServiceBase*, uint32, google::protobuf::Message const*)>& continuation)
-{
-    return _session->HandleGenerateWebCredentials(request, continuation);
-}

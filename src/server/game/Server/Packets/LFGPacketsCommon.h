@@ -18,8 +18,8 @@
 #ifndef LFGPacketsCommon_h__
 #define LFGPacketsCommon_h__
 
+#include "Packet.h"
 #include "ObjectGuid.h"
-#include "PacketUtilities.h"
 
 namespace WorldPackets
 {
@@ -27,9 +27,13 @@ namespace WorldPackets
     {
         enum class RideType : uint32
         {
-            None = 0,
-            Battlegrounds = 1,
-            Lfg = 2
+            None                = 0,
+            Battlegrounds       = 1,
+            Lfg                 = 2,
+            PvPPetBattle        = 3,
+            LfgListApplication  = 4, // LFGListParty
+            PetBattle           = 5,
+            LfgListApplicant    = 6, // LFGListPlayer
         };
 
         struct RideTicket
@@ -37,8 +41,7 @@ namespace WorldPackets
             ObjectGuid RequesterGuid;
             uint32 Id = 0;
             RideType Type = RideType::None;
-            Timestamp<> Time;
-            bool Unknown925 = false;
+            int32 Time = 0;
         };
     }
 }

@@ -270,14 +270,27 @@ namespace WorldPackets
             int32 Action = 0;
         };
 
-        class PetTameFailure final : public ServerPacket
+        class PetSlotUpdated final : public ServerPacket
         {
         public:
-            PetTameFailure() : ServerPacket(SMSG_PET_TAME_FAILURE, 1) { }
+            PetSlotUpdated() : ServerPacket(SMSG_PET_SLOT_UPDATED, 4 + 4 + 4 + 4) { }
 
             WorldPacket const* Write() override;
 
-            uint8 Result = 0;
+            int32 PetNumberA;
+            int32 PetSlotA;
+            int32 PetNumberB;
+            int32 PetSlotB;
+        };
+
+        class PetAdded final : public ServerPacket
+        {
+        public:
+            PetAdded() : ServerPacket(SMSG_PET_ADDED, 4 + 4 + 4 + 4 + 4 + 1 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            PetStableInfo NewPet;
         };
     }
 }

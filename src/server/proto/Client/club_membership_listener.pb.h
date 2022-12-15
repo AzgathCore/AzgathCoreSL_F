@@ -855,6 +855,7 @@ class TC_PROTO_API ClubMembershipListener : public ServiceBase
 
 // ===================================================================
 
+
 // ===================================================================
 
 // ClubAddedNotification
@@ -1583,6 +1584,7 @@ inline void StreamMentionAdvanceViewTimeNotification::set_view_time(::google::pr
   // @@protoc_insertion_point(field_set:bgs.protocol.club.v1.membership.StreamMentionAdvanceViewTimeNotification.view_time)
 }
 
+
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace membership
@@ -1594,6 +1596,8 @@ inline void StreamMentionAdvanceViewTimeNotification::set_view_time(::google::pr
 #ifndef SWIG
 namespace google {
 namespace protobuf {
+
+
 }  // namespace google
 }  // namespace protobuf
 #endif  // SWIG

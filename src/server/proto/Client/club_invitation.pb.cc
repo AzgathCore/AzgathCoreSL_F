@@ -49,6 +49,7 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 
 }  // namespace
 
+
 void protobuf_AssignDesc_club_5finvitation_2eproto() {
   protobuf_AddDesc_club_5finvitation_2eproto();
   const ::google::protobuf::FileDescriptor* file =
@@ -317,6 +318,7 @@ struct StaticDescriptorInitializer_club_5finvitation_2eproto {
     protobuf_AddDesc_club_5finvitation_2eproto();
   }
 } static_descriptor_initializer_club_5finvitation_2eproto_;
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -568,6 +570,7 @@ void ClubSlot::CopyFrom(const ClubSlot& from) {
 }
 
 bool ClubSlot::IsInitialized() const {
+
   return true;
 }
 
@@ -588,6 +591,7 @@ void ClubSlot::Swap(ClubSlot* other) {
   metadata.reflection = ClubSlot_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -877,6 +881,7 @@ void SendInvitationOptions::CopyFrom(const SendInvitationOptions& from) {
 }
 
 bool SendInvitationOptions::IsInitialized() const {
+
   if (has_target_id()) {
     if (!this->target_id().IsInitialized()) return false;
   }
@@ -901,6 +906,7 @@ void SendInvitationOptions::Swap(SendInvitationOptions* other) {
   metadata.reflection = SendInvitationOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1448,6 +1454,7 @@ void ClubInvitation::CopyFrom(const ClubInvitation& from) {
 }
 
 bool ClubInvitation::IsInitialized() const {
+
   if (has_inviter()) {
     if (!this->inviter().IsInitialized()) return false;
   }
@@ -1487,6 +1494,7 @@ void ClubInvitation::Swap(ClubInvitation* other) {
   metadata.reflection = ClubInvitation_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -1776,6 +1784,7 @@ void SendSuggestionOptions::CopyFrom(const SendSuggestionOptions& from) {
 }
 
 bool SendSuggestionOptions::IsInitialized() const {
+
   if (has_target_id()) {
     if (!this->target_id().IsInitialized()) return false;
   }
@@ -1800,6 +1809,7 @@ void SendSuggestionOptions::Swap(SendSuggestionOptions* other) {
   metadata.reflection = SendSuggestionOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2294,6 +2304,7 @@ void ClubSuggestion::CopyFrom(const ClubSuggestion& from) {
 }
 
 bool ClubSuggestion::IsInitialized() const {
+
   if (has_suggester()) {
     if (!this->suggester().IsInitialized()) return false;
   }
@@ -2326,6 +2337,7 @@ void ClubSuggestion::Swap(ClubSuggestion* other) {
   metadata.reflection = ClubSuggestion_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -2661,6 +2673,7 @@ void CreateTicketOptions::CopyFrom(const CreateTicketOptions& from) {
 }
 
 bool CreateTicketOptions::IsInitialized() const {
+
   return true;
 }
 
@@ -2683,6 +2696,7 @@ void CreateTicketOptions::Swap(CreateTicketOptions* other) {
   metadata.reflection = CreateTicketOptions_reflection_;
   return metadata;
 }
+
 
 // ===================================================================
 
@@ -3242,6 +3256,7 @@ void ClubTicket::CopyFrom(const ClubTicket& from) {
 }
 
 bool ClubTicket::IsInitialized() const {
+
   if (has_creator()) {
     if (!this->creator().IsInitialized()) return false;
   }
@@ -3275,6 +3290,7 @@ void ClubTicket::Swap(ClubTicket* other) {
   metadata.reflection = ClubTicket_reflection_;
   return metadata;
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 

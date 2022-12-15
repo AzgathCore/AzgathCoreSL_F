@@ -82,13 +82,13 @@ public:
             Initialize();
 
             if (IsEvent)
-                instance->SetBossState(DATA_KAZROGAL, NOT_STARTED);
+                instance->SetData(DATA_KAZROGALEVENT, NOT_STARTED);
         }
 
-        void JustEngagedWith(Unit* /*who*/) override
+        void EnterCombat(Unit* /*who*/) override
         {
             if (IsEvent)
-                instance->SetBossState(DATA_KAZROGAL, IN_PROGRESS);
+                instance->SetData(DATA_KAZROGALEVENT, IN_PROGRESS);
             Talk(SAY_ONAGGRO);
         }
 
@@ -97,13 +97,13 @@ public:
             Talk(SAY_ONSLAY);
         }
 
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
+        void WaypointReached(uint32 waypointId) override
         {
             if (waypointId == 7 && instance)
             {
-                Creature* target = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL));
+                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                 if (target && target->IsAlive())
-                    AddThreat(target, 0.0f);
+                    me->AddThreat(target, 0.0f);
             }
         }
 
@@ -111,7 +111,7 @@ public:
         {
             hyjal_trashAI::JustDied(killer);
             if (IsEvent)
-                instance->SetBossState(DATA_KAZROGAL, DONE);
+                instance->SetData(DATA_KAZROGALEVENT, DONE);
             DoPlaySoundToSet(me, SOUND_ONDEATH);
         }
 
@@ -181,7 +181,6 @@ class MarkTargetFilter
         }
 };
 
-// 31447 - Mark of Kaz'rogal
 class spell_mark_of_kazrogal : public SpellScriptLoader
 {
     public:
@@ -217,7 +216,7 @@ class spell_mark_of_kazrogal : public SpellScriptLoader
 
                 if (target->GetPower(POWER_MANA) == 0)
                 {
-                    target->CastSpell(target, SPELL_MARK_DAMAGE, aurEff);
+                    target->CastSpell(target, SPELL_MARK_DAMAGE, true, nullptr, aurEff);
                     // Remove aura
                     SetDuration(0);
                 }

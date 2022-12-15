@@ -80,7 +80,6 @@ WorldPacket const* WorldPackets::Query::QueryCreatureResponse::Write()
         _worldPacket << int32(Stats.RequiredExpansion);
         _worldPacket << int32(Stats.VignetteID);
         _worldPacket << int32(Stats.Class);
-        _worldPacket << int32(Stats.CreatureDifficultyID);
         _worldPacket << int32(Stats.WidgetSetID);
         _worldPacket << int32(Stats.WidgetSetUnitConditionID);
 
@@ -100,17 +99,15 @@ WorldPacket const* WorldPackets::Query::QueryCreatureResponse::Write()
     return &_worldPacket;
 }
 
-void WorldPackets::Query::QueryPlayerNames::Read()
+void WorldPackets::Query::QueryPlayerName::Read()
 {
-    Players.resize(_worldPacket.read<uint32>());
-    for (ObjectGuid& player : Players)
-        _worldPacket >> player;
+    _worldPacket >> Player;
 }
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Query::PlayerGuidLookupHint const& lookupHint)
 {
-    data.WriteBit(lookupHint.VirtualRealmAddress.has_value());
-    data.WriteBit(lookupHint.NativeRealmAddress.has_value());
+    data.WriteBit(lookupHint.VirtualRealmAddress.is_initialized());
+    data.WriteBit(lookupHint.NativeRealmAddress.is_initialized());
     data.FlushBits();
 
     if (lookupHint.VirtualRealmAddress)
@@ -135,10 +132,10 @@ bool WorldPackets::Query::PlayerGuidLookupData::Initialize(ObjectGuid const& gui
         AccountID     = player->GetSession()->GetAccountGUID();
         BnetAccountID = player->GetSession()->GetBattlenetAccountGUID();
         Name          = player->GetName();
-        Race          = player->GetRace();
-        Sex           = player->GetNativeGender();
-        ClassID       = player->GetClass();
-        Level         = player->GetLevel();
+        Race          = player->getRace();
+        Sex           = player->GetNativeSex();
+        ClassID       = player->getClass();
+        Level         = player->getLevel();
 
         if (DeclinedName const* names = player->GetDeclinedNames())
             DeclinedNames = *names;
@@ -184,46 +181,18 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Query::PlayerGuidLookupDa
     data << uint8(lookupData.Sex);
     data << uint8(lookupData.ClassID);
     data << uint8(lookupData.Level);
-    data << uint8(lookupData.Unused915);
     data.WriteString(lookupData.Name);
 
     return data;
 }
 
-ByteBuffer operator<<(ByteBuffer& data, WorldPackets::Query::NameCacheUnused920 const& thing)
+WorldPacket const* WorldPackets::Query::QueryPlayerNameResponse::Write()
 {
-    data << uint32(thing.Unused1);
-    data << thing.Unused2;
-    data.WriteBits(thing.Unused3.length(), 7);
-    data.FlushBits();
+    _worldPacket << uint8(Result);
+    _worldPacket << Player;
 
-    data.WriteString(thing.Unused3);
-
-    return data;
-}
-
-ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Query::NameCacheLookupResult const& result)
-{
-    data << uint8(result.Result);
-    data << result.Player;
-    data.WriteBit(result.Data.has_value());
-    data.WriteBit(result.Unused920.has_value());
-    data.FlushBits();
-
-    if (result.Data)
-        data << *result.Data;
-
-    if (result.Unused920)
-        data << *result.Unused920;
-
-    return data;
-}
-
-WorldPacket const* WorldPackets::Query::QueryPlayerNamesResponse::Write()
-{
-    _worldPacket << uint32(Players.size());
-    for (NameCacheLookupResult const& lookupResult : Players)
-        _worldPacket << lookupResult;
+    if (Result == RESPONSE_SUCCESS)
+        _worldPacket << Data;
 
     return &_worldPacket;
 }
@@ -233,6 +202,7 @@ void WorldPackets::Query::QueryPageText::Read()
     _worldPacket >> PageTextID;
     _worldPacket >> ItemGUID;
 }
+
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Query::QueryPageTextResponse::PageTextInfo const& page)
 {
@@ -310,7 +280,12 @@ WorldPacket const* WorldPackets::Query::QueryGameObjectResponse::Write()
         for (int8 i = 0; i < 4; ++i)
             statsData << Stats.Name[i];
 
-        statsData << Stats.IconName;
+        // set icon to default if object is a herb -Varjgard
+        if((Stats.IconName == "Herb") || (Stats.IconName == "Mining"))
+            statsData << "";
+        else
+            statsData << Stats.IconName;
+
         statsData << Stats.CastBarCaption;
         statsData << Stats.UnkString;
 
@@ -368,7 +343,7 @@ WorldPacket const* WorldPackets::Query::CorpseTransportQuery::Write()
 
 WorldPacket const* WorldPackets::Query::QueryTimeResponse::Write()
 {
-    _worldPacket << CurrentTime;
+    _worldPacket << int32(CurrentTime);
 
     return &_worldPacket;
 }

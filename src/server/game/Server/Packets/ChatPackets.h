@@ -72,7 +72,6 @@ namespace WorldPackets
             void Read() override;
 
             int32 Language = LANG_UNIVERSAL;
-            ObjectGuid ChannelGUID;
             std::string Text;
             std::string Target;
         };
@@ -100,16 +99,12 @@ namespace WorldPackets
         class ChatAddonMessageTargeted final : public ClientPacket
         {
         public:
-            ChatAddonMessageTargeted(WorldPacket&& packet) : ClientPacket(CMSG_CHAT_ADDON_MESSAGE_TARGETED, std::move(packet))
-            {
-                ChannelGUID.emplace();
-            }
+            ChatAddonMessageTargeted(WorldPacket&& packet) : ClientPacket(CMSG_CHAT_ADDON_MESSAGE_TARGETED, std::move(packet)) { }
 
             void Read() override;
 
             std::string Target;
             ChatAddonMessageParams Params;
-            Optional<ObjectGuid> ChannelGUID; // not optional in the packet. Optional for api reasons
         };
 
         class ChatMessageDND final : public ClientPacket
@@ -149,8 +144,7 @@ namespace WorldPackets
             Chat() : ServerPacket(SMSG_CHAT, 100) { }
             Chat(Chat const& chat);
 
-            void Initialize(ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string_view message, uint32 achievementId = 0,
-                std::string_view channelName = "", LocaleConstant locale = DEFAULT_LOCALE, std::string_view addonPrefix = "");
+            void Initialize(ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string message, uint32 achievementId = 0, std::string channelName = "", LocaleConstant locale = DEFAULT_LOCALE, std::string addonPrefix = "", ChatFlags chatFlags = CHAT_FLAG_NONE);
             void SetSender(WorldObject const* sender, LocaleConstant locale);
             void SetReceiver(WorldObject const* receiver, LocaleConstant locale);
 
@@ -176,7 +170,6 @@ namespace WorldPackets
             Optional<uint32> Unused_801;
             bool HideChatLog = false;
             bool FakeSenderName = false;
-            Optional<ObjectGuid> ChannelGUID;
         };
 
         class Emote final : public ServerPacket
@@ -189,7 +182,6 @@ namespace WorldPackets
             ObjectGuid Guid;
             uint32 EmoteID = 0;
             std::vector<int32> SpellVisualKitIDs;
-            int32 SequenceVariation = 0;
         };
 
         class CTextEmote final : public ClientPacket
@@ -203,7 +195,6 @@ namespace WorldPackets
             int32 EmoteID = 0;
             int32 SoundIndex = -1;
             Array<int32, 2> SpellVisualKitIDs;
-            int32 SequenceVariation = 0;
         };
 
         class STextEmote final : public ServerPacket
