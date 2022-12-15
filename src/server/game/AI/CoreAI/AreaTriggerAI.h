@@ -23,16 +23,14 @@
 class AreaTrigger;
 class Unit;
 
-#define VALIDATE_CASTER()   Unit* caster = at->GetCaster(); \
-                            if (!caster) \
-                                return;
-
 class TC_GAME_API AreaTriggerAI
 {
+        uint32 _scriptId;
+
     protected:
         AreaTrigger* const at;
     public:
-        explicit AreaTriggerAI(AreaTrigger* a);
+        explicit AreaTriggerAI(AreaTrigger* a, uint32 scriptId = {});
         virtual ~AreaTriggerAI();
 
         // Called when the AreaTrigger has just been initialized, just before added to map
@@ -43,9 +41,6 @@ class TC_GAME_API AreaTriggerAI
 
         // Called on each AreaTrigger update
         virtual void OnUpdate(uint32 /*diff*/) { }
-
-        // Called on each AreaTrigger proc, timer defined by at->SetPeriodicProcTimer(uint32)
-        virtual void OnPeriodicProc() { }
 
         // Called when the AreaTrigger reach splineIndex
         virtual void OnSplineIndexReached(int /*splineIndex*/) { }
@@ -62,14 +57,14 @@ class TC_GAME_API AreaTriggerAI
         // Called when the AreaTrigger is removed
         virtual void OnRemove() { }
 
-        // Pass parameters between AI
-        virtual void DoAction(int32 /*param*/) { }
+        // Gets the id of the AI (script id)
+        uint32 GetId() { return _scriptId; }
 };
 
 class NullAreaTriggerAI : public AreaTriggerAI
 {
     public:
-        explicit NullAreaTriggerAI(AreaTrigger* areaTrigger) : AreaTriggerAI(areaTrigger) { }
+        using AreaTriggerAI::AreaTriggerAI;
 };
 
 #endif

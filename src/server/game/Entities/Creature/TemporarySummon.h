@@ -40,78 +40,43 @@ enum PetEntry
 
 struct SummonPropertiesEntry;
 
-enum PetEntries
-{
-    // Warlock Pets/Minions
-    ENTRY_IMP                     = 416,
-    ENTRY_VOIDWALKER              = 1860,
-    ENTRY_SUCCUBUS                = 1863,
-    ENTRY_FELHUNTER               = 417,
-    ENTRY_FELGUARD                = 17252,
-    ENTRY_DOOMGUARD               = 11859,
-    ENTRY_DOOMGUARD_PET           = 78158,
-    ENTRY_INFERNAL                = 89,
-    ENTRY_INFERNAL_LORD_OF_FLAMES = 108452,
-    ENTRY_INFERNAL_PET            = 78217,
-    ENTRY_WILD_IMP                = 55659,
-    ENTRY_WILD_IMP_DREADSTALKER   = 99737,
-    ENTRY_DREADSTALKER            = 98035,
-    ENTRY_DARKGLARE               = 103673,
-    ENTRY_CHAOS_TEAR              = 108493,
-    ENTRY_UNSTABLE_TEAR           = 94584,
-    ENTRY_SHADOWY_TEAR            = 99887,
-    // Mage Pet/Minion
-    ENTRY_WATER_ELEMENTAL         = 78116,
-    // Shaman Pet/Minion
-    ENTRY_FIRE_ELEMENTAL          = 95061,
-    // Death knight Pet/Minion
-    ENTRY_GHOUL                   = 26125,
-    ENTRY_BLOODWORM               = 99773,
-    ENTRY_RISEN_SKULKER           = 99541,
-    ENTRY_ABOMINATION             = 106848,
-    // Monk Pet/Minion
-    ENTRY_XUEN                    = 63508,
-    ENTRY_NIUZAO                  = 73967,
-    ENTRY_CHI_JI                  = 100868,
-    // Druid Pet/Minion
-    ENTRY_TREANT                  = 1964
-};
-
 class TC_GAME_API TempSummon : public Creature
 {
     public:
-        explicit TempSummon(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject);
+        explicit TempSummon(SummonPropertiesEntry const* properties, WorldObject* owner, bool isWorldObject);
         virtual ~TempSummon() { }
         void Update(uint32 time) override;
         virtual void InitStats(uint32 lifetime);
-        virtual void InitSummon(Spell const* summonSpell = nullptr);
+        virtual void InitSummon();
         void UpdateObjectVisibilityOnCreate() override;
+        void UpdateObjectVisibilityOnDestroy() override;
         virtual void UnSummon(uint32 msTime = 0);
         void RemoveFromWorld() override;
         void SetTempSummonType(TempSummonType type);
         void SaveToDB(uint32 /*mapid*/, std::vector<Difficulty> const& /*spawnDifficulties*/) override { }
-        Unit* GetSummoner() const;
+        WorldObject* GetSummoner() const;
+        Unit* GetSummonerUnit() const;
         Creature* GetSummonerCreatureBase() const;
-        void SetSummonerGUID(ObjectGuid summonerGUID) { m_summonerGUID = summonerGUID; }
+        GameObject* GetSummonerGameObject() const;
         ObjectGuid GetSummonerGUID() const { return m_summonerGUID; }
-        TempSummonType const& GetSummonType() { return m_type; }
+        TempSummonType GetSummonType() const { return m_type; }
         uint32 GetTimer() const { return m_timer; }
+        Optional<uint32> GetCreatureIdVisibleToSummoner() const { return m_creatureIdVisibleToSummoner; }
+        Optional<uint32> GetDisplayIdVisibleToSummoner() const { return m_displayIdVisibleToSummoner; }
+        bool CanFollowOwner() const { return m_canFollowOwner; }
+        void SetCanFollowOwner(bool can) { m_canFollowOwner = can; }
 
-        void SetVisibleBySummonerOnly(bool visibleBySummonerOnly) { m_visibleBySummonerOnly = visibleBySummonerOnly; }
-        bool IsVisibleBySummonerOnly() const { return m_visibleBySummonerOnly; }
-        void SetSummonerSpecificEntry(uint32 entry);
-        uint32 GetSummonerSpecificEntry() const { return m_summonerSpecificEntry; }
-        uint32 GetSummonerSpecificDisplayID() const { return m_summonerSpecificDisplayID; }
+        SummonPropertiesEntry const* const m_Properties;
 
-        const SummonPropertiesEntry* const m_Properties;
+        std::string GetDebugInfo() const override;
     private:
         TempSummonType m_type;
         uint32 m_timer;
         uint32 m_lifetime;
         ObjectGuid m_summonerGUID;
-        bool m_visibleBySummonerOnly;
-        uint32 m_summonerSpecificEntry;
-        uint32 m_summonerSpecificDisplayID;
+        Optional<uint32> m_creatureIdVisibleToSummoner;
+        Optional<uint32> m_displayIdVisibleToSummoner;
+        bool m_canFollowOwner;
 };
 
 class TC_GAME_API Minion : public TempSummon
@@ -120,6 +85,7 @@ class TC_GAME_API Minion : public TempSummon
         Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject);
         void InitStats(uint32 duration) override;
         void RemoveFromWorld() override;
+        void setDeathState(DeathState s) override;
         Unit* GetOwner() const { return m_owner; }
         float GetFollowAngle() const override { return m_followAngle; }
         void SetFollowAngle(float angle) { m_followAngle = angle; }
@@ -140,8 +106,8 @@ class TC_GAME_API Minion : public TempSummon
         bool IsSpiritWolf() const { return GetEntry() == PET_SPIRIT_WOLF; } // Spirit wolf from feral spirits
 
         bool IsGuardianPet() const;
-        bool IsWarlockMinion() const;
-        bool HasSameSpellPowerAsOwner() const;
+
+        std::string GetDebugInfo() const override;
     protected:
         Unit* const m_owner;
         float m_followAngle;
@@ -153,8 +119,9 @@ class TC_GAME_API Guardian : public Minion
         Guardian(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject);
         void InitStats(uint32 duration) override;
         bool InitStatsForLevel(uint8 level);
-        void InitSummon(Spell const* summonSpell = nullptr) override;
+        void InitSummon() override;
 
+        bool UpdateStats(Stats stat) override;
         bool UpdateAllStats() override;
         void UpdateResistances(uint32 school) override;
         void UpdateArmor() override;
@@ -162,11 +129,11 @@ class TC_GAME_API Guardian : public Minion
         void UpdateMaxPower(Powers power) override;
         void UpdateAttackPowerAndDamage(bool ranged = false) override;
         void UpdateDamagePhysical(WeaponAttackType attType) override;
-        void UpdateSpellPower();
 
         int32 GetBonusDamage() const { return m_bonusSpellDamage; }
+        float GetBonusStatFromOwner(Stats stat) const { return m_statFromOwner[stat]; }
         void SetBonusDamage(int32 damage);
-        void UpdatePlayerFieldModPetHaste();
+        std::string GetDebugInfo() const override;
     protected:
         int32   m_bonusSpellDamage;
         float   m_statFromOwner[MAX_STATS];
@@ -177,9 +144,8 @@ class TC_GAME_API Puppet : public Minion
     public:
         Puppet(SummonPropertiesEntry const* properties, Unit* owner);
         void InitStats(uint32 duration) override;
-        void InitSummon(Spell const* summonSpell = nullptr) override;
+        void InitSummon() override;
         void Update(uint32 time) override;
-        void RemoveFromWorld() override;
 };
 
 class TC_GAME_API ForcedUnsummonDelayEvent : public BasicEvent

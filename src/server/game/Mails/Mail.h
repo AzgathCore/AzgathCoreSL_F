@@ -19,8 +19,8 @@
 #define TRINITY_MAIL_H
 
 #include "Common.h"
+#include "DatabaseEnvFwd.h"
 #include "ObjectGuid.h"
-#include "Transaction.h"
 #include <map>
 
 struct CalendarEvent;
@@ -55,7 +55,7 @@ enum MailCheckMask
     MAIL_CHECK_MASK_HAS_BODY    = 0x10                      /// This mail has body text.
 };
 
-// gathered from Stationery.dbc (9.0.2)
+// gathered from Stationery.dbc
 enum MailStationery
 {
     MAIL_STATIONERY_TEST    = 1,
@@ -64,8 +64,7 @@ enum MailStationery
     MAIL_STATIONERY_AUCTION = 62,
     MAIL_STATIONERY_VAL     = 64,                           // Valentine
     MAIL_STATIONERY_CHR     = 65,                           // Christmas
-    MAIL_STATIONERY_ORP     = 67,                           // Orphan
-    MAIL_STATIONERY_UNK     = 77                            // Unknown
+    MAIL_STATIONERY_ORP     = 67                            // Orphan
 };
 
 enum MailState
@@ -145,12 +144,12 @@ class TC_GAME_API MailDraft
         MailDraft& AddCOD(uint64 COD) { m_COD = COD; return *this; }
 
     public:                                                 // finishers
-        void SendReturnToSender(uint32 sender_acc, ObjectGuid::LowType sender_guid, ObjectGuid::LowType receiver_guid, CharacterDatabaseTransaction& trans);
-        void SendMailTo(CharacterDatabaseTransaction& trans, MailReceiver const& receiver, MailSender const& sender, MailCheckMask checked = MAIL_CHECK_MASK_NONE, uint32 deliver_delay = 0);
+        void SendReturnToSender(uint32 sender_acc, ObjectGuid::LowType sender_guid, ObjectGuid::LowType receiver_guid, CharacterDatabaseTransaction trans);
+        void SendMailTo(CharacterDatabaseTransaction trans, MailReceiver const& receiver, MailSender const& sender, MailCheckMask checked = MAIL_CHECK_MASK_NONE, uint32 deliver_delay = 0);
 
     private:
-        void deleteIncludedItems(CharacterDatabaseTransaction& trans, bool inDB = false);
-        void prepareItems(Player* receiver, CharacterDatabaseTransaction& trans);                // called from SendMailTo for generate mailTemplateBase items
+        void deleteIncludedItems(CharacterDatabaseTransaction trans, bool inDB = false);
+        void prepareItems(Player* receiver, CharacterDatabaseTransaction trans);                // called from SendMailTo for generate mailTemplateBase items
 
         uint16      m_mailTemplateId;
         bool        m_mailTemplateItemsNeed;

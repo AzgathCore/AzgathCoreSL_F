@@ -18,8 +18,6 @@
 #ifndef TRINITY_CELLIMPL_H
 #define TRINITY_CELLIMPL_H
 
-#include <cmath>
-
 #include "Cell.h"
 #include "Map.h"
 #include "Object.h"
@@ -64,7 +62,7 @@ inline void Cell::Visit(CellCoord const& standing_cell, TypeContainerVisitor<T, 
 {
     //we should increase search radius by object's radius, otherwise
     //we could have problems with huge creatures, which won't attack nearest players etc
-    Visit(standing_cell, visitor, map, obj.GetPositionX(), obj.GetPositionY(), radius + obj.GetObjectSize());
+    Visit(standing_cell, visitor, map, obj.GetPositionX(), obj.GetPositionY(), radius + obj.GetCombatReach());
 }
 
 template<class T, class CONTAINER>

@@ -41,6 +41,7 @@ void WorldPackets::Chat::ChatMessageWhisper::Read()
 void WorldPackets::Chat::ChatMessageChannel::Read()
 {
     _worldPacket >> Language;
+    _worldPacket >> ChannelGUID;
     uint32 targetLen = _worldPacket.ReadBits(9);
     uint32 textLen = _worldPacket.ReadBits(9);
     Target = _worldPacket.ReadString(targetLen);
@@ -54,7 +55,7 @@ ByteBuffer& operator>>(ByteBuffer& data, WorldPackets::Chat::ChatAddonMessagePar
     params.IsLogged = data.ReadBit();
     params.Type = ChatMsg(data.read<int32>());
     params.Prefix = data.ReadString(prefixLen);
-    params.Text = data.ReadString(textLen);
+    params.Text = data.ReadString(textLen, false);
 
     return data;
 }
@@ -70,6 +71,7 @@ void WorldPackets::Chat::ChatAddonMessageTargeted::Read()
     _worldPacket.ResetBitPos();
 
     _worldPacket >> Params;
+    _worldPacket >> *ChannelGUID;
     Target = _worldPacket.ReadString(targetLen);
 }
 
@@ -100,8 +102,8 @@ WorldPackets::Chat::Chat::Chat(Chat const& chat) : ServerPacket(SMSG_CHAT, chat.
 {
 }
 
-void WorldPackets::Chat::Chat::Initialize(ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string message,
-    uint32 achievementId /*= 0*/, std::string channelName /*= ""*/, LocaleConstant locale /*= DEFAULT_LOCALE*/, std::string addonPrefix /*= ""*/, ChatFlags chatFlags /*= CHAT_FLAG_NONE*/)
+void WorldPackets::Chat::Chat::Initialize(ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string_view message,
+    uint32 achievementId /*= 0*/, std::string_view channelName /*= ""*/, LocaleConstant locale /*= DEFAULT_LOCALE*/, std::string_view addonPrefix /*= ""*/)
 {
     // Clear everything because same packet can be used multiple times
     Clear();
@@ -113,7 +115,7 @@ void WorldPackets::Chat::Chat::Initialize(ChatMsg chatType, Language language, W
     TargetGUID.Clear();
     SenderName.clear();
     TargetName.clear();
-    _ChatFlags = chatFlags;
+    _ChatFlags = CHAT_FLAG_NONE;
 
     SlashCmd = chatType;
     _Language = language;
@@ -129,7 +131,7 @@ void WorldPackets::Chat::Chat::Initialize(ChatMsg chatType, Language language, W
     AchievementID = achievementId;
     _Channel = std::move(channelName);
     Prefix = std::move(addonPrefix);
-    ChatText = std::move(message);
+    ChatText = message;
 }
 
 void WorldPackets::Chat::Chat::SetSender(WorldObject const* sender, LocaleConstant locale)
@@ -179,7 +181,8 @@ WorldPacket const* WorldPackets::Chat::Chat::Write()
     _worldPacket.WriteBits(_ChatFlags, 14);
     _worldPacket.WriteBit(HideChatLog);
     _worldPacket.WriteBit(FakeSenderName);
-    _worldPacket.WriteBit(Unused_801.is_initialized());
+    _worldPacket.WriteBit(Unused_801.has_value());
+    _worldPacket.WriteBit(ChannelGUID.has_value());
     _worldPacket.FlushBits();
 
     _worldPacket.WriteString(SenderName);
@@ -191,6 +194,9 @@ WorldPacket const* WorldPackets::Chat::Chat::Write()
     if (Unused_801)
         _worldPacket << uint32(*Unused_801);
 
+    if (ChannelGUID)
+        _worldPacket << *ChannelGUID;
+
     return &_worldPacket;
 }
 
@@ -199,6 +205,7 @@ WorldPacket const* WorldPackets::Chat::Emote::Write()
     _worldPacket << Guid;
     _worldPacket << uint32(EmoteID);
     _worldPacket << uint32(SpellVisualKitIDs.size());
+    _worldPacket << int32(SequenceVariation);
     if (!SpellVisualKitIDs.empty())
         _worldPacket.append(SpellVisualKitIDs.data(), SpellVisualKitIDs.size());
 
@@ -211,6 +218,7 @@ void WorldPackets::Chat::CTextEmote::Read()
     _worldPacket >> EmoteID;
     _worldPacket >> SoundIndex;
     SpellVisualKitIDs.resize(_worldPacket.read<uint32>());
+    _worldPacket >> SequenceVariation;
     for (int32& spellVisualKitId : SpellVisualKitIDs)
         _worldPacket >> spellVisualKitId;
 }

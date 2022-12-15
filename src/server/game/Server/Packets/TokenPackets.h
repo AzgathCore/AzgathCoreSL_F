@@ -19,6 +19,7 @@
 #define TokenPackets_h__
 
 #include "Packet.h"
+#include "PacketUtilities.h"
 
 namespace WorldPackets
 {
@@ -41,19 +42,19 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-            struct AuctionableTokenAuctionable
+            struct AuctionableTokenInfo
             {
                 uint64 UnkInt1      = 0;
-                uint32 UnkInt2      = 0;
-                uint32 Owner        = 0;
+                Timestamp<> UnkInt2;
+                int32 Owner         = 0;
                 uint64 BuyoutPrice  = 0;
-                uint32 EndTime      = 0;
+                uint32 DurationLeft = 0;
             };
 
             uint32 UnkInt           = 0; // send CMSG_UPDATE_WOW_TOKEN_AUCTIONABLE_LIST
             uint32 Result           = 0;
-            std::vector<AuctionableTokenAuctionable> AuctionableTokenAuctionableList;
-        }; 
+            std::vector<AuctionableTokenInfo> AuctionableTokenAuctionableList;
+        };
 
         class CommerceTokenGetMarketPrice final : public ClientPacket
         {
@@ -76,28 +77,6 @@ namespace WorldPackets
             uint32 UnkInt               = 0; // send CMSG_REQUEST_WOW_TOKEN_MARKET_PRICE
             uint32 Result               = 0;
             uint32 AuctionDuration      = 0; // preset auction duration enum
-        };
-
-        class ConsumableTokenCanVeteranBuy final : public ClientPacket
-        {
-        public:
-            ConsumableTokenCanVeteranBuy(WorldPacket&& packet) : ClientPacket(CMSG_CONSUMABLE_TOKEN_CAN_VETERAN_BUY, std::move(packet)) { }
-
-            void Read() override;
-
-            uint32 UnkInt = 0;
-        };
-
-        class ConsumableTokenCanVeteranBuyResponse final : public ServerPacket
-        {
-        public:
-            ConsumableTokenCanVeteranBuyResponse() : ServerPacket(SMSG_CONSUMABLE_TOKEN_CAN_VETERAN_BUY_RESPONSE, 8 + 4 + 4) { }
-
-            WorldPacket const* Write() override;
-
-            uint64 UnkLong = 0;
-            uint32 UnkInt = 0;
-            uint32 UnkInt2 = 0;
         };
     }
 }

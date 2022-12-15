@@ -46,6 +46,7 @@ WorldPacket const* WorldPackets::Scenario::ScenarioState::Write()
     _worldPacket << uint32(BonusObjectives.size());
     _worldPacket << uint32(PickedSteps.size());
     _worldPacket << uint32(Spells.size());
+    _worldPacket << PlayerGUID;
 
     for (uint32 i = 0; i < PickedSteps.size(); ++i)
         _worldPacket << uint32(PickedSteps[i]);
@@ -102,7 +103,7 @@ WorldPacket const* WorldPackets::Scenario::ScenarioPOIs::Write()
 
     for (ScenarioPOIData const& scenarioPOIData : ScenarioPOIDataStats)
     {
-        _worldPacket << int32(scenarioPOIData.Criteriatreeid);
+        _worldPacket << int32(scenarioPOIData.CriteriaTreeID);
         _worldPacket << uint32(scenarioPOIData.ScenarioPOIs->size());
 
         for (ScenarioPOI const& scenarioPOI : *scenarioPOIData.ScenarioPOIs)

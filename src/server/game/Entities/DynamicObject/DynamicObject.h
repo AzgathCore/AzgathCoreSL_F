@@ -19,6 +19,7 @@
 #define TRINITYCORE_DYNAMICOBJECT_H
 
 #include "Object.h"
+#include "GridObject.h"
 #include "MapObject.h"
 
 class Unit;
@@ -37,14 +38,26 @@ class TC_GAME_API DynamicObject : public WorldObject, public GridObject<DynamicO
     public:
         DynamicObject(bool isWorldObject);
         ~DynamicObject();
-protected:
 
+    protected:
         void BuildValuesCreate(ByteBuffer* data, Player const* target) const override;
         void BuildValuesUpdate(ByteBuffer* data, Player const* target) const override;
         void ClearUpdateMask(bool remove) override;
-public:
-    void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
-        UF::DynamicObjectData::Mask const& requestedDynamicObjectMask, Player const* target) const;
+
+    public:
+        void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
+            UF::DynamicObjectData::Mask const& requestedDynamicObjectMask, Player const* target) const;
+
+        struct ValuesUpdateForPlayerWithMaskSender // sender compatible with MessageDistDeliverer
+        {
+            explicit ValuesUpdateForPlayerWithMaskSender(DynamicObject const* owner) : Owner(owner) { }
+
+            DynamicObject const* Owner;
+            UF::ObjectData::Base ObjectMask;
+            UF::DynamicObjectData::Base DynamicObjectMask;
+
+            void operator()(Player const* player) const;
+        };
 
         void AddToWorld() override;
         void RemoveFromWorld() override;
@@ -56,16 +69,17 @@ public:
         int32 GetDuration() const;
         void Delay(int32 delaytime);
         void SetAura(Aura* aura);
-        Aura* GetAura() const { return _aura; }
         void RemoveAura();
         void SetCasterViewpoint();
         void RemoveCasterViewpoint();
         Unit* GetCaster() const { return _caster; }
+        uint32 GetFaction() const override;
         void BindToCaster();
         void UnbindFromCaster();
-        uint32 GetSpellId() const {  return m_dynamicObjectData->SpellID; }
+        uint32 GetSpellId() const { return m_dynamicObjectData->SpellID; }
         SpellInfo const* GetSpellInfo() const;
         ObjectGuid GetCasterGUID() const { return m_dynamicObjectData->Caster; }
+        ObjectGuid GetOwnerGUID() const override { return GetCasterGUID(); }
         float GetRadius() const { return m_dynamicObjectData->Radius; }
 
         UF::UpdateField<UF::DynamicObjectData, 0, TYPEID_DYNAMICOBJECT> m_dynamicObjectData;

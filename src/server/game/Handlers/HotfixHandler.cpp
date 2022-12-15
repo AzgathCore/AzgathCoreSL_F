@@ -21,7 +21,6 @@
 #include "GameTime.h"
 #include "HotfixPackets.h"
 #include "Log.h"
-#include "ObjectDefines.h"
 #include "Realm.h"
 #include "World.h"
 
@@ -52,7 +51,7 @@ void WorldSession::HandleDBQueryBulk(WorldPackets::Hotfix::DBQueryBulk& dbQuery)
         else
         {
             TC_LOG_TRACE("network", "CMSG_DB_QUERY_BULK: %s requested non-existing entry %u in datastore: %u", GetPlayerInfo().c_str(), record.RecordID, dbQuery.TableHash);
-            dbReply.Timestamp = time(nullptr);
+            dbReply.Timestamp = GameTime::GetGameTime();
         }
 
         SendPacket(dbReply.Write());
@@ -103,6 +102,9 @@ void WorldSession::HandleHotfixRequest(WorldPackets::Hotfix::HotfixRequest& hotf
                         hotfixData.Size = blobData->size();
                         hotfixQueryResponse.HotfixContent.append(blobData->data(), blobData->size());
                     }
+                    else
+                        // Do not send Status::Valid when we don't have a hotfix blob for current locale
+                        hotfixData.Record.HotfixStatus = storage ? DB2Manager::HotfixRecord::Status::RecordRemoved : DB2Manager::HotfixRecord::Status::Invalid;
                 }
             }
         }

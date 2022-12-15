@@ -16,1064 +16,671 @@
  */
 
 #include "ScriptMgr.h"
-#include "SpellAuras.h"
-#include "ScriptedEscortAI.h"
-#include "GameEventMgr.h"
-#include "ObjectMgr.h"
-#include "ScriptMgr.h"
+#include "CreatureAIImpl.h"
+#include "Player.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 #include "World.h"
 
-/*####
-## npc_brewfest_reveler
-####*/
-
-class npc_brewfest_reveler : public CreatureScript
+enum RamBlaBla
 {
-public:
-    npc_brewfest_reveler() : CreatureScript("npc_brewfest_reveler") { }
+    SPELL_GIDDYUP                           = 42924,
+    SPELL_RENTAL_RACING_RAM                 = 43883,
+    SPELL_SWIFT_WORK_RAM                    = 43880,
+    SPELL_RENTAL_RACING_RAM_AURA            = 42146,
+    SPELL_RAM_LEVEL_NEUTRAL                 = 43310,
+    SPELL_RAM_TROT                          = 42992,
+    SPELL_RAM_CANTER                        = 42993,
+    SPELL_RAM_GALLOP                        = 42994,
+    SPELL_RAM_FATIGUE                       = 43052,
+    SPELL_EXHAUSTED_RAM                     = 43332,
+    SPELL_RELAY_RACE_TURN_IN                = 44501,
 
-    struct npc_brewfest_revelerAI : public ScriptedAI
+    // Quest
+    SPELL_BREWFEST_QUEST_SPEED_BUNNY_GREEN  = 43345,
+    SPELL_BREWFEST_QUEST_SPEED_BUNNY_YELLOW = 43346,
+    SPELL_BREWFEST_QUEST_SPEED_BUNNY_RED    = 43347
+};
+
+// 42924 - Giddyup!
+class spell_brewfest_giddyup : public AuraScript
+{
+    PrepareAuraScript(spell_brewfest_giddyup);
+
+    void OnChange(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        npc_brewfest_revelerAI(Creature* c) : ScriptedAI(c) {}
-
-        void ReceiveEmote(Player* player, uint32 emote) override
+        Unit* target = GetTarget();
+        if (!target->HasAura(SPELL_RENTAL_RACING_RAM) && !target->HasAura(SPELL_SWIFT_WORK_RAM))
         {
-            if (!IsHolidayActive(HOLIDAY_BREWFEST))
-                return;
-
-            if (emote == TEXT_EMOTE_DANCE)
-                me->CastSpell(player, 41586, false);
+            target->RemoveAura(GetId());
+            return;
         }
-    };
 
-    CreatureAI* GetAI(Creature* creature) const override
+        if (target->HasAura(SPELL_EXHAUSTED_RAM))
+            return;
+
+        switch (GetStackAmount())
+        {
+            case 1: // green
+                target->RemoveAura(SPELL_RAM_LEVEL_NEUTRAL);
+                target->RemoveAura(SPELL_RAM_CANTER);
+                target->CastSpell(target, SPELL_RAM_TROT, true);
+                break;
+            case 6: // yellow
+                target->RemoveAura(SPELL_RAM_TROT);
+                target->RemoveAura(SPELL_RAM_GALLOP);
+                target->CastSpell(target, SPELL_RAM_CANTER, true);
+                break;
+            case 11: // red
+                target->RemoveAura(SPELL_RAM_CANTER);
+                target->CastSpell(target, SPELL_RAM_GALLOP, true);
+                break;
+            default:
+                break;
+        }
+
+        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_DEFAULT)
+        {
+            target->RemoveAura(SPELL_RAM_TROT);
+            target->CastSpell(target, SPELL_RAM_LEVEL_NEUTRAL, true);
+        }
+    }
+
+    void OnPeriodic(AuraEffect const* /*aurEff*/)
     {
-        return new npc_brewfest_revelerAI(creature);
+        GetTarget()->RemoveAuraFromStack(GetId());
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_brewfest_giddyup::OnChange, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_CHANGE_AMOUNT_MASK);
+        OnEffectRemove += AuraEffectRemoveFn(spell_brewfest_giddyup::OnChange, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_CHANGE_AMOUNT_MASK);
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_brewfest_giddyup::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
-enum eBrewfestSpells
+// 43310 - Ram Level - Neutral
+// 42992 - Ram - Trot
+// 42993 - Ram - Canter
+// 42994 - Ram - Gallop
+class spell_brewfest_ram : public AuraScript
 {
-    SPELL_NONE              = 0,
-    SPELL_TROT              = 42992,
-    SPELL_PETIT_GALOP       = 42993,
-    SPELL_GRAND_GALOP       = 42994,
+    PrepareAuraScript(spell_brewfest_ram);
 
-    SPELL_FATIGUE           = 43052,
-    SPELL_EPUISE            = 43332,
-    SPELL_BASE              = 43310,
-
-    SPELL_MOD_SPEED         = 42924,
-
-    // Quests
-
-    SPELL_BUNNY_VERT        = 43345,
-    SPELL_BUNNY_JAUNE       = 43346,
-    SPELL_BUNNY_ROUGE       = 43347,
-
-    SPELL_TRIGGER_BELIER    = 42149,
-    SPELL_APPLE_VISUAL      = 43450,
-
-    SPELL_THROW_BARREL      = 43660,
-    SPELL_RECEIVE_BARREL    = 43662,
-};
-
-enum eBrewfestItems
-{
-    ITEM_BARREL             = 33797,
-};
-
-enum eBeliersQuests
-{
-    QUEST_BARREL_ALLIANCE       = 11122,
-    QUEST_BARREL_HORDE          = 11412,
-    QUEST_SPEED_ALLIANCE        = 11318,
-    QUEST_SPEED_HORDE           = 11320,
-    QUEST_SPEED_LOW             = 11409,
-
-    QUEST_ALLIANCE_BARLEYBREWS  = 11293,
-    QUEST_ALLIANCE_THUNDERBREWS = 11294,
-
-    QUEST_HORDE_DROHN           = 11407,
-    QUEST_HORDE_VAUDOO          = 11408,
-};
-
-bool isQuestInBelierQuest(uint32 questId)
-{
-    if (questId == QUEST_BARREL_ALLIANCE || questId == QUEST_BARREL_HORDE)
-        return true;
-
-    if (questId == QUEST_SPEED_ALLIANCE || questId == QUEST_SPEED_HORDE || questId == QUEST_SPEED_LOW)
-        return true;
-
-    if (questId == QUEST_ALLIANCE_BARLEYBREWS || questId == QUEST_ALLIANCE_THUNDERBREWS)
-        return true;
-
-    if (questId == QUEST_HORDE_DROHN || questId == QUEST_HORDE_VAUDOO)
-        return true;
-
-    return false;
-}
-
-class npc_brewfest_belier_quests_givers : public CreatureScript
-{
-public:
-    npc_brewfest_belier_quests_givers() : CreatureScript("npc_brewfest_belier_quests_givers") { }
-
-    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    void OnPeriodic(AuraEffect const* aurEff)
     {
-        if (isQuestInBelierQuest(quest->GetQuestId()))
-            player->CastSpell(player, SPELL_TRIGGER_BELIER, false);
+        Unit* target = GetTarget();
+        if (target->HasAura(SPELL_EXHAUSTED_RAM))
+            return;
 
-        return true;
+        switch (GetId())
+        {
+            case SPELL_RAM_LEVEL_NEUTRAL:
+                if (Aura* aura = target->GetAura(SPELL_RAM_FATIGUE))
+                    aura->ModStackAmount(-4);
+                break;
+            case SPELL_RAM_TROT: // green
+                if (Aura* aura = target->GetAura(SPELL_RAM_FATIGUE))
+                    aura->ModStackAmount(-2);
+                if (aurEff->GetTickNumber() == 4)
+                    target->CastSpell(target, SPELL_BREWFEST_QUEST_SPEED_BUNNY_GREEN, true);
+                break;
+            case SPELL_RAM_CANTER:
+            {
+                CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
+                args.AddSpellMod(SPELLVALUE_AURA_STACK, 1);
+                target->CastSpell(target, SPELL_RAM_FATIGUE, args);
+                if (aurEff->GetTickNumber() == 8)
+                    target->CastSpell(target, SPELL_BREWFEST_QUEST_SPEED_BUNNY_YELLOW, true);
+                break;
+            }
+            case SPELL_RAM_GALLOP:
+            {
+                CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
+                args.AddSpellMod(SPELLVALUE_AURA_STACK, target->HasAura(SPELL_RAM_FATIGUE) ? 4 : 5 /*Hack*/);
+                target->CastSpell(target, SPELL_RAM_FATIGUE, args);
+                if (aurEff->GetTickNumber() == 8)
+                    target->CastSpell(target, SPELL_BREWFEST_QUEST_SPEED_BUNNY_RED, true);
+                break;
+            }
+            default:
+                break;
+        }
+
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_brewfest_ram::OnPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
-class npc_brewfest_apple_bunny : public CreatureScript
+// 43052 - Ram Fatigue
+class spell_brewfest_ram_fatigue : public AuraScript
 {
-public:
-    npc_brewfest_apple_bunny() : CreatureScript("npc_brewfest_apple_bunny") { }
+    PrepareAuraScript(spell_brewfest_ram_fatigue);
 
-    struct npc_brewfest_apple_bunnyAI : public ScriptedAI
+    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        npc_brewfest_apple_bunnyAI(Creature* creature) : ScriptedAI(creature)
-        {}
+        Unit* target = GetTarget();
 
-        void Reset() override
+        if (GetStackAmount() == 101)
         {
-            me->SetFaction(35);
-            me->SetReactState(REACT_AGGRESSIVE);
-            me->SetVisible(false);
+            target->RemoveAura(SPELL_RAM_LEVEL_NEUTRAL);
+            target->RemoveAura(SPELL_RAM_TROT);
+            target->RemoveAura(SPELL_RAM_CANTER);
+            target->RemoveAura(SPELL_RAM_GALLOP);
+            target->RemoveAura(SPELL_GIDDYUP);
+
+            target->CastSpell(target, SPELL_EXHAUSTED_RAM, true);
         }
+    }
 
-        void MoveInLineOfSight(Unit* who) override
-        {
-            if (me->GetDistance(who) > 15.0f)
-                return;
-
-            Player * pPlayer = who->ToPlayer();
-
-            if (!pPlayer)
-                return;
-
-            if (pPlayer->HasAura(SPELL_FATIGUE) || pPlayer->HasAura(SPELL_EPUISE))
-            {
-                pPlayer->CastSpell(pPlayer, SPELL_APPLE_VISUAL, true);
-                pPlayer->RemoveAurasDueToSpell(SPELL_EPUISE);
-                pPlayer->RemoveAurasDueToSpell(SPELL_FATIGUE);
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Register() override
     {
-        return new npc_brewfest_apple_bunnyAI(creature);
+        AfterEffectApply += AuraEffectApplyFn(spell_brewfest_ram_fatigue::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
     }
 };
 
-class npc_brewfest_barker_bunny : public CreatureScript
+// 43450 - Brewfest - apple trap - friendly DND
+class spell_brewfest_apple_trap : public AuraScript
 {
-public:
-    npc_brewfest_barker_bunny() : CreatureScript("npc_brewfest_barker_bunny") { }
+    PrepareAuraScript(spell_brewfest_apple_trap);
 
-    struct npc_brewfest_barker_bunnyAI : public ScriptedAI
+    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        npc_brewfest_barker_bunnyAI(Creature* creature) : ScriptedAI(creature)
-        {}
+        GetTarget()->RemoveAura(SPELL_RAM_FATIGUE);
+    }
 
-        void Reset() override
-        {
-            me->SetFaction(35);
-            me->SetReactState(REACT_AGGRESSIVE);
-            me->SetVisible(false);
-        }
-
-        void MoveInLineOfSight(Unit* who) override
-        {
-            if (me->GetDistance(who) > 15.0f)
-                return;
-
-            Player * pPlayer = who->ToPlayer();
-
-            if (!pPlayer)
-                return;
-
-            if (pPlayer->HasAura(SPELL_BASE))
-            {
-                pPlayer->KilledMonsterCredit(me->GetEntry());
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Register() override
     {
-        return new npc_brewfest_barker_bunnyAI(creature);
+        OnEffectApply += AuraEffectApplyFn(spell_brewfest_apple_trap::OnApply, EFFECT_0, SPELL_AURA_FORCE_REACTION, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
-class npc_brewfest_launch_barrel : public CreatureScript
+// 43332 - Exhausted Ram
+class spell_brewfest_exhausted_ram : public AuraScript
 {
-public:
-    npc_brewfest_launch_barrel() : CreatureScript("npc_brewfest_launch_barrel") { }
+    PrepareAuraScript(spell_brewfest_exhausted_ram);
 
-    struct npc_brewfest_launch_barrelAI : public ScriptedAI
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        npc_brewfest_launch_barrelAI(Creature* creature) : ScriptedAI(creature)
-        {}
+        Unit* target = GetTarget();
+        target->CastSpell(target, SPELL_RAM_LEVEL_NEUTRAL, true);
+    }
 
-        void MoveInLineOfSight(Unit* who) override
-        {
-            if (me->GetDistance(who) > 20.0f)
-                return;
-
-            Player * pPlayer = who->ToPlayer();
-
-            if (!pPlayer)
-                return;
-
-            if (pPlayer->HasAura(SPELL_BASE))
-                if (!pPlayer->HasItemCount(ITEM_BARREL, 1))
-                    me->CastSpell(pPlayer, SPELL_THROW_BARREL, true);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Register() override
     {
-        return new npc_brewfest_launch_barrelAI(creature);
+        OnEffectRemove += AuraEffectApplyFn(spell_brewfest_exhausted_ram::OnRemove, EFFECT_0, SPELL_AURA_MOD_DECREASE_SPEED, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
-class npc_brewfest_receive_barrel : public CreatureScript
+// 43714 - Brewfest - Relay Race - Intro - Force - Player to throw- DND
+class spell_brewfest_relay_race_intro_force_player_to_throw : public SpellScript
 {
-public:
-    npc_brewfest_receive_barrel() : CreatureScript("npc_brewfest_receive_barrel") { }
+    PrepareSpellScript(spell_brewfest_relay_race_intro_force_player_to_throw);
 
-    struct npc_brewfest_receive_barrelAI : public ScriptedAI
+    void HandleForceCast(SpellEffIndex effIndex)
     {
-        npc_brewfest_receive_barrelAI(Creature* creature) : ScriptedAI(creature)
-        {}
+        PreventHitDefaultEffect(effIndex);
+        // All this spells trigger a spell that requires reagents; if the
+        // triggered spell is cast as "triggered", reagents are not consumed
+        GetHitUnit()->CastSpell(nullptr, GetEffectInfo().TriggerSpell, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_POWER_AND_REAGENT_COST));
+    }
 
-        void MoveInLineOfSight(Unit* who) override
-        {
-            if (me->GetDistance(who) > 15.0f)
-                return;
-
-            Player * pPlayer = who->ToPlayer();
-
-            if (!pPlayer)
-                return;
-
-            if (pPlayer->HasAura(SPELL_BASE))
-            {
-                if (pPlayer->HasItemCount(ITEM_BARREL, 1))
-                {
-                    pPlayer->CastSpell(me, SPELL_RECEIVE_BARREL, true);
-                    pPlayer->DestroyItemCount(ITEM_BARREL, 1, true);
-                    pPlayer->KilledMonsterCredit(24337);
-                }
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Register() override
     {
-        return new npc_brewfest_receive_barrelAI(creature);
+        OnEffectHitTarget += SpellEffectFn(spell_brewfest_relay_race_intro_force_player_to_throw::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
     }
 };
 
-// Dark Iron Guzzler in the Brewfest achievement 'Down With The Dark Iron'
-enum DarkIronGuzzler
+// 43755 - Brewfest - Daily - Relay Race - Player - Increase Mount Duration - DND
+class spell_brewfest_relay_race_turn_in : public SpellScript
 {
-    NPC_DARK_IRON_GUZZLER       = 23709,
-    NPC_DARK_IRON_HERALD        = 24536,
-    NPC_DARK_IRON_SPAWN_BUNNY   = 23894,
+    PrepareSpellScript(spell_brewfest_relay_race_turn_in);
 
-    NPC_FESTIVE_KEG_1           = 23702, // Thunderbrew Festive Keg
-    NPC_FESTIVE_KEG_2           = 23700, // Barleybrew Festive Keg
-    NPC_FESTIVE_KEG_3           = 23706, // Gordok Festive Keg
-    NPC_FESTIVE_KEG_4           = 24373, // T'chalis's Festive Keg
-    NPC_FESTIVE_KEG_5           = 24372, // Drohn's Festive Keg
-
-    SPELL_GO_TO_NEW_TARGET      = 42498,
-    SPELL_ATTACK_KEG            = 42393,
-    SPELL_RETREAT               = 42341,
-    SPELL_DRINK                 = 42436,
-
-    SAY_RANDOM                  = 0,
-};
-
-class npc_dark_iron_guzzler : public CreatureScript
-{
-public:
-    npc_dark_iron_guzzler() : CreatureScript("npc_dark_iron_guzzler") { }
-
-    CreatureAI *GetAI(Creature* creature) const override
+    void HandleDummy(SpellEffIndex effIndex)
     {
-        return new npc_dark_iron_guzzlerAI(creature);
+        PreventHitDefaultEffect(effIndex);
+
+        if (Aura* aura = GetHitUnit()->GetAura(SPELL_SWIFT_WORK_RAM))
+        {
+            aura->SetDuration(aura->GetDuration() + 30 * IN_MILLISECONDS);
+            GetCaster()->CastSpell(GetHitUnit(), SPELL_RELAY_RACE_TURN_IN, TRIGGERED_FULL_MASK);
+        }
     }
 
-    struct npc_dark_iron_guzzlerAI : public ScriptedAI
+    void Register() override
     {
-        npc_dark_iron_guzzlerAI(Creature* creature) : ScriptedAI(creature) { }
-
-        bool atKeg;
-        bool playersLost;
-        bool barleyAlive;
-        bool thunderAlive;
-        bool gordokAlive;
-        bool drohnAlive;
-        bool tchaliAlive;
-
-        uint32 AttackKegTimer;
-        uint32 TalkTimer;
-
-        void Reset() override
-        {
-            AttackKegTimer = 5000;
-            TalkTimer = (urand(1000, 120000));
-            me->AddUnitMovementFlag(MOVEMENTFLAG_WALKING);
-        }
-
-        void IsSummonedBy(Unit* /*summoner*/) override
-        {
-            // Only cast the spell on spawn
-            DoCast(me, SPELL_GO_TO_NEW_TARGET);
-        }
-
-        // These values are set through SAI - when a Festive Keg dies it will set data to all Dark Iron Guzzlers within 3 yards (the killers)
-        void SetData(uint32 type, uint32 data) override
-        {
-            if (type == 10 && data == 10)
-            {
-                DoCast(me, SPELL_GO_TO_NEW_TARGET);
-                thunderAlive = false;
-            }
-
-            if (type == 11 && data == 11)
-            {
-                DoCast(me, SPELL_GO_TO_NEW_TARGET);
-                barleyAlive = false;
-            }
-
-            if (type == 12 && data == 12)
-            {
-                DoCast(me, SPELL_GO_TO_NEW_TARGET);
-                gordokAlive = false;
-            }
-
-            if (type == 13 && data == 13)
-            {
-                DoCast(me, SPELL_GO_TO_NEW_TARGET);
-                drohnAlive = false;
-            }
-
-            if (type == 14 && data == 14)
-            {
-                DoCast(me, SPELL_GO_TO_NEW_TARGET);
-                tchaliAlive = false;
-            }
-        }
-
-        // As you can see here we do not have to use a spellscript for this
-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
-        {
-            if (spell->Id == SPELL_DRINK)
-            {
-                // Fake death - it's only visual!
-                me->SetStandState(UNIT_STAND_STATE_DEAD);
-                me->StopMoving();
-
-                // Time based on information from videos
-                me->DespawnOrUnsummon(7000);
-            }
-
-            // Retreat - run back
-            if (spell->Id == SPELL_RETREAT)
-            {
-                // Remove walking flag so we start running
-                me->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
-
-                if (me->GetAreaId() == AREA_DUROTAR_ROCKTUSK_FARM)
-                {
-                    me->GetMotionMaster()->MovePoint(1, 1197.63f, -4293.571f, 21.243f);
-                }
-                else if (me->GetAreaId() == ZONE_DUN_MOROGH)
-                {
-                    me->GetMotionMaster()->MovePoint(2, -5152.3f, -603.529f, 398.356f);
-                }
-            }
-
-            if (spell->Id == SPELL_GO_TO_NEW_TARGET)
-            {
-                // If we're at Durotar we target different kegs if we are at at Dun Morogh
-                if (me->GetAreaId() == AREA_DUROTAR_ROCKTUSK_FARM)
-                {
-                    if (drohnAlive && gordokAlive && tchaliAlive)
-                    {
-                        switch (urand(0, 2))
-                        {
-                        case 0: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(4, 1220.86f, -4297.37f, 21.192f);
-                            break;
-                        case 1: // Drohn's Festive Keg
-                            me->GetMotionMaster()->MovePoint(5, 1185.98f, -4312.98f, 21.294f);
-                            break;
-                        case 2: // Ti'chali's Festive Keg
-                            me->GetMotionMaster()->MovePoint(6, 1184.12f, -4275.21f, 21.191f);
-                            break;
-                        }
-                    }
-                    else if (!drohnAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(4, 1220.86f, -4297.37f, 21.192f);
-                            break;
-                        case 1: // Ti'chali's Festive Keg
-                            me->GetMotionMaster()->MovePoint(6, 1184.12f, -4275.21f, 21.191f);
-                            break;
-                        }
-                    }
-                    else if (!gordokAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Drohn's Festive Keg
-                            me->GetMotionMaster()->MovePoint(5, 1185.98f, -4312.98f, 21.294f);
-                            break;
-                        case 1: // Ti'chali's Festive Keg
-                            me->GetMotionMaster()->MovePoint(6, 1184.12f, -4275.21f, 21.191f);
-                            break;
-                        }
-                    }
-                    else if (!tchaliAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(4, 1220.86f, -4297.37f, 21.192f);
-                            break;
-                        case 1: // Drohn's Festive Keg
-                            me->GetMotionMaster()->MovePoint(5, 1185.98f, -4312.98f, 21.294f);
-                            break;
-                        }
-                    }
-                }
-                // If we're at Dun Morogh we target different kegs if we are at Durotar
-                else if (me->GetAreaId() == ZONE_DUN_MOROGH)
-                {
-                    if (barleyAlive && gordokAlive && thunderAlive)
-                    {
-                        switch (urand(0, 2))
-                        {
-                        case 0: // Barleybrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(7, -5183.67f, -599.58f, 397.177f);
-                            break;
-                        case 1: // Thunderbrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(8, -5159.53f, -629.52f, 397.213f);
-                            break;
-                        case 2: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(9, -5148.01f, -578.34f, 397.177f);
-                            break;
-                        }
-                    }
-                    else if (!barleyAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Thunderbrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(8, -5159.53f, -629.52f, 397.213f);
-                            break;
-                        case 1: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(9, -5148.01f, -578.34f, 397.177f);
-                            break;
-                        }
-                    }
-                    else if (!gordokAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Barleybrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(7, -5183.67f, -599.58f, 397.177f);
-                            break;
-                        case 1: // Thunderbrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(8, -5159.53f, -629.52f, 397.213f);
-                            break;
-                        }
-                    }
-                    else if (!thunderAlive)
-                    {
-                        switch (urand(0, 1))
-                        {
-                        case 0: // Barleybrew Festive Keg
-                            me->GetMotionMaster()->MovePoint(7, -5183.67f, -599.58f, 397.177f);
-                            break;
-                        case 1: // Gordok Festive Keg
-                            me->GetMotionMaster()->MovePoint(9, -5148.01f, -578.34f, 397.177f);
-                            break;
-                        }
-                    }
-                }
-                atKeg = false;
-            }
-        }
-
-        void MovementInform(uint32 Type, uint32 PointId) override
-        {
-            if (Type != POINT_MOTION_TYPE)
-                return;
-
-            // Arrived at the retreat spot, we should despawn
-            if (PointId == 1 || PointId == 2)
-                me->DespawnOrUnsummon(7000);
-
-            // Arrived at the new keg - the spell has conditions in database
-            if (PointId == 4 || PointId == 5 || PointId == 6 || PointId == 7 || PointId == 8 || PointId == 9)
-            {
-                DoCast(SPELL_ATTACK_KEG);
-                me->SetStandState(UNIT_STAND_STATE_SIT);
-                atKeg = true;
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (!IsHolidayActive(HOLIDAY_BREWFEST))
-                return;
-
-            // If all kegs are dead we should retreat because we have won
-            if ((!gordokAlive && !thunderAlive && !barleyAlive) || (!gordokAlive && !drohnAlive && !tchaliAlive))
-            {
-                DoCast(me, SPELL_RETREAT);
-
-                // We are doing this because we'll have to reset our scripts when we won
-                if (Creature* herald = me->FindNearestCreature(NPC_DARK_IRON_HERALD, 100.0f))
-                    herald->AI()->SetData(20, 20);
-
-                // Despawn all summon bunnies so they will stop summoning guzzlers
-                if (Creature* spawnbunny = me->FindNearestCreature(NPC_DARK_IRON_SPAWN_BUNNY, 100.0f))
-                    spawnbunny->DespawnOrUnsummon();
-            }
-
-            if (TalkTimer <= diff)
-            {
-                me->AI()->Talk(SAY_RANDOM);
-                TalkTimer = (urand(44000, 120000));
-            } else TalkTimer -= diff;
-
-            // Only happens if we're at keg
-            if (atKeg)
-            {
-                if (AttackKegTimer <= diff)
-                {
-                    DoCast(SPELL_ATTACK_KEG);
-                    AttackKegTimer = 5000;
-                } else AttackKegTimer -= diff;
-            }
-        }
-    };
+        OnEffectHitTarget += SpellEffectFn(spell_brewfest_relay_race_turn_in::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
 };
 
-#define NPC_CERVOISE     24108
-
-class spell_hol_launch_beer : public SpellScriptLoader
+// 43876 - Dismount Ram
+class spell_brewfest_dismount_ram : public SpellScript
 {
-    public:
-        spell_hol_launch_beer() : SpellScriptLoader("spell_hol_launch_beer") { }
+    PrepareSpellScript(spell_brewfest_dismount_ram);
 
-        class spell_hol_launch_beer_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_hol_launch_beer_SpellScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                return true;
-            }
-
-            SpellCastResult CheckCast()
-            {
-                if (!GetExplTargetUnit())
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                if (!GetExplTargetUnit()->ToCreature())
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                if (GetExplTargetUnit()->ToCreature()->GetEntry() != NPC_CERVOISE)
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                return SPELL_CAST_OK;
-            }
-
-            void HandleScript()
-            {
-                Unit* caster = GetCaster();
-                Unit* cervoise = GetExplTargetUnit();
-
-                if (!caster || !cervoise)
-                    return;
-
-                if (!caster->ToPlayer())
-                    return;
-
-                caster->ToPlayer()->KilledMonsterCredit(NPC_CERVOISE, cervoise->GetGUID());
-            }
-
-            void Register() override
-            {
-                OnHit += SpellHitFn(spell_hol_launch_beer_SpellScript::HandleScript);
-                OnCheckCast += SpellCheckCastFn(spell_hol_launch_beer_SpellScript::CheckCast);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_hol_launch_beer_SpellScript();
-        }
-};
-
-#define NPC_WOLPERTINGER            23487
-#define ITEM_CAPTURED_WOLPERTINGER  32906
-
-class spell_hol_wolpertinger_net : public SpellScriptLoader
-{
-    public:
-        spell_hol_wolpertinger_net() : SpellScriptLoader("spell_hol_wolpertinger_net") { }
-
-        class spell_hol_wolpertinger_net_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_hol_wolpertinger_net_SpellScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                return true;
-            }
-
-            SpellCastResult CheckCast()
-            {
-                Unit* caster = GetCaster();
-
-                if (!caster)
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                Creature * wolpertinger = caster->FindNearestCreature(NPC_WOLPERTINGER, 20.0f, true);
-
-                if (!wolpertinger)
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                return SPELL_CAST_OK;
-            }
-
-            void HandleScript()
-            {
-                Unit* caster = GetCaster();
-
-                if (!caster)
-                    return;
-
-                Creature * wolpertinger = caster->FindNearestCreature(NPC_WOLPERTINGER, 20.0f, true);
-
-                if (!wolpertinger)
-                    return;
-
-                wolpertinger->AddAura(59260, wolpertinger);
-                wolpertinger->ToCreature()->DespawnOrUnsummon(2000);
-                caster->ToPlayer()->AddItem(ITEM_CAPTURED_WOLPERTINGER, 1);
-            }
-
-            void Register() override
-            {
-                OnHit += SpellHitFn(spell_hol_wolpertinger_net_SpellScript::HandleScript);
-                OnCheckCast += SpellCheckCastFn(spell_hol_wolpertinger_net_SpellScript::CheckCast);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_hol_wolpertinger_net_SpellScript();
-        }
-};
-
-#define NEXT    true
-#define PREV    false
-
-enum eBeliersFatigue
-{
-    FATIGUE_NONE        = -7,
-    FATIGUE_TROT        = -3,
-    FATIGUE_PETIT_GALOP =  3,
-    FATIGUE_GRAND_GALOP =  7,
-};
-
-enum eBeliersTime
-{
-    TIME_TROT           = 11, // 20 secs
-    TIME_PETIT_GALOP    = 7,  // 12 secs
-    TIME_GRAND_GALOP    = 4,  // 6 secs
-};
-
-uint32 getSpeedSpellOnTarget(Unit * target)
-{
-    if (!target)
-        return SPELL_NONE;
-
-    if (target->HasAura(SPELL_TROT))
-        return SPELL_TROT;
-
-    if (target->HasAura(SPELL_PETIT_GALOP))
-        return SPELL_PETIT_GALOP;
-
-    if (target->HasAura(SPELL_GRAND_GALOP))
-        return SPELL_GRAND_GALOP;
-
-    return SPELL_NONE;
-}
-
-uint32 getNextOrPrevSpeedSpell(bool next, uint32 currentId)
-{
-    uint32 returnSpell = 0;
-
-    switch (currentId)
+    void HandleScript(SpellEffIndex /*effIndex*/)
     {
-        case SPELL_NONE:
-            returnSpell = !next ? currentId:            SPELL_TROT;
-            break;
-        case SPELL_TROT:
-            returnSpell = !next ? SPELL_NONE:           SPELL_PETIT_GALOP;
-            break;
-        case SPELL_PETIT_GALOP:
-            returnSpell = !next ? SPELL_TROT:           SPELL_GRAND_GALOP;
-            break;
-        case SPELL_GRAND_GALOP:
-            returnSpell = !next ? SPELL_PETIT_GALOP:    currentId;
-            break;
+        GetCaster()->RemoveAura(SPELL_RENTAL_RACING_RAM);
     }
 
-    return returnSpell;
-}
-
-int32 getFatigueModForSpell(uint32 spellId)
-{
-    switch (spellId)
+    void Register() override
     {
-        case SPELL_NONE:        return FATIGUE_NONE;
-        case SPELL_TROT:        return FATIGUE_TROT;
-        case SPELL_PETIT_GALOP: return FATIGUE_PETIT_GALOP;
-        case SPELL_GRAND_GALOP: return FATIGUE_GRAND_GALOP;
+        OnEffectHitTarget += SpellEffectFn(spell_brewfest_dismount_ram::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+enum RamBlub
+{
+    // Horde
+    QUEST_BARK_FOR_DROHNS_DISTILLERY        = 11407,
+    QUEST_BARK_FOR_TCHALIS_VOODOO_BREWERY   = 11408,
+
+    // Alliance
+    QUEST_BARK_BARLEYBREW                   = 11293,
+    QUEST_BARK_FOR_THUNDERBREWS             = 11294,
+
+    // Bark for Drohn's Distillery!
+    SAY_DROHN_DISTILLERY_1                  = 23520,
+    SAY_DROHN_DISTILLERY_2                  = 23521,
+    SAY_DROHN_DISTILLERY_3                  = 23522,
+    SAY_DROHN_DISTILLERY_4                  = 23523,
+
+    // Bark for T'chali's Voodoo Brewery!
+    SAY_TCHALIS_VOODOO_1                    = 23524,
+    SAY_TCHALIS_VOODOO_2                    = 23525,
+    SAY_TCHALIS_VOODOO_3                    = 23526,
+    SAY_TCHALIS_VOODOO_4                    = 23527,
+
+    // Bark for the Barleybrews!
+    SAY_BARLEYBREW_1                        = 23464,
+    SAY_BARLEYBREW_2                        = 23465,
+    SAY_BARLEYBREW_3                        = 23466,
+    SAY_BARLEYBREW_4                        = 22941,
+
+    // Bark for the Thunderbrews!
+    SAY_THUNDERBREWS_1                      = 23467,
+    SAY_THUNDERBREWS_2                      = 23468,
+    SAY_THUNDERBREWS_3                      = 23469,
+    SAY_THUNDERBREWS_4                      = 22942
+};
+
+// 43259 Brewfest  - Barker Bunny 1
+// 43260 Brewfest  - Barker Bunny 2
+// 43261 Brewfest  - Barker Bunny 3
+// 43262 Brewfest  - Barker Bunny 4
+class spell_brewfest_barker_bunny : public AuraScript
+{
+    PrepareAuraScript(spell_brewfest_barker_bunny);
+
+    bool Load() override
+    {
+        return GetUnitOwner()->GetTypeId() == TYPEID_PLAYER;
     }
 
-    return 0;
-}
-
-uint8 getTimeForSpell(uint32 spellId)
-{
-    switch (spellId)
+    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        case SPELL_TROT:        return TIME_TROT;
-        case SPELL_PETIT_GALOP: return TIME_PETIT_GALOP;
-        case SPELL_GRAND_GALOP: return TIME_GRAND_GALOP;
+        Player* target = GetTarget()->ToPlayer();
+
+        uint32 BroadcastTextId = 0;
+
+        if (target->GetQuestStatus(QUEST_BARK_FOR_DROHNS_DISTILLERY) == QUEST_STATUS_INCOMPLETE ||
+            target->GetQuestStatus(QUEST_BARK_FOR_DROHNS_DISTILLERY) == QUEST_STATUS_COMPLETE)
+            BroadcastTextId = RAND(SAY_DROHN_DISTILLERY_1, SAY_DROHN_DISTILLERY_2, SAY_DROHN_DISTILLERY_3, SAY_DROHN_DISTILLERY_4);
+
+        if (target->GetQuestStatus(QUEST_BARK_FOR_TCHALIS_VOODOO_BREWERY) == QUEST_STATUS_INCOMPLETE ||
+            target->GetQuestStatus(QUEST_BARK_FOR_TCHALIS_VOODOO_BREWERY) == QUEST_STATUS_COMPLETE)
+            BroadcastTextId = RAND(SAY_TCHALIS_VOODOO_1, SAY_TCHALIS_VOODOO_2, SAY_TCHALIS_VOODOO_3, SAY_TCHALIS_VOODOO_4);
+
+        if (target->GetQuestStatus(QUEST_BARK_BARLEYBREW) == QUEST_STATUS_INCOMPLETE ||
+            target->GetQuestStatus(QUEST_BARK_BARLEYBREW) == QUEST_STATUS_COMPLETE)
+            BroadcastTextId = RAND(SAY_BARLEYBREW_1, SAY_BARLEYBREW_2, SAY_BARLEYBREW_3, SAY_BARLEYBREW_4);
+
+        if (target->GetQuestStatus(QUEST_BARK_FOR_THUNDERBREWS) == QUEST_STATUS_INCOMPLETE ||
+            target->GetQuestStatus(QUEST_BARK_FOR_THUNDERBREWS) == QUEST_STATUS_COMPLETE)
+            BroadcastTextId = RAND(SAY_THUNDERBREWS_1, SAY_THUNDERBREWS_2, SAY_THUNDERBREWS_3, SAY_THUNDERBREWS_4);
+
+        if (BroadcastTextId)
+            target->Talk(BroadcastTextId, CHAT_MSG_SAY, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), target);
     }
 
-    return 0;
-}
+    void Register() override
+    {
+        OnEffectApply += AuraEffectApplyFn(spell_brewfest_barker_bunny::OnApply, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
 
-class spell_hol_belier_base : public SpellScriptLoader
+enum BrewfestMountTransformation
 {
-    public:
-        spell_hol_belier_base() : SpellScriptLoader("spell_hol_belier_base") { }
+    SPELL_MOUNT_RAM_100                         = 43900,
+    SPELL_MOUNT_RAM_60                          = 43899,
+    SPELL_MOUNT_KODO_100                        = 49379,
+    SPELL_MOUNT_KODO_60                         = 49378,
+    SPELL_BREWFEST_MOUNT_TRANSFORM              = 49357,
+    SPELL_BREWFEST_MOUNT_TRANSFORM_REVERSE      = 52845,
+};
 
-        class spell_hol_belier_base_AuraScript : public AuraScript
+// 49357 - Brewfest Mount Transformation
+// 52845 - Brewfest Mount Transformation (Faction Swap)
+class spell_brewfest_mount_transformation : public SpellScript
+{
+    PrepareSpellScript(spell_brewfest_mount_transformation);
+
+    bool Validate(SpellInfo const* /*spell*/) override
+    {
+        return ValidateSpellInfo(
         {
-            PrepareAuraScript(spell_hol_belier_base_AuraScript);
+            SPELL_MOUNT_RAM_100,
+            SPELL_MOUNT_RAM_60,
+            SPELL_MOUNT_KODO_100,
+            SPELL_MOUNT_KODO_60
+        });
+    }
 
-            bool Load() override
+    void HandleDummy(SpellEffIndex /* effIndex */)
+    {
+        Player* caster = GetCaster()->ToPlayer();
+        if (caster->HasAuraType(SPELL_AURA_MOUNTED))
+        {
+            caster->RemoveAurasByType(SPELL_AURA_MOUNTED);
+            uint32 spell_id;
+
+            switch (GetSpellInfo()->Id)
             {
-                return true;
-            }
-
-            // Toutes les 2 secondes
-            void OnPeriodic(AuraEffect const* /*aurEff*/)
-            {
-                Unit * target = GetTarget();
-
-                if (!target)
-                    return;
-
-                uint32 currentSpell = getSpeedSpellOnTarget(GetTarget());
-                int32 currentFatigueMod = getFatigueModForSpell(currentSpell);
-
-                if (Aura* fatigueAura = target->GetAura(SPELL_FATIGUE))
-                {
-                    int8 currentStack = fatigueAura->GetStackAmount();
-                    int8 newStack = currentStack + currentFatigueMod;
-
-                    if (newStack < 0)
-                        newStack = 0;
-
-                    if (newStack >= 100)
-                    {
-                        target->RemoveAurasDueToSpell(currentSpell);
-                        target->RemoveAurasDueToSpell(SPELL_FATIGUE);
-                        target->AddAura(SPELL_EPUISE, target);
-                    }
+                case SPELL_BREWFEST_MOUNT_TRANSFORM:
+                    if (caster->GetSpeedRate(MOVE_RUN) >= 2.0f)
+                        spell_id = caster->GetTeam() == ALLIANCE ? SPELL_MOUNT_RAM_100 : SPELL_MOUNT_KODO_100;
                     else
-                        fatigueAura->SetStackAmount(uint8(newStack));
-                }
-                else
-                    if (currentFatigueMod > 0)
-                        if (Aura* aura = target->AddAura(SPELL_FATIGUE, target))
-                            aura->SetStackAmount(currentFatigueMod);
-            }
-
-            void Register() override
-            {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_hol_belier_base_AuraScript::OnPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_hol_belier_base_AuraScript();
-        }
-};
-
-class spell_hol_belier_renes : public SpellScriptLoader
-{
-    public:
-        spell_hol_belier_renes() : SpellScriptLoader("spell_hol_belier_renes") { }
-
-        class spell_hol_belier_renes_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_hol_belier_renes_AuraScript);
-
-            bool Load() override
-            {
-                return true;
-            }
-
-            // Toutes les 2 secondes
-            void OnPeriodic(AuraEffect const* /*aurEff*/)
-            {
-                Unit * target = GetTarget();
-
-                if (!target)
-                    return;
-
-                if (Aura* reneAura = target->GetAura(SPELL_MOD_SPEED))
-                {
-                    uint32 currentSpell = getSpeedSpellOnTarget(target);
-
-                    if (currentSpell == SPELL_NONE)
-                    {
-                        target->RemoveAura(reneAura);
-                        return;
-                    }
-
-                    int8 currentStack = reneAura->GetStackAmount();
-                    int8 nextStack = ++currentStack;
-
-                    // x temps on passe depuis qu'il a le spell
-                    if (nextStack == getTimeForSpell(currentSpell))
-                    {
-                        uint32 prevSpell = getNextOrPrevSpeedSpell(PREV, currentSpell);
-                        target->RemoveAurasDueToSpell(currentSpell);
-                        target->AddAura(prevSpell, target);
-                        reneAura->SetStackAmount(1);
-                    }
+                        spell_id = caster->GetTeam() == ALLIANCE ? SPELL_MOUNT_RAM_60 : SPELL_MOUNT_KODO_60;
+                    break;
+                case SPELL_BREWFEST_MOUNT_TRANSFORM_REVERSE:
+                    if (caster->GetSpeedRate(MOVE_RUN) >= 2.0f)
+                        spell_id = caster->GetTeam() == HORDE ? SPELL_MOUNT_RAM_100 : SPELL_MOUNT_KODO_100;
                     else
-                        reneAura->SetStackAmount(nextStack);
-                }
-            }
-
-            void Register() override
-            {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_hol_belier_renes_AuraScript::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-            }
-        };
-
-        class spell_hol_belier_renes_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_hol_belier_renes_SpellScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                return true;
-            }
-
-            SpellCastResult CheckCast()
-            {
-                if (!GetCaster())
-                    return SPELL_FAILED_BAD_TARGETS;
-
-                if (GetCaster()->HasAura(SPELL_EPUISE))
-                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
-
-                if (!GetCaster()->HasAura(SPELL_BASE))
-                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
-
-                return SPELL_CAST_OK;
-            }
-
-            void HandleScript(SpellEffIndex /*effIndex*/)
-            {
-                Unit* caster = GetCaster();
-
-                if (!caster)
+                        spell_id = caster->GetTeam() == HORDE ? SPELL_MOUNT_RAM_60 : SPELL_MOUNT_KODO_60;
+                    break;
+                default:
                     return;
-
-                uint32 currentSpell = getSpeedSpellOnTarget(caster);
-                uint32 nextSpell = getNextOrPrevSpeedSpell(NEXT, currentSpell);
-
-                if (currentSpell != nextSpell)
-                {
-                    if (currentSpell)
-                        caster->RemoveAurasDueToSpell(currentSpell);
-
-                    if (nextSpell)
-                        caster->AddAura(nextSpell, caster);
-                }
-
-                if (Aura* reneAura = caster->GetAura(SPELL_MOD_SPEED))
-                    reneAura->SetStackAmount(1);
             }
-
-            void Register() override
-            {
-                OnCheckCast += SpellCheckCastFn(spell_hol_belier_renes_SpellScript::CheckCast);
-                OnEffectHit += SpellEffectFn(spell_hol_belier_renes_SpellScript::HandleScript, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_hol_belier_renes_AuraScript();
+            caster->CastSpell(caster, spell_id, true);
         }
+    }
 
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_hol_belier_renes_SpellScript();
-        }
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_brewfest_mount_transformation::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
 };
 
-class spell_hol_belier_all_speeds : public SpellScriptLoader
+/*
+    Brew of the Month
+ January   [Wild Winter Pilsner]
+    spell_brewfest_botm_the_beast_within
+ February  [Izzard's Ever Flavor]
+    spell_brewfest_botm_gassy
+ March     [Aromatic Honey Brew]
+    Nothing to script here
+ April     [Metok's Bubble Bock]
+    spell_brewfest_botm_bloated
+    Incomplete (spells 49828, 49827, 49830, 49837)
+ May       [Springtime Stout]
+    Nothing to script here
+ June      [Blackrock Lager]
+    spell_brewfest_botm_internal_combustion
+ July      [Stranglethorn Brew]
+    spell_brewfest_botm_jungle_madness
+ August    [Draenic Pale Ale]
+    NYI
+ September [Binary Brew]
+    spell_brewfest_botm_teach_language
+ October   [Autumnal Acorn Ale]
+    NYI
+ November  [Bartlett's Bitter Brew]
+    NYI
+ December  [Lord of Frost's Private Label]
+    Nothing to script here
+*/
+
+enum WildWinterPilsner
 {
-    public:
-        spell_hol_belier_all_speeds() : SpellScriptLoader("spell_hol_belier_all_speeds") { }
-
-        class spell_hol_belier_all_speeds_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_hol_belier_all_speeds_AuraScript);
-
-            bool Load() override
-            {
-                return true;
-            }
-
-            void HandleEffectApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-            {
-                timeCounter = 0;
-            }
-
-            // Toutes les 2 secondes
-            void OnPeriodic(AuraEffect const* /*aurEff*/)
-            {
-                timeCounter++;
-
-                Unit * caster = GetCaster();
-
-                if (!caster)
-                    return;
-
-                if (!caster->HasAura(SPELL_BASE))
-                    caster->RemoveAurasDueToSpell(GetId());
-
-                if (timeCounter >= 4)
-                {
-                    uint32 bunnySpell = 0;
-
-                    switch (GetId())
-                    {
-                        case SPELL_TROT:        bunnySpell = SPELL_BUNNY_VERT; break;
-                        case SPELL_PETIT_GALOP: bunnySpell = SPELL_BUNNY_JAUNE; break;
-                        case SPELL_GRAND_GALOP: bunnySpell = SPELL_BUNNY_ROUGE; break;
-                    }
-
-                    if (bunnySpell)
-                        caster->CastSpell(GetCaster(), bunnySpell, true);
-                }
-            }
-
-            void Register() override
-            {
-                OnEffectApply += AuraEffectApplyFn(spell_hol_belier_all_speeds_AuraScript::HandleEffectApply, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_hol_belier_all_speeds_AuraScript::OnPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
-            }
-
-            uint32 timeCounter;
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_hol_belier_all_speeds_AuraScript();
-        }
+    SPELL_BOTM_UNLEASH_THE_BEAST    = 50099
 };
 
-class spell_hol_beliers : public SpellScriptLoader
+// 50098 - The Beast Within
+class spell_brewfest_botm_the_beast_within : public AuraScript
 {
-    public:
-        spell_hol_beliers() : SpellScriptLoader("spell_hol_beliers") { }
+    PrepareAuraScript(spell_brewfest_botm_the_beast_within);
 
-        class spell_hol_beliers_AuraScript : public AuraScript
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_UNLEASH_THE_BEAST });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_BOTM_UNLEASH_THE_BEAST);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_brewfest_botm_the_beast_within::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+enum IzzardsEverFlavor
+{
+    SPELL_BOTM_BELCH_BREW_BELCH_VISUAL    = 49860
+};
+
+// 49864 - Gassy
+class spell_brewfest_botm_gassy : public AuraScript
+{
+    PrepareAuraScript(spell_brewfest_botm_gassy);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_BELCH_BREW_BELCH_VISUAL });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_BOTM_BELCH_BREW_BELCH_VISUAL, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_brewfest_botm_gassy::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+enum MetoksBubbleBock
+{
+    SPELL_BOTM_BUBBLE_BREW_TRIGGER_MISSILE    = 50072
+};
+
+// 49822 - Bloated
+class spell_brewfest_botm_bloated : public AuraScript
+{
+    PrepareAuraScript(spell_brewfest_botm_bloated);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_BUBBLE_BREW_TRIGGER_MISSILE });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_BOTM_BUBBLE_BREW_TRIGGER_MISSILE, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_brewfest_botm_bloated::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+enum BlackrockLager
+{
+    SPELL_BOTM_BELCH_FIRE_VISUAL    = 49737
+};
+
+// 49738 - Internal Combustion
+class spell_brewfest_botm_internal_combustion : public AuraScript
+{
+    PrepareAuraScript(spell_brewfest_botm_internal_combustion);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_BELCH_FIRE_VISUAL });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_BOTM_BELCH_FIRE_VISUAL, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_brewfest_botm_internal_combustion::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+enum StranglethornBrew
+{
+    SPELL_BOTM_JUNGLE_BREW_VISION_EFFECT    = 50010
+};
+
+// 49962 - Jungle Madness!
+class spell_brewfest_botm_jungle_madness : public SpellScript
+{
+    PrepareSpellScript(spell_brewfest_botm_jungle_madness);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_JUNGLE_BREW_VISION_EFFECT });
+    }
+
+    void HandleAfterCast()
+    {
+        GetCaster()->CastSpell(GetCaster(), SPELL_BOTM_JUNGLE_BREW_VISION_EFFECT, true);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_brewfest_botm_jungle_madness::HandleAfterCast);
+    }
+};
+
+enum BinaryBrew
+{
+    SPELL_LEARN_GNOMISH_BINARY      = 50242,
+    SPELL_LEARN_GOBLIN_BINARY       = 50246
+};
+
+// 50243 - Teach Language
+class spell_brewfest_botm_teach_language : public SpellScript
+{
+    PrepareSpellScript(spell_brewfest_botm_teach_language);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_LEARN_GNOMISH_BINARY, SPELL_LEARN_GOBLIN_BINARY });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        if (Player* caster = GetCaster()->ToPlayer())
+            caster->CastSpell(caster, caster->GetTeam() == ALLIANCE ? SPELL_LEARN_GNOMISH_BINARY : SPELL_LEARN_GOBLIN_BINARY, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_brewfest_botm_teach_language::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+enum CreateEmptyBrewBottle
+{
+    SPELL_BOTM_CREATE_EMPTY_BREW_BOTTLE    = 51655
+};
+
+// 42254, 42255, 42256, 42257, 42258, 42259, 42260, 42261, 42263, 42264, 43959, 43961 - Weak Alcohol
+class spell_brewfest_botm_weak_alcohol : public SpellScript
+{
+    PrepareSpellScript(spell_brewfest_botm_weak_alcohol);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOTM_CREATE_EMPTY_BREW_BOTTLE });
+    }
+
+    void HandleAfterCast()
+    {
+        GetCaster()->CastSpell(GetCaster(), SPELL_BOTM_CREATE_EMPTY_BREW_BOTTLE, true);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_brewfest_botm_weak_alcohol::HandleAfterCast);
+    }
+};
+
+enum EmptyBottleThrow
+{
+    SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_CREATURE    = 51695,   // Just unit, not creature
+    SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_GROUND      = 51697
+};
+
+// 51694 - BOTM - Empty Bottle Throw - Resolve
+class spell_brewfest_botm_empty_bottle_throw_resolve : public SpellScript
+{
+    PrepareSpellScript(spell_brewfest_botm_empty_bottle_throw_resolve);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo(
         {
-            PrepareAuraScript(spell_hol_beliers_AuraScript);
+            SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_CREATURE,
+            SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_GROUND
+        });
+    }
 
-            bool Load() override
-            {
-                return true;
-            }
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
 
-            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-            {
-                if (!GetTarget())
-                    return;
+        if (Unit* target = GetHitUnit())
+            caster->CastSpell(target, SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_CREATURE, true);
+        else
+            caster->CastSpell(GetHitDest()->GetPosition(), SPELL_BOTM_EMPTY_BOTTLE_THROW_IMPACT_GROUND, true);
+    }
 
-                GetTarget()->RemoveAurasDueToSpell(SPELL_FATIGUE);
-                GetTarget()->RemoveAurasDueToSpell(SPELL_TROT);
-                GetTarget()->RemoveAurasDueToSpell(SPELL_PETIT_GALOP);
-                GetTarget()->RemoveAurasDueToSpell(SPELL_GRAND_GALOP);
-                GetTarget()->RemoveAurasDueToSpell(SPELL_EPUISE);
-                GetTarget()->RemoveAurasDueToSpell(SPELL_FATIGUE);
-
-                if (Player * pPlayer = GetTarget()->ToPlayer())
-                    if (pPlayer->HasItemCount(33797, 1))
-                        pPlayer->DestroyItemCount(33797, 1, true);
-            }
-
-            void Register() override
-            {
-                AfterEffectRemove += AuraEffectRemoveFn(spell_hol_beliers_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_MOUNTED, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_hol_beliers_AuraScript();
-        }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_brewfest_botm_empty_bottle_throw_resolve::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
 };
 
 void AddSC_event_brewfest()
 {
-    new npc_brewfest_reveler();
-    new npc_brewfest_belier_quests_givers();
-    new npc_brewfest_apple_bunny();
-    new npc_brewfest_barker_bunny();
-    new npc_brewfest_launch_barrel();
-    new npc_brewfest_receive_barrel();
-    new npc_dark_iron_guzzler();
-    new spell_hol_launch_beer();
-    new spell_hol_wolpertinger_net();
-    new spell_hol_belier_base();
-    new spell_hol_belier_renes();
-    new spell_hol_belier_all_speeds();
-    new spell_hol_beliers();
+    RegisterSpellScript(spell_brewfest_giddyup);
+    RegisterSpellScript(spell_brewfest_ram);
+    RegisterSpellScript(spell_brewfest_ram_fatigue);
+    RegisterSpellScript(spell_brewfest_apple_trap);
+    RegisterSpellScript(spell_brewfest_exhausted_ram);
+    RegisterSpellScript(spell_brewfest_relay_race_intro_force_player_to_throw);
+    RegisterSpellScript(spell_brewfest_relay_race_turn_in);
+    RegisterSpellScript(spell_brewfest_dismount_ram);
+    RegisterSpellScript(spell_brewfest_barker_bunny);
+    RegisterSpellScript(spell_brewfest_mount_transformation);
+    RegisterSpellScript(spell_brewfest_botm_the_beast_within);
+    RegisterSpellScript(spell_brewfest_botm_gassy);
+    RegisterSpellScript(spell_brewfest_botm_bloated);
+    RegisterSpellScript(spell_brewfest_botm_internal_combustion);
+    RegisterSpellScript(spell_brewfest_botm_jungle_madness);
+    RegisterSpellScript(spell_brewfest_botm_teach_language);
+    RegisterSpellScript(spell_brewfest_botm_weak_alcohol);
+    RegisterSpellScript(spell_brewfest_botm_empty_bottle_throw_resolve);
 }

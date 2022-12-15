@@ -15,429 +15,447 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AchievementMgr.h"
-#include "ObjectMgr.h"
-#include "Player.h"
 #include "ScriptMgr.h"
-#include "ScriptedEscortAI.h"
-#include "Spell.h"
-#include "SpellAuras.h"
+#include "CreatureAIImpl.h"
+#include "Player.h"
+#include "SpellAuraEffects.h"
 #include "SpellScript.h"
-#include "World.h"
 
-/*######
-## npc_dancing_flames
-######*/
-
-#define SPELL_BRAZIER       45423
-#define SPELL_SEDUCTION     47057
-#define SPELL_FIERY_AURA    45427
-
-class npc_dancing_flames : public CreatureScript
+enum TorchSpells
 {
-public:
-    npc_dancing_flames() : CreatureScript("npc_dancing_flames") { }
+    SPELL_TORCH_TOSSING_TRAINING                    = 45716,
+    SPELL_TORCH_TOSSING_PRACTICE                    = 46630,
+    SPELL_TORCH_TOSSING_TRAINING_SUCCESS_ALLIANCE   = 45719,
+    SPELL_TORCH_TOSSING_TRAINING_SUCCESS_HORDE      = 46651,
+    SPELL_TARGET_INDICATOR_COSMETIC                 = 46901,
+    SPELL_TARGET_INDICATOR                          = 45723,
+    SPELL_BRAZIERS_HIT                              = 45724
+};
 
-    struct npc_dancing_flamesAI : public ScriptedAI
+// 45724 - Braziers Hit!
+class spell_midsummer_braziers_hit : public AuraScript
+{
+    PrepareAuraScript(spell_midsummer_braziers_hit);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
     {
-        npc_dancing_flamesAI(Creature* c) : ScriptedAI(c) {}
-
-        bool Active;
-        uint32 CanIteract;
-
-        void Reset() override
+        return ValidateSpellInfo(
         {
-            Active = true;
-            CanIteract = 3500;
-            DoCast(me, SPELL_BRAZIER, true);
-            DoCast(me, SPELL_FIERY_AURA, false);
-            float x, y, z;
-            me->GetPosition(x, y, z);
-            me->Relocate(x, y, z + 0.94f);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
-            me->HandleEmoteCommand(EMOTE_ONESHOT_DANCE);
-            //WorldPacket data;                       //send update position to client
-            //me->BuildHeartBeatMsg(&data);
-            //me->SendMessageToSet(&data, true);
-        }
+            SPELL_TORCH_TOSSING_TRAINING,
+            SPELL_TORCH_TOSSING_PRACTICE,
+            SPELL_TORCH_TOSSING_TRAINING_SUCCESS_ALLIANCE,
+            SPELL_TORCH_TOSSING_TRAINING_SUCCESS_HORDE
+        });
+    }
 
-        void UpdateAI(uint32 diff) override
-        {
-            if (!Active)
-            {
-                if (CanIteract <= diff)
-                {
-                    Active = true;
-                    CanIteract = 3500;
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_DANCE);
-                }
-                else
-                    CanIteract -= diff;
-            }
-        }
-
-        void EnterCombat(Unit* /*who*/) override { }
-
-        void ReceiveEmote(Player* player, uint32 emote) override
-        {
-            if (me->IsWithinLOS(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ()) && me->IsWithinDistInMap(player, 30.0f))
-            {
-                me->SetInFront(player);
-                Active = false;
-
-                //WorldPacket data;
-                //me->BuildHeartBeatMsg(&data);
-                //me->SendMessageToSet(&data, true);
-                switch(emote)
-                {
-                    case TEXT_EMOTE_KISS:
-                        me->HandleEmoteCommand(EMOTE_ONESHOT_SHY);
-                        break;
-                    case TEXT_EMOTE_WAVE:
-                        me->HandleEmoteCommand(EMOTE_ONESHOT_WAVE);
-                        break;
-                    case TEXT_EMOTE_BOW:
-                        me->HandleEmoteCommand(EMOTE_ONESHOT_BOW);
-                        break;
-                    case TEXT_EMOTE_JOKE:
-                        me->HandleEmoteCommand(EMOTE_ONESHOT_LAUGH);
-                        break;
-                    case TEXT_EMOTE_DANCE:
-                        if (!player->HasAura(SPELL_SEDUCTION))
-                            DoCast(player, SPELL_SEDUCTION, true);
-                        break;
-                }
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void HandleEffectApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        return new npc_dancing_flamesAI(creature);
+        Player* player = GetTarget()->ToPlayer();
+        if (!player)
+            return;
+
+        if ((player->HasAura(SPELL_TORCH_TOSSING_TRAINING) && GetStackAmount() == 8) || (player->HasAura(SPELL_TORCH_TOSSING_PRACTICE) && GetStackAmount() == 20))
+        {
+            if (player->GetTeam() == ALLIANCE)
+                player->CastSpell(player, SPELL_TORCH_TOSSING_TRAINING_SUCCESS_ALLIANCE, true);
+            else if (player->GetTeam() == HORDE)
+                player->CastSpell(player, SPELL_TORCH_TOSSING_TRAINING_SUCCESS_HORDE, true);
+            Remove();
+        }
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_midsummer_braziers_hit::HandleEffectApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAPPLY);
     }
 };
 
-enum midsummerDefines
+// 45907 - Torch Target Picker
+class spell_midsummer_torch_target_picker : public SpellScript
 {
-    SPELL_BRASERO_TARGET_AURA   = 64328,
-    SPELL_TORCH                 = 45732,
+    PrepareSpellScript(spell_midsummer_torch_target_picker);
 
-    NPC_BRASERO                 = 25515,
-
-    QUEST_TORCHS_1              = 11731,
-    QUEST_TORCHS_2              = 11921,
-    QUEST_TORCHS_3              = 11922,
-    QUEST_TORCHS_4              = 11926,
-};
-
-class npc_midsummer_quest_torch : public CreatureScript
-{
-public:
-    npc_midsummer_quest_torch() : CreatureScript("npc_midsummer_quest_torch") { }
-
-    bool OnQuestAccept(Player* /*player*/, Creature* creature, Quest const* quest) override
+    bool Validate(SpellInfo const* /*spellInfo*/) override
     {
-        switch (quest->GetQuestId())
-        {
-            case QUEST_TORCHS_1:
-            case QUEST_TORCHS_2:
-            case QUEST_TORCHS_3:
-            case QUEST_TORCHS_4:
-            {
-                std::list<Creature*> braseroList;
-                std::list<Creature*>::iterator Itr;
+        return ValidateSpellInfo({ SPELL_TARGET_INDICATOR_COSMETIC, SPELL_TARGET_INDICATOR });
+    }
 
-                GetCreatureListWithEntryInGrid(braseroList, creature, NPC_BRASERO, 100.0f);
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+        target->CastSpell(target, SPELL_TARGET_INDICATOR_COSMETIC, true);
+        target->CastSpell(target, SPELL_TARGET_INDICATOR, true);
+    }
 
-                for (Itr = braseroList.begin(); Itr != braseroList.end(); Itr++)
-                    if (Creature * pBrasero = *Itr)
-                        pBrasero->AI()->DoAction(0);
-
-
-                Trinity::Containers::RandomResize(braseroList, 1);
-
-                if (Creature * pBrasero = *braseroList.begin())
-                    if (pBrasero->AI())
-                        pBrasero->AI()->DoAction(1);
-            }
-            default:
-                break;
-        }
-
-        return true;
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_midsummer_torch_target_picker::HandleScript, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
 
-class npc_midsummer_brasero : public CreatureScript
+// 46054 - Torch Toss (land)
+class spell_midsummer_torch_toss_land : public SpellScript
 {
-public:
-    npc_midsummer_brasero() : CreatureScript("npc_midsummer_brasero") { }
+    PrepareSpellScript(spell_midsummer_torch_toss_land);
 
-    CreatureAI* GetAI(Creature* creature) const override
+    bool Validate(SpellInfo const* /*spellInfo*/) override
     {
-        return new npc_midsummer_braseroAI(creature);
+        return ValidateSpellInfo({ SPELL_BRAZIERS_HIT });
     }
 
-    struct npc_midsummer_braseroAI : public ScriptedAI
+    void HandleScript(SpellEffIndex /*effIndex*/)
     {
-        npc_midsummer_braseroAI(Creature* c) : ScriptedAI(c) { }
+        GetHitUnit()->CastSpell(GetCaster(), SPELL_BRAZIERS_HIT, true);
+    }
 
-        uint32 targetTimer;
-        bool HasAura;
-
-        void Reset() override
-        {
-            targetTimer = 0;
-            HasAura = false;
-        }
-
-        void DoAction(int32 const param) override
-        {
-            if (param == 1)
-            {
-                me->AddAura(SPELL_BRASERO_TARGET_AURA, me);
-                targetTimer = urand(3000, 5000);
-                HasAura = true;
-            }
-            else
-            {
-                me->RemoveAurasDueToSpell(SPELL_BRASERO_TARGET_AURA);
-                HasAura = false;
-                targetTimer = 0;
-            }
-        }
-
-        void SelectNextTarget()
-        {
-            me->RemoveAurasDueToSpell(SPELL_BRASERO_TARGET_AURA);
-            HasAura = false;
-            targetTimer = 0;
-
-            std::list<Creature*> braseroList;
-
-            GetCreatureListWithEntryInGrid(braseroList, me, me->GetEntry(), 100.0f);
-
-            braseroList.remove(me);
-            Trinity::Containers::RandomResize(braseroList, 1);
-
-            if (Creature * pBrasero = *braseroList.begin())
-                if (pBrasero->AI())
-                    pBrasero->AI()->DoAction(1);
-        }
-
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
-        {
-            if (HasAura)
-            {
-                if (spell->Id == SPELL_TORCH)
-                {
-                    if (Player * pPlayer = caster->ToPlayer())
-                    {
-                        pPlayer->KilledMonsterCredit(me->GetEntry(), me->GetGUID());
-
-                        if (pPlayer->GetQuestStatus(QUEST_TORCHS_1) != QUEST_STATUS_COMPLETE &&
-                            pPlayer->GetQuestStatus(QUEST_TORCHS_2) != QUEST_STATUS_COMPLETE &&
-                            pPlayer->GetQuestStatus(QUEST_TORCHS_3) != QUEST_STATUS_COMPLETE &&
-                            pPlayer->GetQuestStatus(QUEST_TORCHS_4) != QUEST_STATUS_COMPLETE)
-                            SelectNextTarget();
-                        else
-                            DoAction(0);
-                    }
-                }
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (HasAura)
-            {
-                if (targetTimer <= diff)
-                {
-
-                    if (me->SelectNearestPlayer(100.0f))
-                        SelectNextTarget();
-                    else
-                        DoAction(0);
-
-                } else targetTimer -= diff;
-            }
-        }
-    };
-};
-
-class spell_gen_torch_launch : public SpellScriptLoader
-{
-    public:
-        spell_gen_torch_launch() : SpellScriptLoader("spell_gen_torch_launch") { }
-
-        class spell_gen_torch_launch_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_gen_torch_launch_SpellScript);
-
-            void HandleScript(SpellEffIndex /*effIndex*/)
-            {
-                Unit* caster = GetCaster();
-                if (caster->GetTypeId() != TYPEID_PLAYER)
-                    return;
-
-                std::list<Creature*> braseroList;
-                std::list<Creature*>::iterator Itr;
-
-                GetCreatureListWithEntryInGrid(braseroList, caster, 25515, 100.0f);
-
-                for (Itr = braseroList.begin(); Itr != braseroList.end(); Itr++)
-                    if (Creature * pBrasero = *Itr)
-                        if (GetExplTargetDest()->IsInDist2d(pBrasero->GetPositionX(), pBrasero->GetPositionY(), 1.0f))
-                            pBrasero->AI()->SpellHit(caster, GetSpellInfo());
-            }
-
-            void Register() override
-            {
-                OnEffectHit += SpellEffectFn(spell_gen_torch_launch_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_TRIGGER_MISSILE);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_gen_torch_launch_SpellScript();
-        }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_midsummer_torch_toss_land::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
 };
 
 enum RibbonPoleData
 {
-    SPELL_HAS_FULL_MIDSUMMER_SET        = 58933,   // Full set aura
-    SPELL_BURNING_HOT_POLE_DANCE        = 45390,   // Checker
-    SPELL_RIBBON_DANCE_XP               = 29175,   // + Xp
-    SPELL_DANCE                         = 45418,   // Dance aura
-    GO_RIBBON_POLE                      = 181605,
-    HF_FIRE_DANCE                       = 271,
+    SPELL_HAS_FULL_MIDSUMMER_SET      = 58933,
+    SPELL_BURNING_HOT_POLE_DANCE      = 58934,
+    SPELL_RIBBON_POLE_PERIODIC_VISUAL = 45406,
+    SPELL_RIBBON_DANCE                = 29175,
+    SPELL_TEST_RIBBON_POLE_1          = 29705,
+    SPELL_TEST_RIBBON_POLE_2          = 29726,
+    SPELL_TEST_RIBBON_POLE_3          = 29727
 };
 
-class spell_gen_ribbon_pole_dancer_check : public SpellScriptLoader
+// 29705, 29726, 29727 - Test Ribbon Pole Channel
+class spell_midsummer_test_ribbon_pole_channel : public AuraScript
 {
-    public:
-        spell_gen_ribbon_pole_dancer_check() : SpellScriptLoader("spell_gen_ribbon_pole_dancer_check") { }
+    PrepareAuraScript(spell_midsummer_test_ribbon_pole_channel);
 
-        class spell_gen_ribbon_pole_dancer_check_AuraScript : public AuraScript
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo(
         {
-            PrepareAuraScript(spell_gen_ribbon_pole_dancer_check_AuraScript);
+            SPELL_RIBBON_POLE_PERIODIC_VISUAL,
+            SPELL_BURNING_HOT_POLE_DANCE,
+            SPELL_HAS_FULL_MIDSUMMER_SET,
+            SPELL_RIBBON_DANCE
+        });
+    }
 
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                return ValidateSpellInfo({ SPELL_HAS_FULL_MIDSUMMER_SET, SPELL_BURNING_HOT_POLE_DANCE, SPELL_RIBBON_DANCE_XP });
-            }
+    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->RemoveAurasDueToSpell(SPELL_RIBBON_POLE_PERIODIC_VISUAL);
+    }
 
-            void PeriodicTick(AuraEffect const* /*aurEff*/)
-            {
-                Unit* target = GetTarget();
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        Unit* target = GetTarget();
+        target->CastSpell(target, SPELL_RIBBON_POLE_PERIODIC_VISUAL, true);
 
-                if (!target)
-                    return;
-
-                // check if aura needs to be removed
-                if (!target->FindNearestGameObject(GO_RIBBON_POLE, 20.0f) || !target->HasAura(SPELL_DANCE))
-                {
-                    target->InterruptNonMeleeSpells(false);
-                    target->RemoveAurasDueToSpell(GetId());
-                    return;
-                }
-
-                // set xp buff duration
-                if (Aura* aur = target->GetAura(SPELL_RIBBON_DANCE_XP))
-                {
-                    const int32 Hour         = 1 * HOUR * IN_MILLISECONDS;
-                    const int32 ThreeMinutes = 3 * MINUTE * IN_MILLISECONDS;
-
-                    aur->SetMaxDuration(aur->GetMaxDuration() >= Hour ? Hour : aur->GetMaxDuration() + ThreeMinutes);
-                    aur->RefreshDuration();
-
-                    // reward achievement criteria
-                    if (aur->GetMaxDuration() == Hour && target->HasAura(SPELL_HAS_FULL_MIDSUMMER_SET))
-                        if (Player * pPlayer = target->ToPlayer())
-                            if (!pPlayer->GetAchievementMgr()->HasAchieved(HF_FIRE_DANCE))
-                                pPlayer->CompletedAchievement(sAchievementStore.LookupEntry(HF_FIRE_DANCE));
-                }
-                else
-                    target->AddAura(SPELL_RIBBON_DANCE_XP, target);
-            }
-
-            void Register() override
-            {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_gen_ribbon_pole_dancer_check_AuraScript::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
+        if (Aura* aur = target->GetAura(SPELL_RIBBON_DANCE))
         {
-            return new spell_gen_ribbon_pole_dancer_check_AuraScript();
+            aur->SetMaxDuration(std::min(3600000, aur->GetMaxDuration() + 180000));
+            aur->RefreshDuration();
+
+            if (aur->GetMaxDuration() == 3600000 && target->HasAura(SPELL_HAS_FULL_MIDSUMMER_SET))
+                target->CastSpell(target, SPELL_BURNING_HOT_POLE_DANCE, true);
         }
+        else
+            target->CastSpell(target, SPELL_RIBBON_DANCE, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_midsummer_test_ribbon_pole_channel::HandleRemove, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_midsummer_test_ribbon_pole_channel::PeriodicTick, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
 };
 
-#define QUEST_TORCHS_1  11731
-#define QUEST_TORCHS_2  11921
-#define QUEST_TORCHS_3  11922
-#define QUEST_TORCHS_4  11926
-
-#define SPELL_TORCH     45276
-
-class spell_hol_torch_launch_achievement : public SpellScriptLoader
+// 45406 - Holiday - Midsummer, Ribbon Pole Periodic Visual
+class spell_midsummer_ribbon_pole_periodic_visual : public AuraScript
 {
-    public:
-        spell_hol_torch_launch_achievement() : SpellScriptLoader("spell_hol_torch_launch_achievement") { }
+    PrepareAuraScript(spell_midsummer_ribbon_pole_periodic_visual);
 
-        class spell_hol_torch_launch_achievement_SpellScript : public SpellScript
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo(
         {
-            PrepareSpellScript(spell_hol_torch_launch_achievement_SpellScript);
+            SPELL_TEST_RIBBON_POLE_1,
+            SPELL_TEST_RIBBON_POLE_2,
+            SPELL_TEST_RIBBON_POLE_3
+        });
+    }
 
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                return true;
-            }
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        Unit* target = GetTarget();
+        if (!target->HasAura(SPELL_TEST_RIBBON_POLE_1) && !target->HasAura(SPELL_TEST_RIBBON_POLE_2) && !target->HasAura(SPELL_TEST_RIBBON_POLE_3))
+            Remove();
+    }
 
-            SpellCastResult CheckCast()
-            {
-                if (!GetExplTargetDest() || GetCaster())
-                    return SPELL_FAILED_DONT_REPORT;
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_midsummer_ribbon_pole_periodic_visual::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
 
-                std::list<WorldObject*> objectList;
-                GetSpell()->SearchAreaTargets(objectList, 5, GetExplTargetDest(), GetCaster(), TARGET_OBJECT_TYPE_UNIT, TARGET_CHECK_ALLY, nullptr);
+enum JugglingTorch
+{
+    SPELL_JUGGLE_TORCH_SLOW          = 45792,
+    SPELL_JUGGLE_TORCH_MEDIUM        = 45806,
+    SPELL_JUGGLE_TORCH_FAST          = 45816,
+    SPELL_JUGGLE_TORCH_SELF          = 45638,
 
-                for (std::list<WorldObject*>::iterator itr = objectList.begin(); itr != objectList.end(); ++itr)
-                {
-                    if (Player * pPlayer = (*itr)->ToPlayer())
-                    {
-                        if (pPlayer->GetQuestRewardStatus(QUEST_TORCHS_1) ||
-                            pPlayer->GetQuestRewardStatus(QUEST_TORCHS_2) ||
-                            pPlayer->GetQuestRewardStatus(QUEST_TORCHS_3) ||
-                            pPlayer->GetQuestRewardStatus(QUEST_TORCHS_4))
-                        {
-                            GetCaster()->CastSpell(pPlayer, SPELL_TORCH, true);
-                        }
-                    }
-                }
+    SPELL_JUGGLE_TORCH_SHADOW_SLOW   = 46120,
+    SPELL_JUGGLE_TORCH_SHADOW_MEDIUM = 46118,
+    SPELL_JUGGLE_TORCH_SHADOW_FAST   = 46117,
+    SPELL_JUGGLE_TORCH_SHADOW_SELF   = 46121,
 
-                return SPELL_CAST_OK;
-            }
+    SPELL_GIVE_TORCH                 = 45280,
+    QUEST_TORCH_CATCHING_A           = 11657,
+    QUEST_TORCH_CATCHING_H           = 11923,
+    QUEST_MORE_TORCH_CATCHING_A      = 11924,
+    QUEST_MORE_TORCH_CATCHING_H      = 11925
+};
 
-            void Register() override
-            {
-                OnCheckCast += SpellCheckCastFn(spell_hol_torch_launch_achievement_SpellScript::CheckCast);
-            }
-        };
+// 45819 - Throw Torch
+class spell_midsummer_juggle_torch : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_juggle_torch);
 
-        SpellScript* GetSpellScript() const override
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({
+            SPELL_JUGGLE_TORCH_SLOW, SPELL_JUGGLE_TORCH_MEDIUM, SPELL_JUGGLE_TORCH_FAST,
+            SPELL_JUGGLE_TORCH_SELF, SPELL_JUGGLE_TORCH_SHADOW_SLOW, SPELL_JUGGLE_TORCH_SHADOW_MEDIUM,
+            SPELL_JUGGLE_TORCH_SHADOW_FAST, SPELL_JUGGLE_TORCH_SHADOW_SELF
+        });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        if (!GetExplTargetDest())
+            return;
+
+        Position spellDest = *GetExplTargetDest();
+        float distance = GetCaster()->GetExactDist2d(spellDest.GetPositionX(), spellDest.GetPositionY());
+
+        uint32 torchSpellID = 0;
+        uint32 torchShadowSpellID = 0;
+
+        if (distance <= 1.5f)
         {
-            return new spell_hol_torch_launch_achievement_SpellScript();
+            torchSpellID = SPELL_JUGGLE_TORCH_SELF;
+            torchShadowSpellID = SPELL_JUGGLE_TORCH_SHADOW_SELF;
+            spellDest = GetCaster()->GetPosition();
         }
+        else if (distance <= 10.0f)
+        {
+            torchSpellID = SPELL_JUGGLE_TORCH_SLOW;
+            torchShadowSpellID = SPELL_JUGGLE_TORCH_SHADOW_SLOW;
+        }
+        else if (distance <= 20.0f)
+        {
+            torchSpellID = SPELL_JUGGLE_TORCH_MEDIUM;
+            torchShadowSpellID = SPELL_JUGGLE_TORCH_SHADOW_MEDIUM;
+        }
+        else
+        {
+            torchSpellID = SPELL_JUGGLE_TORCH_FAST;
+            torchShadowSpellID = SPELL_JUGGLE_TORCH_SHADOW_FAST;
+        }
+
+        GetCaster()->CastSpell(spellDest, torchSpellID);
+        GetCaster()->CastSpell(spellDest, torchShadowSpellID);
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_midsummer_juggle_torch::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 45644 - Juggle Torch (Catch)
+class spell_midsummer_torch_catch : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_torch_catch);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_GIVE_TORCH });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetHitPlayer();
+        if (!player)
+            return;
+
+        if (player->GetQuestStatus(QUEST_TORCH_CATCHING_A) == QUEST_STATUS_REWARDED || player->GetQuestStatus(QUEST_TORCH_CATCHING_H) == QUEST_STATUS_REWARDED)
+            player->CastSpell(player, SPELL_GIVE_TORCH);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_midsummer_torch_catch::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+enum FlingTorch
+{
+    SPELL_FLING_TORCH_TRIGGERED           = 45669,
+    SPELL_FLING_TORCH_SHADOW              = 46105,
+    SPELL_JUGGLE_TORCH_MISSED             = 45676,
+    SPELL_TORCHES_CAUGHT                  = 45693,
+    SPELL_TORCH_CATCHING_SUCCESS_ALLIANCE = 46081,
+    SPELL_TORCH_CATCHING_SUCCESS_HORDE    = 46654,
+    SPELL_TORCH_CATCHING_REMOVE_TORCHES   = 46084
+};
+
+// 46747 - Fling torch
+class spell_midsummer_fling_torch : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_fling_torch);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_FLING_TORCH_TRIGGERED, SPELL_FLING_TORCH_SHADOW });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Position dest = GetCaster()->GetFirstCollisionPosition(30.0f, (float)rand_norm() * static_cast<float>(2 * M_PI));
+        GetCaster()->CastSpell(dest, SPELL_FLING_TORCH_TRIGGERED, true);
+        GetCaster()->CastSpell(dest, SPELL_FLING_TORCH_SHADOW);
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_midsummer_fling_torch::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 45669 - Fling Torch
+class spell_midsummer_fling_torch_triggered : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_fling_torch_triggered);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_JUGGLE_TORCH_MISSED });
+    }
+
+    void HandleTriggerMissile(SpellEffIndex effIndex)
+    {
+        if (Position const* pos = GetHitDest())
+        {
+            if (GetCaster()->GetExactDist2d(pos) > 3.0f)
+            {
+                PreventHitEffect(effIndex);
+                GetCaster()->CastSpell(*GetExplTargetDest(), SPELL_JUGGLE_TORCH_MISSED);
+                GetCaster()->RemoveAura(SPELL_TORCHES_CAUGHT);
+            }
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_midsummer_fling_torch_triggered::HandleTriggerMissile, EFFECT_0, SPELL_EFFECT_TRIGGER_MISSILE);
+    }
+};
+
+// 45671 - Juggle Torch (Catch, Quest)
+class spell_midsummer_fling_torch_catch : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_fling_torch_catch);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({
+            SPELL_FLING_TORCH_TRIGGERED,
+            SPELL_TORCH_CATCHING_SUCCESS_ALLIANCE,
+            SPELL_TORCH_CATCHING_SUCCESS_HORDE,
+            SPELL_TORCH_CATCHING_REMOVE_TORCHES,
+            SPELL_FLING_TORCH_SHADOW
+        });
+    }
+
+    void HandleScriptEffect(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetHitPlayer();
+        if (!player)
+            return;
+
+        if (!GetExplTargetDest())
+            return;
+
+        // Only the caster can catch the torch
+        if (player->GetGUID() != GetCaster()->GetGUID())
+            return;
+
+        uint8 requiredCatches = 0;
+        // Number of required catches depends on quest - 4 for the normal quest, 10 for the daily version
+        if (player->GetQuestStatus(QUEST_TORCH_CATCHING_A) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_TORCH_CATCHING_H) == QUEST_STATUS_INCOMPLETE)
+            requiredCatches = 3;
+        else if (player->GetQuestStatus(QUEST_MORE_TORCH_CATCHING_A) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_MORE_TORCH_CATCHING_H) == QUEST_STATUS_INCOMPLETE)
+            requiredCatches = 9;
+
+        // Used quest item without being on quest - do nothing
+        if (requiredCatches == 0)
+            return;
+
+        if (player->GetAuraCount(SPELL_TORCHES_CAUGHT) >= requiredCatches)
+        {
+            player->CastSpell(player, (player->GetTeam() == ALLIANCE) ? SPELL_TORCH_CATCHING_SUCCESS_ALLIANCE : SPELL_TORCH_CATCHING_SUCCESS_HORDE);
+            player->CastSpell(player, SPELL_TORCH_CATCHING_REMOVE_TORCHES);
+            player->RemoveAura(SPELL_TORCHES_CAUGHT);
+        }
+        else
+        {
+            Position dest = player->GetFirstCollisionPosition(15.0f, (float)rand_norm() * static_cast<float>(2 * M_PI));
+            player->CastSpell(player, SPELL_TORCHES_CAUGHT);
+            player->CastSpell(dest, SPELL_FLING_TORCH_TRIGGERED, true);
+            player->CastSpell(dest, SPELL_FLING_TORCH_SHADOW);
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_midsummer_fling_torch_catch::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 45676 - Juggle Torch (Quest, Missed)
+class spell_midsummer_fling_torch_missed : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_fling_torch_missed);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        // This spell only hits the caster
+        targets.remove_if([this](WorldObject* obj)
+            {
+                return obj->GetGUID() != GetCaster()->GetGUID();
+            });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_midsummer_fling_torch_missed::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENTRY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_midsummer_fling_torch_missed::FilterTargets, EFFECT_2, TARGET_UNIT_DEST_AREA_ENTRY);
+    }
 };
 
 void AddSC_event_midsummer()
 {
-    new npc_dancing_flames();
-    new npc_midsummer_quest_torch();
-    new npc_midsummer_brasero();
-    new spell_gen_torch_launch();
-    new spell_gen_ribbon_pole_dancer_check();
-    new spell_hol_torch_launch_achievement();
+    RegisterSpellScript(spell_midsummer_braziers_hit);
+    RegisterSpellScript(spell_midsummer_torch_target_picker);
+    RegisterSpellScript(spell_midsummer_torch_toss_land);
+    RegisterSpellScript(spell_midsummer_test_ribbon_pole_channel);
+    RegisterSpellScript(spell_midsummer_ribbon_pole_periodic_visual);
+    RegisterSpellScript(spell_midsummer_juggle_torch);
+    RegisterSpellScript(spell_midsummer_torch_catch);
+    RegisterSpellScript(spell_midsummer_fling_torch);
+    RegisterSpellScript(spell_midsummer_fling_torch_triggered);
+    RegisterSpellScript(spell_midsummer_fling_torch_catch);
+    RegisterSpellScript(spell_midsummer_fling_torch_missed);
 }
-

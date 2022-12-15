@@ -19,10 +19,12 @@
 #define TRINITYCORE_CORPSE_H
 
 #include "Object.h"
+#include "GridObject.h"
 #include "DatabaseEnvFwd.h"
 #include "GridDefines.h"
 #include "IteratorPair.h"
-#include "Loot.h"
+
+struct Loot;
 
 enum CorpseType
 {
@@ -62,22 +64,37 @@ class TC_GAME_API Corpse : public WorldObject, public GridObject<Corpse>
         void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
             UF::CorpseData::Mask const& requestedCorpseMask, Player const* target) const;
 
+        struct ValuesUpdateForPlayerWithMaskSender // sender compatible with MessageDistDeliverer
+        {
+            explicit ValuesUpdateForPlayerWithMaskSender(Corpse const* owner) : Owner(owner) { }
+
+            Corpse const* Owner;
+            UF::ObjectData::Base ObjectMask;
+            UF::CorpseData::Base CorpseMask;
+
+            void operator()(Player const* player) const;
+        };
+
         void AddToWorld() override;
         void RemoveFromWorld() override;
 
         bool Create(ObjectGuid::LowType guidlow, Map* map);
         bool Create(ObjectGuid::LowType guidlow, Player* owner);
 
+        void Update(uint32 diff) override;
+
         void SaveToDB();
         bool LoadCorpseFromDB(ObjectGuid::LowType guid, Field* fields);
 
-        void DeleteFromDB(CharacterDatabaseTransaction& trans);
-        static void DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransaction& trans);
+        void DeleteFromDB(CharacterDatabaseTransaction trans);
+        static void DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransaction trans);
 
-        void AddCorpseDynamicFlag(CorpseDynFlags dynamicFlags) { SetUpdateFieldFlagValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::DynamicFlags), dynamicFlags); }
+        CorpseDynFlags GetCorpseDynamicFlags() const { return CorpseDynFlags(*m_corpseData->DynamicFlags); }
+        void SetCorpseDynamicFlag(CorpseDynFlags dynamicFlags) { SetUpdateFieldFlagValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::DynamicFlags), dynamicFlags); }
         void RemoveCorpseDynamicFlag(CorpseDynFlags dynamicFlags) { RemoveUpdateFieldFlagValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::DynamicFlags), dynamicFlags); }
-        void SetCorpseDynamicFlags(CorpseDynFlags dynamicFlags) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::DynamicFlags), dynamicFlags); }
-        ObjectGuid GetOwnerGUID() const { return m_corpseData->Owner; }
+        void ReplaceAllCorpseDynamicFlags(CorpseDynFlags dynamicFlags) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::DynamicFlags), dynamicFlags); }
+
+        ObjectGuid GetOwnerGUID() const override { return m_corpseData->Owner; }
         void SetOwnerGUID(ObjectGuid owner) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Owner), owner); }
         void SetPartyGUID(ObjectGuid partyGuid) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::PartyGUID), partyGuid); }
         void SetGuildGUID(ObjectGuid guildGuid) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::GuildGUID), guildGuid); }
@@ -85,8 +102,10 @@ class TC_GAME_API Corpse : public WorldObject, public GridObject<Corpse>
         void SetRace(uint8 race) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::RaceID), race); }
         void SetClass(uint8 playerClass) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Class), playerClass); }
         void SetSex(uint8 sex) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Sex), sex); }
-        void SetFlags(uint32 flags) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Flags), flags); }
+        void ReplaceAllFlags(uint32 flags) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Flags), flags); }
         void SetFactionTemplate(int32 factionTemplate) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::FactionTemplate), factionTemplate); }
+        uint32 GetFaction() const override { return m_corpseData->FactionTemplate; }
+        void SetFaction(uint32 faction) override { SetFactionTemplate(faction); }
         void SetItem(uint32 slot, uint32 item) { SetUpdateFieldValue(m_values.ModifyValue(&Corpse::m_corpseData).ModifyValue(&UF::CorpseData::Items, slot), item); }
 
         template<typename Iter>
@@ -102,13 +121,15 @@ class TC_GAME_API Corpse : public WorldObject, public GridObject<Corpse>
         }
 
         time_t const& GetGhostTime() const { return m_time; }
-        void ResetGhostTime() { m_time = time(nullptr); }
+        void ResetGhostTime();
         CorpseType GetType() const { return m_type; }
 
         CellCoord const& GetCellCoord() const { return _cellCoord; }
         void SetCellCoord(CellCoord const& cellCoord) { _cellCoord = cellCoord; }
 
-        Loot loot;                                          // remove insignia ONLY at BG
+        std::unique_ptr<Loot> m_loot;
+        Loot* GetLootForPlayer(Player const* /*player*/) const override { return m_loot.get(); }
+
         Player* lootRecipient;
 
         bool IsExpired(time_t t) const;

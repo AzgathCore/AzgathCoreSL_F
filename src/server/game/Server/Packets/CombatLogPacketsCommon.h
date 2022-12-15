@@ -52,17 +52,17 @@ namespace WorldPackets
         {
             enum ContentTuningType : uint32
             {
-                TYPE_CREATURE_TO_PLAYER_DAMAGE = 1,
-                TYPE_PLAYER_TO_CREATURE_DAMAGE = 2,
-                TYPE_CREATURE_TO_CREATURE_DAMAGE = 4,
-                TYPE_PLAYER_TO_PLAYER_SANDBOX_SCALING = 7, // NYI
-                TYPE_PLAYER_TO_PLAYER_EXPECTED_STAT = 8,
+                TYPE_CREATURE_TO_PLAYER_DAMAGE          = 1,
+                TYPE_PLAYER_TO_CREATURE_DAMAGE          = 2,
+                TYPE_CREATURE_TO_CREATURE_DAMAGE        = 4,
+                TYPE_PLAYER_TO_PLAYER_SANDBOX_SCALING   = 7, // NYI
+                TYPE_PLAYER_TO_PLAYER_EXPECTED_STAT     = 8,
             };
 
             enum ContentTuningFlags : uint32
             {
-                NO_LEVEL_SCALING = 0x1,
-                NO_ITEM_LEVEL_SCALING = 0x2
+                NO_LEVEL_SCALING        = 0x1,
+                NO_ITEM_LEVEL_SCALING   = 0x2
             };
 
             uint32 Type = 0;
@@ -72,10 +72,11 @@ namespace WorldPackets
             uint16 ScalingHealthItemLevelCurveID = 0;
             uint8 TargetLevel = 0;
             uint8 Expansion = 0;
-            uint8 TargetMinScalingLevel = 0;
-            uint8 TargetMaxScalingLevel = 0;
             int8 TargetScalingLevelDelta = 0;
             uint32 Flags = NO_LEVEL_SCALING | NO_ITEM_LEVEL_SCALING;
+            int32 PlayerContentTuningID = 0;
+            int32 TargetContentTuningID = 0;
+            int32 Unused927 = 0;
 
             template<class T, class U>
             bool GenerateDataForUnits(T* attacker, U* target);

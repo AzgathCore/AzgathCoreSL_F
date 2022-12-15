@@ -27,13 +27,13 @@ WorldPacket const* WorldPackets::Token::CommerceTokenGetLogResponse::Write()
     _worldPacket << UnkInt;
     _worldPacket << Result;
     _worldPacket << uint32(AuctionableTokenAuctionableList.size());
-    for (AuctionableTokenAuctionable const& auctionableTokenAuctionable : AuctionableTokenAuctionableList)
+    for (AuctionableTokenInfo const& auctionableTokenAuctionable : AuctionableTokenAuctionableList)
     {
         _worldPacket << auctionableTokenAuctionable.UnkInt1;
         _worldPacket << auctionableTokenAuctionable.UnkInt2;
         _worldPacket << auctionableTokenAuctionable.BuyoutPrice;
         _worldPacket << auctionableTokenAuctionable.Owner;
-        _worldPacket << auctionableTokenAuctionable.EndTime;
+        _worldPacket << auctionableTokenAuctionable.DurationLeft;
     }
 
     return &_worldPacket;
@@ -50,21 +50,6 @@ WorldPacket const* WorldPackets::Token::CommerceTokenGetMarketPriceResponse::Wri
     _worldPacket << UnkInt;
     _worldPacket << Result;
     _worldPacket << AuctionDuration;
-
-    return &_worldPacket;
-}
-
-void WorldPackets::Token::ConsumableTokenCanVeteranBuy::Read()
-{
-    _worldPacket >> UnkInt; // always 0
-}
-
-
-WorldPacket const* WorldPackets::Token::ConsumableTokenCanVeteranBuyResponse::Write()
-{
-    _worldPacket << UnkLong; // always 0
-    _worldPacket << UnkInt; // always 0
-    _worldPacket << UnkInt2; // always 1
 
     return &_worldPacket;
 }
