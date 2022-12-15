@@ -645,7 +645,7 @@ namespace UF
         void ClearChangesMask();
     };
 
-    struct ActivePlayerData : public IsUpdateFieldStructureTag, public HasChangesMask<1511>
+    struct ActivePlayerData : public IsUpdateFieldStructureTag, public HasChangesMask<1512>
     {
         UpdateField<bool, 0, 1> BackpackAutoSortDisabled;
         UpdateField<bool, 0, 2> BankAutoSortDisabled;
