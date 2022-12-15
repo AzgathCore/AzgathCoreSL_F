@@ -35,7 +35,7 @@ void Trinity::Banner::Show(char const* applicationName, void(*log)(char const* t
     log("                          ██║     ██║   ██║██╔══██╗██╔══╝  ");
     log("                          ╚██████╗╚██████╔╝██║  ██║███████╗");
     log("                           ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝"); 
-    log("  	  AzgathCore 9.0.2  -  Github.com/AzgathCore/AzgathCoreSL\n");
+    log("  	  AzgathCore 9.2.7  -  Github.com/AzgathCore/AzgathCoreSL_F\n");
 
 
     if (logExtraInfo)
