@@ -370,8 +370,8 @@ NonDefaultConstructible<pEffect> SpellEffects[TOTAL_SPELL_EFFECTS] =
     &Spell::EffectNULL,                                     //281 SPELL_EFFECT_281
     &Spell::EffectNULL,                                     //282 SPELL_EFFECT_282
     &Spell::EffectNULL,                                     //283 SPELL_EFFECT_283
-    // &Spell::EffectNULL,                                     //286 SPELL_EFFECT_GRANT_BATTLEPET_EXPERIENCE
-    // &Spell::EffectNULL,                                     //287 SPELL_EFFECT_SET_GARRISON_FOLLOWER_LEVEL
+    &Spell::EffectNULL,                                     //286 SPELL_EFFECT_GRANT_BATTLEPET_EXPERIENCE
+    &Spell::EffectNULL,                                     //287 SPELL_EFFECT_SET_GARRISON_FOLLOWER_LEVEL
 };
 
 void Spell::EffectNULL(SpellEffIndex /*effIndex*/)

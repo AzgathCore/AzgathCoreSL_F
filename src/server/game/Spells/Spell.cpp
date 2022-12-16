@@ -5611,6 +5611,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                 break;
             }
             case SPELL_EFFECT_SKINNING:
+            case SPELL_EFFECT_GRANT_BATTLEPET_EXPERIENCE:
             {
                 if (m_caster->GetTypeId() != TYPEID_PLAYER || !m_targets.GetUnitTarget() || m_targets.GetUnitTarget()->GetTypeId() != TYPEID_UNIT)
                     return SPELL_FAILED_BAD_TARGETS;

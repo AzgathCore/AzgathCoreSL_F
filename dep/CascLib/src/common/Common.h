@@ -140,7 +140,16 @@ extern unsigned char IntToHexChar[];
 //  - Memory freeing function must check for NULL pointer and do nothing if so
 //
 
-#define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
+template <typename T>
+T * CASC_REALLOC(T * old_ptr, size_t count)
+{
+    T * new_ptr = (T *)realloc(old_ptr, count * sizeof(T));
+
+    // If realloc fails, then the old buffer remains unfreed
+    if(new_ptr == NULL)
+        free(old_ptr);
+    return new_ptr;
+}
 
 template <typename T>
 T * CASC_ALLOC(size_t nCount)
@@ -328,9 +337,8 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 LPSTR  CascNewStrT2A(LPCTSTR szString, size_t nCharsToReserve = 0);
 LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve = 0);
 
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList);
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
-LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, va_list argList);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, ...);
 LPTSTR GetLastPathPart(LPTSTR szWorkPath);
 bool CutLastPathPart(LPTSTR szWorkPath);
 
@@ -438,7 +446,7 @@ xchar * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, xchar * szBuffer)
 }
 
 //-----------------------------------------------------------------------------
-// Structure query key
+// Structures for data blobs
 
 struct QUERY_KEY
 {
@@ -452,6 +460,16 @@ struct QUERY_KEY
     {
         CASC_FREE(pbData);
         cbData = 0;
+    }
+
+    DWORD SetData(const void * pv, size_t cb)
+    {
+        if((pbData = CASC_ALLOC<BYTE>(cb)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        memcpy(pbData, pv, cb);
+        cbData = cb;
+        return ERROR_SUCCESS;
     }
 
     LPBYTE pbData;
