@@ -18,10 +18,8 @@
 #include "DynamicTree.h"
 #include "BoundingIntervalHierarchyWrapper.h"
 #include "GameObjectModel.h"
-#include "Log.h"
 #include "MapTree.h"
 #include "ModelIgnoreFlags.h"
-#include "ModelInstance.h"
 #include "RegularGrid.h"
 #include "Timer.h"
 #include "VMapFactory.h"
@@ -103,7 +101,7 @@ struct DynTreeImpl : public ParentTree/*, public Intersectable*/
         }
     }
 
-    TimeTrackerSmall rebalance_timer;
+    TimeTracker rebalance_timer;
     int unbalanced_times;
 };
 
@@ -255,7 +253,7 @@ bool DynamicMapTree::isInLineOfSight(G3D::Vector3 const& startPos, G3D::Vector3 
 
 float DynamicMapTree::getHeight(float x, float y, float z, float maxSearchDist, PhaseShift const& phaseShift) const
 {
-    G3D::Vector3 v(x, y, z + 0.5f);
+    G3D::Vector3 v(x, y, z);
     G3D::Ray r(v, G3D::Vector3(0, 0, -1));
     DynamicTreeIntersectionCallback callback(phaseShift);
     impl->intersectZAllignedRay(r, callback, maxSearchDist);
@@ -293,11 +291,11 @@ void DynamicMapTree::getAreaAndLiquidData(float x, float y, float z, PhaseShift 
         data.floorZ = intersectionCallBack.GetLocationInfo().ground_Z;
         uint32 liquidType = intersectionCallBack.GetLocationInfo().hitModel->GetLiquidType();
         float liquidLevel;
-        if (!reqLiquidType || (dynamic_cast<VMAP::VMapManager2*>(VMAP::VMapFactory::createOrGetVMapManager())->GetLiquidFlagsPtr(liquidType) & reqLiquidType))
+        if (!reqLiquidType || VMAP::VMapFactory::createOrGetVMapManager()->GetLiquidFlagsPtr(liquidType) & reqLiquidType)
             if (intersectionCallBack.GetHitModel()->GetLiquidLevel(v, intersectionCallBack.GetLocationInfo(), liquidLevel))
-                data.liquidInfo = boost::in_place(liquidType, liquidLevel);
+                data.liquidInfo.emplace(liquidType, liquidLevel);
 
-        data.areaInfo = boost::in_place(intersectionCallBack.GetHitModel()->GetNameSetId(),
+        data.areaInfo.emplace(intersectionCallBack.GetHitModel()->GetNameSetId(),
             intersectionCallBack.GetLocationInfo().rootId,
             intersectionCallBack.GetLocationInfo().hitModel->GetWmoID(),
             intersectionCallBack.GetLocationInfo().hitModel->GetMogpFlags());

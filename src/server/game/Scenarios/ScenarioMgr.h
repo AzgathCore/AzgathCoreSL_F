@@ -25,8 +25,8 @@
 #include <unordered_map>
 #include <vector>
 
+class InstanceMap;
 class InstanceScenario;
-class Map;
 struct ScenarioEntry;
 struct ScenarioStepEntry;
 
@@ -55,13 +55,10 @@ typedef std::map<uint32, ScenarioData> ScenarioDataContainer;
 
 enum ScenarioType
 {
-    SCENARIO_TYPE_DEFAULT               = 0,
-    SCENARIO_TYPE_CHALLENGE_MODE        = 1,
-    SCENARIO_TYPE_PROVING_GROUNDS       = 2,
-    SCENARIO_TYPE_USE_DUNGEON_DISPLAY   = 3,
-    SCENARIO_TYPE_LEGION_INVASION       = 4,
-    SCENARIO_TYPE_BOOST_TUTORIAL        = 5,
-    SCENARIO_TYPE_WARFRONT              = 6
+    SCENARIO_TYPE_SCENARIO          = 0,
+    SCENARIO_TYPE_CHALLENGE_MODE    = 1,
+    SCENARIO_TYPE_SOLO              = 2,
+    SCENARIO_TYPE_DUNGEON           = 10,
 };
 
 struct ScenarioPOIPoint
@@ -86,16 +83,14 @@ struct ScenarioPOI
     int32 NavigationPlayerConditionID;
     std::vector<ScenarioPOIPoint> Points;
 
-    ScenarioPOI() : BlobIndex(0), MapID(0), UiMapID(0), Priority(0), Flags(0), WorldEffectID(0), PlayerConditionID(0) { }
+    ScenarioPOI() : BlobIndex(0), MapID(0), UiMapID(0), Priority(0), Flags(0), WorldEffectID(0), PlayerConditionID(0), NavigationPlayerConditionID(0) { }
 
     ScenarioPOI(int32 blobIndex, int32 mapID, int32 uiMapID, int32 priority, int32 flags, int32 worldEffectID,
         int32 playerConditionID, int32 navigationPlayerConditionID, std::vector<ScenarioPOIPoint> points) :
         BlobIndex(blobIndex), MapID(mapID), UiMapID(uiMapID), Priority(priority), Flags(flags), WorldEffectID(worldEffectID),
         PlayerConditionID(playerConditionID), NavigationPlayerConditionID(navigationPlayerConditionID), Points(std::move(points)) { }
 
-    ScenarioPOI(ScenarioPOI&& scenarioPOI) :
-        BlobIndex(scenarioPOI.BlobIndex), MapID(scenarioPOI.MapID), UiMapID(scenarioPOI.UiMapID), Priority(scenarioPOI.Priority),
-        Flags(scenarioPOI.Flags), WorldEffectID(scenarioPOI.WorldEffectID), PlayerConditionID(scenarioPOI.PlayerConditionID), Points(std::move(scenarioPOI.Points)) { }
+    ScenarioPOI(ScenarioPOI&& scenarioPOI) = default;
 };
 
 typedef std::vector<ScenarioPOI> ScenarioPOIVector;
@@ -110,8 +105,7 @@ private:
 public:
     static ScenarioMgr* Instance();
 
-    InstanceScenario* CreateInstanceScenario(Map* map, TeamId team) const;
-    InstanceScenario* CreateInstanceScenarioByID(Map const* map, uint32 scenarioID);
+    InstanceScenario* CreateInstanceScenario(InstanceMap const* map, TeamId team) const;
 
     void LoadDBData();
     void LoadDB2Data();

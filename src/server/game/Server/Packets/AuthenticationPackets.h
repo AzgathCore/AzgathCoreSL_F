@@ -21,6 +21,7 @@
 #include "Packet.h"
 #include "Define.h"
 #include "Optional.h"
+#include "PacketUtilities.h"
 #include <array>
 #include <unordered_map>
 
@@ -139,6 +140,8 @@ namespace WorldPackets
                     bool InGameRoom = false;
                 };
 
+                AuthSuccessInfo() { } // work around clang bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=101227
+
                 uint8 ActiveExpansionLevel = 0; ///< the current server expansion, the possible values are in @ref Expansions
                 uint8 AccountExpansionLevel = 0; ///< the current expansion of this account, the possible values are in @ref Expansions
                 uint32 TimeRested = 0; ///< affects the return value of the GetBillingTimeRested() client API call, it is the number of seconds you have left until the experience points and loot you receive from creatures and quests is reduced. It is only used in the Asia region in retail, it's not implemented in TC and will probably never be.
@@ -146,7 +149,7 @@ namespace WorldPackets
                 uint32 VirtualRealmAddress = 0; ///< a special identifier made from the Index, BattleGroup and Region.
                 uint32 TimeSecondsUntilPCKick = 0; ///< @todo research
                 uint32 CurrencyID = 0; ///< this is probably used for the ingame shop. @todo implement
-                int32 Time = 0;
+                Timestamp<> Time;
 
                 GameTime GameTimeInfo;
 
@@ -200,7 +203,7 @@ namespace WorldPackets
             WorldAttempt5   = 89
         };
 
-        class ConnectTo final : public ServerPacket
+        class TC_GAME_API ConnectTo final : public ServerPacket
         {
         public:
             static bool InitializeEncryption();
@@ -208,6 +211,7 @@ namespace WorldPackets
 
             enum AddressType : uint8
             {
+                None = 0,
                 IPv4 = 1,
                 IPv6 = 2,
                 NamedSocket = 3 // not supported by windows client
@@ -215,20 +219,20 @@ namespace WorldPackets
 
             struct SocketAddress
             {
-                AddressType Type;
+                AddressType Type = None;
                 union
                 {
                     std::array<uint8, 4> V4;
                     std::array<uint8, 16> V6;
                     std::array<char, 128> Name;
-                } Address;
+                } Address = { };
             };
 
             struct ConnectPayload
             {
                 SocketAddress Where;
-                uint16 Port;
-                std::array<uint8, 256> Signature;
+                uint16 Port = 0;
+                std::array<uint8, 256> Signature = { };
             };
 
             ConnectTo();
@@ -281,7 +285,7 @@ namespace WorldPackets
             void Read() override;
         };
 
-        class EnterEncryptedMode final : public ServerPacket
+        class TC_GAME_API EnterEncryptedMode final : public ServerPacket
         {
         public:
             static bool InitializeEncryption();

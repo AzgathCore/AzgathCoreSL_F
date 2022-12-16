@@ -24,7 +24,7 @@ enum TotemType
 {
     TOTEM_PASSIVE    = 0,
     TOTEM_ACTIVE     = 1,
-    TOTEM_STATUE     = 2 // Might need more implementation to work
+    TOTEM_STATUE     = 2 // copied straight from MaNGOS, may need more implementation to work
 };
 
 class TC_GAME_API Totem : public Minion
@@ -34,7 +34,7 @@ class TC_GAME_API Totem : public Minion
         virtual ~Totem() { }
         void Update(uint32 time) override;
         void InitStats(uint32 duration) override;
-        void InitSummon(Spell const* summonSpell = nullptr) override;
+        void InitSummon() override;
         void UnSummon(uint32 msTime = 0) override;
         uint32 GetSpell(uint8 slot = 0) const { return m_spells[slot]; }
         uint32 GetTotemDuration() const { return m_duration; }
@@ -50,7 +50,7 @@ class TC_GAME_API Totem : public Minion
         void UpdateAttackPowerAndDamage(bool /*ranged*/) override { }
         void UpdateDamagePhysical(WeaponAttackType /*attType*/) override { }
 
-        bool IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index, Unit* caster) const override;
+        bool IsImmunedToSpellEffect(SpellInfo const* spellInfo, SpellEffectInfo const& spellEffectInfo, WorldObject const* caster, bool requireImmunityPurgesEffectAttribute = false) const override;
 
     protected:
         TotemType m_type;

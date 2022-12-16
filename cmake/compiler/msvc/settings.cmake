@@ -7,7 +7,7 @@ set(MSVC_EXPECTED_VERSION_STRING "Microsoft Visual Studio 2019 16.4")
 # This file is also used by compilers that pretend to be MSVC but report their own version number - don't version check them
 if(NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS MSVC_EXPECTED_VERSION)
-    message(FATAL_ERROR "MSVC: TrinityCore requires version ${MSVC_EXPECTED_VERSION} (${MSVC_EXPECTED_VERSION_STRING}) to build but found ${CMAKE_CXX_COMPILER_VERSION}")
+    message(FATAL_ERROR "MSVC: AzgathCore requires version ${MSVC_EXPECTED_VERSION} (${MSVC_EXPECTED_VERSION_STRING}) to build but found ${CMAKE_CXX_COMPILER_VERSION}")
   else()
     message(STATUS "MSVC: Minimum version required is ${MSVC_EXPECTED_VERSION}, found ${CMAKE_CXX_COMPILER_VERSION} - ok!")
   endif()

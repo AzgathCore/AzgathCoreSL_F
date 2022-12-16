@@ -15,8 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "World.h"
-
 // This is where scripts' loading functions should be declared:
 void AddSC_account_commandscript();
 void AddSC_achievement_commandscript();
@@ -25,7 +23,6 @@ void AddSC_arena_commandscript();
 void AddSC_ban_commandscript();
 void AddSC_battlenet_account_commandscript();
 void AddSC_bf_commandscript();
-void AddSC_blackmarket_commandscript();
 void AddSC_cast_commandscript();
 void AddSC_character_commandscript();
 void AddSC_cheat_commandscript();
@@ -33,7 +30,6 @@ void AddSC_debug_commandscript();
 void AddSC_deserter_commandscript();
 void AddSC_disable_commandscript();
 void AddSC_event_commandscript();
-void AddSC_garrison_commandscript();
 void AddSC_gm_commandscript();
 void AddSC_go_commandscript();
 void AddSC_gobject_commandscript();
@@ -62,7 +58,6 @@ void AddSC_tele_commandscript();
 void AddSC_ticket_commandscript();
 void AddSC_titles_commandscript();
 void AddSC_wp_commandscript();
-void AddSC_movie_commandscript();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -75,7 +70,6 @@ void AddCommandsScripts()
     AddSC_ban_commandscript();
     AddSC_battlenet_account_commandscript();
     AddSC_bf_commandscript();
-    AddSC_blackmarket_commandscript();
     AddSC_cast_commandscript();
     AddSC_character_commandscript();
     AddSC_cheat_commandscript();
@@ -83,7 +77,6 @@ void AddCommandsScripts()
     AddSC_deserter_commandscript();
     AddSC_disable_commandscript();
     AddSC_event_commandscript();
-    AddSC_garrison_commandscript();
     AddSC_gm_commandscript();
     AddSC_go_commandscript();
     AddSC_gobject_commandscript();
@@ -112,5 +105,4 @@ void AddCommandsScripts()
     AddSC_ticket_commandscript();
     AddSC_titles_commandscript();
     AddSC_wp_commandscript();
-    AddSC_movie_commandscript();
 }

@@ -22,10 +22,9 @@ Without it, the party doing random dungeon won't get satchel of spoils and
 gets instead the deserter debuff.
 */
 
-//Missing Scripts and Bosses
-
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
+#include "Unit.h"
 #include "the_underbog.h"
 
 class instance_the_underbog : public InstanceMapScript
@@ -33,15 +32,34 @@ class instance_the_underbog : public InstanceMapScript
 public:
     instance_the_underbog() : InstanceMapScript(TheUndebogScriptName, 546) { }
 
+    struct instance_the_underbog_InstanceMapScript : public InstanceScript
+    {
+        instance_the_underbog_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
+        {
+            SetHeaders(TheUndebogDataHeader);
+            SetBossNumber(TheUnderbogBossCount);
+        }
+
+        void OnUnitDeath(Unit* unit) override
+        {
+            switch (unit->GetEntry())
+            {
+                case NPC_GHAZAN:
+                    SetBossState(DATA_GHAZAN, DONE);
+                    break;
+                case NPC_SWAMPLORD_MUSELEK:
+                    SetBossState(DATA_SWAMPLORD_MUSELEK, DONE);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
     InstanceScript* GetInstanceScript(InstanceMap* map) const override
     {
         return new instance_the_underbog_InstanceMapScript(map);
     }
-
-    struct instance_the_underbog_InstanceMapScript : public InstanceScript
-    {
-        instance_the_underbog_InstanceMapScript(InstanceMap* map) : InstanceScript(map) { }
-    };
 };
 
 void AddSC_instance_the_underbog()

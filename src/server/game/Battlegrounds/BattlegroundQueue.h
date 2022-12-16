@@ -23,8 +23,6 @@
 #include "Battleground.h"
 #include "EventProcessor.h"
 
-#include <deque>
-
 //this container can't be deque, because deque doesn't like removing the last element - if you remove it, it invalidates next iterator and crash appears
 typedef std::list<Battleground*> BGFreeSlotQueueContainer;
 
@@ -33,25 +31,22 @@ typedef std::list<Battleground*> BGFreeSlotQueueContainer;
 struct GroupQueueInfo;                                      // type predefinition
 struct PlayerQueueInfo                                      // stores information for players in queue
 {
-    uint32  LastOnlineTime;                                 // for tracking and removing offline players from queue after 5 minutes
-    GroupQueueInfo* GroupInfo;                             // pointer to the associated groupqueueinfo
+    uint32 LastOnlineTime;                                  // for tracking and removing offline players from queue after 5 minutes
+    GroupQueueInfo* GroupInfo;                              // pointer to the associated groupqueueinfo
 };
 
 struct GroupQueueInfo                                       // stores information about the group in queue (also used when joined as solo!)
 {
     std::map<ObjectGuid, PlayerQueueInfo*> Players;         // player queue info map
     uint32  Team;                                           // Player team (ALLIANCE/HORDE)
-    BattlegroundTypeId BgTypeId;                            // battleground type id
-    bool    IsRated;                                        // rated
-    uint8   ArenaType;                                      // 2v2, 3v3, 5v5 or 0 when BG
+    uint32  ArenaTeamId;                                    // team id if rated match
     uint32  JoinTime;                                       // time when group was added
     uint32  RemoveInviteTime;                               // time when we will remove invite for players in group
     uint32  IsInvitedToBGInstanceGUID;                      // was invited to certain BG
-    uint32  ArenaGroupRating;                                // if rated match, inited to the rating of the team
+    uint32  ArenaTeamRating;                                // if rated match, inited to the rating of the team
     uint32  ArenaMatchmakerRating;                          // if rated match, inited to the rating of the team
     uint32  OpponentsTeamRating;                            // for rated arena matches
     uint32  OpponentsMatchmakerRating;                      // for rated arena matches
-    Group*  m_Group;
 };
 
 enum BattlegroundQueueGroupTypes
@@ -74,17 +69,17 @@ class Battleground;
 class TC_GAME_API BattlegroundQueue
 {
     public:
-        BattlegroundQueue();
+        BattlegroundQueue(BattlegroundQueueTypeId queueId);
         ~BattlegroundQueue();
 
-        void BattlegroundQueueUpdate(uint32 diff, BattlegroundTypeId bgTypeId, BattlegroundBracketId bracket_id, uint8 arenaType = 0, bool isRated = false, uint32 minRating = 0);
+        void BattlegroundQueueUpdate(uint32 diff, BattlegroundBracketId bracket_id, uint32 minRating = 0);
         void UpdateEvents(uint32 diff);
 
         void FillPlayersToBG(Battleground* bg, BattlegroundBracketId bracket_id);
         bool CheckPremadeMatch(BattlegroundBracketId bracket_id, uint32 MinPlayersPerTeam, uint32 MaxPlayersPerTeam);
         bool CheckNormalMatch(Battleground* bg_template, BattlegroundBracketId bracket_id, uint32 minPlayers, uint32 maxPlayers);
         bool CheckSkirmishForSameFaction(BattlegroundBracketId bracket_id, uint32 minPlayersPerTeam);
-        GroupQueueInfo* AddGroup(Player* leader, Group* group, BattlegroundTypeId bgTypeId, PVPDifficultyEntry const*  bracketEntry, uint8 ArenaType, bool isRated, bool isPremade, uint32 ArenaRating, uint32 MatchmakerRating);
+        GroupQueueInfo* AddGroup(Player const* leader, Group const* group, Team team, PVPDifficultyEntry const*  bracketEntry, bool isPremade, uint32 ArenaRating, uint32 MatchmakerRating, uint32 ArenaTeamId = 0);
         void RemovePlayer(ObjectGuid guid, bool decreaseInvitedCount);
         bool IsPlayerInvited(ObjectGuid pl_guid, const uint32 bgInstanceGuid, const uint32 removeTime);
         bool GetPlayerGroupInfoData(ObjectGuid guid, GroupQueueInfo* ginfo);
@@ -124,14 +119,18 @@ class TC_GAME_API BattlegroundQueue
         };
 
         //one selection pool for horde, other one for alliance
-        SelectionPool m_SelectionPools[BG_TEAMS_COUNT];
+        SelectionPool m_SelectionPools[PVP_TEAMS_COUNT];
         uint32 GetPlayersInQueue(TeamId id);
+
+        BattlegroundQueueTypeId const GetQueueId() const { return m_queueId; }
     private:
 
+        BattlegroundQueueTypeId m_queueId;
+
         bool InviteGroupToBG(GroupQueueInfo* ginfo, Battleground* bg, uint32 side);
-        uint32 m_WaitTimes[BG_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS][COUNT_OF_PLAYERS_TO_AVERAGE_WAIT_TIME];
-        uint32 m_WaitTimeLastPlayer[BG_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS];
-        uint32 m_SumOfWaitTimes[BG_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS];
+        uint32 m_WaitTimes[PVP_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS][COUNT_OF_PLAYERS_TO_AVERAGE_WAIT_TIME];
+        uint32 m_WaitTimeLastPlayer[PVP_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS];
+        uint32 m_SumOfWaitTimes[PVP_TEAMS_COUNT][MAX_BATTLEGROUND_BRACKETS];
 
         // Event handler
         EventProcessor m_events;
@@ -167,8 +166,8 @@ class TC_GAME_API BGQueueInviteEvent : public BasicEvent
 class TC_GAME_API BGQueueRemoveEvent : public BasicEvent
 {
     public:
-        BGQueueRemoveEvent(ObjectGuid pl_guid, uint32 bgInstanceGUID, BattlegroundTypeId BgTypeId, BattlegroundQueueTypeId bgQueueTypeId, uint32 removeTime)
-            : m_PlayerGuid(pl_guid), m_BgInstanceGUID(bgInstanceGUID), m_RemoveTime(removeTime), m_BgTypeId(BgTypeId), m_BgQueueTypeId(bgQueueTypeId)
+        BGQueueRemoveEvent(ObjectGuid pl_guid, uint32 bgInstanceGUID, BattlegroundQueueTypeId bgQueueTypeId, uint32 removeTime)
+            : m_PlayerGuid(pl_guid), m_BgInstanceGUID(bgInstanceGUID), m_RemoveTime(removeTime), m_BgQueueTypeId(bgQueueTypeId)
         { }
 
         virtual ~BGQueueRemoveEvent() { }
@@ -179,7 +178,6 @@ class TC_GAME_API BGQueueRemoveEvent : public BasicEvent
         ObjectGuid m_PlayerGuid;
         uint32 m_BgInstanceGUID;
         uint32 m_RemoveTime;
-        BattlegroundTypeId m_BgTypeId;
         BattlegroundQueueTypeId m_BgQueueTypeId;
 };
 

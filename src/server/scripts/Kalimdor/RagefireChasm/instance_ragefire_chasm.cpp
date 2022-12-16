@@ -30,16 +30,15 @@ class instance_ragefire_chasm : public InstanceMapScript
 public:
     instance_ragefire_chasm() : InstanceMapScript("instance_ragefire_chasm", 389) { }
 
-    struct instance_ragefire_chasm_InstanceMapScript : public InstanceScript
-    {
-        instance_ragefire_chasm_InstanceMapScript(InstanceMap* map) : InstanceScript(map) { }
-    };
- 
     InstanceScript* GetInstanceScript(InstanceMap* map) const override
     {
         return new instance_ragefire_chasm_InstanceMapScript(map);
     }
-   
+
+    struct instance_ragefire_chasm_InstanceMapScript : public InstanceScript
+    {
+        instance_ragefire_chasm_InstanceMapScript(InstanceMap* map) : InstanceScript(map) { }
+    };
 };
 
 void AddSC_instance_ragefire_chasm()

@@ -147,14 +147,22 @@ namespace WorldPackets
             QualifiedGUID Player;
         };
 
-        class QuickJoinAutoAcceptRequests final : public ClientPacket
+        class SocialContractRequest final : public ClientPacket
         {
         public:
-            QuickJoinAutoAcceptRequests(WorldPacket&& packet) : ClientPacket(CMSG_QUICK_JOIN_AUTO_ACCEPT_REQUESTS, std::move(packet)) { }
+            SocialContractRequest(WorldPacket&& packet) : ClientPacket(CMSG_SOCIAL_CONTRACT_REQUEST, std::move(packet)) { }
 
-            void Read() override;
+            void Read() override { }
+        };
 
-            bool EnableAutoAccept = false;
+        class SocialContractRequestResponse final : public ServerPacket
+        {
+        public:
+            SocialContractRequestResponse() : ServerPacket(SMSG_SOCIAL_CONTRACT_REQUEST_RESPONSE, 1) { }
+
+            WorldPacket const* Write() override;
+
+            bool ShowSocialContract = false;
         };
     }
 }

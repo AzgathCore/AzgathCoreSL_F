@@ -59,6 +59,7 @@ namespace WorldPackets
             std::vector<BonusObjectiveData> BonusObjectives;
             std::vector<uint32> PickedSteps;
             std::vector<ScenarioSpellUpdate> Spells;
+            ObjectGuid PlayerGUID;
             bool ScenarioComplete = false;
         };
 
@@ -106,7 +107,7 @@ namespace WorldPackets
 
         struct ScenarioPOIData
         {
-            int32 Criteriatreeid = 0;
+            int32 CriteriaTreeID = 0;
             std::vector<ScenarioPOI> const* ScenarioPOIs = nullptr;
         };
 

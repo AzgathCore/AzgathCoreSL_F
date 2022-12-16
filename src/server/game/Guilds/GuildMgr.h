@@ -23,17 +23,8 @@
 #include <unordered_map>
 #include <vector>
 
-//class Guild;
+class Guild;
 struct GuildReward;
-struct GuildChallengeReward
-{
-    uint32 Gold;
-    uint32 ChallengeCount;
-    uint32 Gold2;
-};
-typedef std::vector<GuildChallengeReward> GuildChallengeRewardData;
-
-
 
 class TC_GAME_API GuildMgr
 {
@@ -49,7 +40,7 @@ public:
     Guild* GetGuildByLeader(ObjectGuid guid) const;
     Guild* GetGuildById(ObjectGuid::LowType guildId) const;
     Guild* GetGuildByGuid(ObjectGuid guid) const;
-    Guild* GetGuildByName(std::string const& guildName) const;
+    Guild* GetGuildByName(std::string_view guildName) const;
     std::string GetGuildNameById(ObjectGuid::LowType guildId) const;
 
     void LoadGuildRewards();
@@ -66,14 +57,13 @@ public:
     void SetNextGuildId(ObjectGuid::LowType Id) { NextGuildId = Id; }
 
     std::vector<GuildReward> const& GetGuildRewards() const { return GuildRewards; }
-    GuildChallengeRewardData const& GetGuildChallengeRewardData() const;
+
     void ResetTimes(bool week);
 protected:
     typedef std::unordered_map<ObjectGuid::LowType, Guild*> GuildContainer;
     ObjectGuid::LowType NextGuildId;
     GuildContainer GuildStore;
     std::vector<GuildReward> GuildRewards;
-    GuildChallengeRewardData _challengeRewardData;
 };
 
 #define sGuildMgr GuildMgr::instance()

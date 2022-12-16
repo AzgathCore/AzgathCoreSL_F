@@ -21,7 +21,7 @@
 #include "CreatureAIImpl.h"
 
 #define ScholomanceScriptName "instance_scholomance"
-#define DataHeader "SC"
+#define DataHeader "SC_old"
 
 uint32 const EncounterCount             = 8;
 
@@ -56,10 +56,10 @@ enum SCGameobjectIds
     GO_BRAZIER_OF_THE_HERALD            = 175564
 };
 
-template<typename AI>
-inline AI* GetScholomanceAI(Creature* creature)
+template <class AI, class T>
+inline AI* GetScholomanceAI(T* obj)
 {
-    return GetInstanceAI<AI>(creature, ScholomanceScriptName);
+    return GetInstanceAI<AI>(obj, ScholomanceScriptName);
 }
 
 #endif

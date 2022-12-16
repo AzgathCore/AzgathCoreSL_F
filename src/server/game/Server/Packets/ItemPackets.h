@@ -22,7 +22,6 @@
 #include "DBCEnums.h"
 #include "ItemDefines.h"
 #include "ItemPacketsCommon.h"
-#include "PacketUtilities.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
 #include <array>
@@ -427,7 +426,7 @@ namespace WorldPackets
         class EnchantmentLog final : public ServerPacket
         {
         public:
-            EnchantmentLog() : ServerPacket(SMSG_ENCHANTMENT_LOG, 16 + 16 + 16 + 4 + 4 + 4) { }
+            EnchantmentLog() : ServerPacket(SMSG_ENCHANTMENT_LOG, 0) { }
 
             WorldPacket const* Write() override;
 

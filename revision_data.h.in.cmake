@@ -9,8 +9,8 @@
  #define _SOURCE_DIRECTORY          R"(@CMAKE_SOURCE_DIR@)"
  #define _BUILD_DIRECTORY           R"(@BUILDDIR@)"
  #define _MYSQL_EXECUTABLE          R"(@MYSQL_EXECUTABLE@)"
- #define _FULL_DATABASE             "AZSLDB_902_world_2023_01_01.sql"
- #define _HOTFIXES_DATABASE         "AZSLDB_902_hotfixes_2023_01_01.sql"
+ #define _FULL_DATABASE             "AZSLDB_927_world_2023_01_01.sql"
+ #define _HOTFIXES_DATABASE         "AZSLDB_927_hotfixes_2023_01_01.sql"
  #define VER_COMPANYNAME_STR        "AzgathCore Shadowlands"
  #define VER_LEGALCOPYRIGHT_STR     "(c)2023 AzgathCore"
  #define VER_FILEVERSION            0,0,0

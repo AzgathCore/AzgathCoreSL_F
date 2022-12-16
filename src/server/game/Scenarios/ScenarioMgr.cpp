@@ -30,19 +30,12 @@ ScenarioMgr* ScenarioMgr::Instance()
     return &instance;
 }
 
-InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map* map, TeamId team) const
+InstanceScenario* ScenarioMgr::CreateInstanceScenario(InstanceMap const* map, TeamId team) const
 {
     auto dbDataItr = _scenarioDBData.find(std::make_pair(map->GetId(), map->GetDifficultyID()));
     // No scenario registered for this map and difficulty in the database
     if (dbDataItr == _scenarioDBData.end())
-    {
-        // We then search for global scenario
-        dbDataItr = _scenarioDBData.find(std::make_pair(map->GetId(), 0));
-
-        // No more luck, return
-        if (dbDataItr == _scenarioDBData.end())
-            return nullptr;
-    }
+        return nullptr;
 
     uint32 scenarioID = 0;
     switch (team)
@@ -65,19 +58,6 @@ InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map* map, TeamId team) con
     }
 
     return new InstanceScenario(map, &itr->second);
-}
-
-InstanceScenario* ScenarioMgr::CreateInstanceScenarioByID(Map const* map, uint32 scenarioID)
-{
-    auto itr = _scenarioData.find(scenarioID);
-    if (itr == _scenarioData.end())
-    {
-        TC_LOG_ERROR("scenario", "Table `scenarios` contained data linking scenario (Id: %u) to map (Id: %u), difficulty (Id: %u) but no scenario data was found related to that scenario Id.", scenarioID, map->GetId(), map->GetDifficultyID());
-        return nullptr;
-    }
-
-    return nullptr;
-   // return new InstanceScenario(map, &itr->second);
 }
 
 void ScenarioMgr::LoadDBData()
@@ -169,7 +149,7 @@ void ScenarioMgr::LoadScenarioPOI()
     uint32 count = 0;
 
     //                                                      0            1        2     3       4         5       6          7               8                        9
-    QueryResult result = WorldDatabase.Query("SELECT Criteriatreeid, BlobIndex, Idx1, MapID, UiMapID, Priority, Flags, WorldEffectID, PlayerConditionID, NavigationPlayerConditionID FROM scenario_poi ORDER BY Criteriatreeid, Idx1");
+    QueryResult result = WorldDatabase.Query("SELECT CriteriaTreeID, BlobIndex, Idx1, MapID, UiMapID, Priority, Flags, WorldEffectID, PlayerConditionID, NavigationPlayerConditionID FROM scenario_poi ORDER BY CriteriaTreeID, Idx1");
     if (!result)
     {
         TC_LOG_ERROR("server.loading", ">> Loaded 0 scenario POI definitions. DB table `scenario_poi` is empty.");
@@ -177,7 +157,7 @@ void ScenarioMgr::LoadScenarioPOI()
     }
 
     //                                                       0        1    2  3  4
-    QueryResult pointsResult = WorldDatabase.Query("SELECT Criteriatreeid, Idx1, X, Y, Z FROM scenario_poi_points ORDER BY Criteriatreeid DESC, Idx1, Idx2");
+    QueryResult pointsResult = WorldDatabase.Query("SELECT CriteriaTreeID, Idx1, X, Y, Z FROM scenario_poi_points ORDER BY CriteriaTreeID DESC, Idx1, Idx2");
 
     std::unordered_map<int32, std::map<int32, std::vector<ScenarioPOIPoint>>> allPoints;
 
@@ -189,13 +169,13 @@ void ScenarioMgr::LoadScenarioPOI()
         {
             fields = pointsResult->Fetch();
 
-            int32 Criteriatreeid = fields[0].GetInt32();
+            int32 CriteriaTreeID = fields[0].GetInt32();
             int32 Idx1 = fields[1].GetInt32();
             int32 X = fields[2].GetInt32();
             int32 Y = fields[3].GetInt32();
             int32 Z = fields[4].GetInt32();
 
-            allPoints[Criteriatreeid][Idx1].emplace_back(X, Y, Z);
+            allPoints[CriteriaTreeID][Idx1].emplace_back(X, Y, Z);
         } while (pointsResult->NextRow());
     }
 
@@ -215,7 +195,7 @@ void ScenarioMgr::LoadScenarioPOI()
         int32 navigationPlayerConditionID = fields[9].GetInt32();
 
         if (!sCriteriaMgr->GetCriteriaTree(criteriaTreeID))
-            TC_LOG_ERROR("sql.sql", "`scenario_poi` Criteriatreeid (%u) Idx1 (%u) does not correspond to a valid criteria tree", criteriaTreeID, idx1);
+            TC_LOG_ERROR("sql.sql", "`scenario_poi` CriteriaTreeID (%u) Idx1 (%u) does not correspond to a valid criteria tree", criteriaTreeID, idx1);
 
         if (std::map<int32, std::vector<ScenarioPOIPoint>>* blobs = Trinity::Containers::MapGetValuePtr(allPoints, criteriaTreeID))
         {

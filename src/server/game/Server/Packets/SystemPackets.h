@@ -28,9 +28,9 @@ namespace WorldPackets
     {
         struct SavedThrottleObjectState
         {
-            uint32 MaxTries = 0;
-            uint32 PerMilliseconds = 0;
-            uint32 TryCount = 0;
+            uint32 MaxTries               = 0;
+            uint32 PerMilliseconds        = 0;
+            uint32 TryCount               = 0;
             uint32 LastResetTimeBeforeNow = 0;
         };
 
@@ -42,6 +42,12 @@ namespace WorldPackets
             bool SuggestionsEnabled = false;
 
             SavedThrottleObjectState ThrottleState;
+        };
+
+        struct GameRuleValuePair
+        {
+            int32 Rule = 0;
+            int32 Value = 0;
         };
 
         class FeatureSystemStatus final : public ServerPacket
@@ -98,7 +104,7 @@ namespace WorldPackets
                 uint32 DaysInCycle = 0;
             };
 
-            FeatureSystemStatus() : ServerPacket(SMSG_FEATURE_SYSTEM_STATUS, 48) { }
+            FeatureSystemStatus() : ServerPacket(SMSG_FEATURE_SYSTEM_STATUS, 200) { }
 
             WorldPacket const* Write() override;
 
@@ -122,6 +128,8 @@ namespace WorldPackets
             uint32 ClubsPresenceUpdateTimer              = 0;
             uint32 HiddenUIClubsPresenceUpdateTimer      = 0; ///< Timer for updating club presence when communities ui frame is hidden
             uint32 KioskSessionMinutes                   = 0;
+            int32 ActiveSeason                           = 0; ///< Currently active Classic season
+            int16 MaxPlayerNameQueriesPerPacket          = 50;
             int16 PlayerNameQueryTelemetryInterval       = 600;
             bool ItemRestorationButtonEnabled        = false;
             bool CharUndeleteEnabled                 = false; ///< Implemented
@@ -136,7 +144,7 @@ namespace WorldPackets
             bool KioskModeEnabled                    = false;
             bool CompetitiveModeEnabled              = false;
             bool TokenBalanceEnabled                 = false;
-            bool WarModeFeatureEnabled               = false;
+            bool WarModeFeatureEnabled               = true;
             bool ClubsEnabled                        = false;
             bool ClubsBattleNetClubTypeAllowed       = false;
             bool ClubsCharacterClubTypeAllowed       = false;
@@ -147,16 +155,21 @@ namespace WorldPackets
             bool IsMuted                             = false;
             bool ClubFinderEnabled                   = false;
             bool Unknown901CheckoutRelated           = false;
+            bool TextToSpeechFeatureEnabled          = false;
+            bool ChatDisabledByDefault               = false;
+            bool ChatDisabledByPlayer                = false;
+            bool LFGListCustomRequiresAuthenticator  = false;
 
             SocialQueueConfig QuickJoinConfig;
             SquelchInfo Squelch;
             RafSystemFeatureInfo RAFSystem;
+            std::vector<GameRuleValuePair> GameRuleValues;
         };
 
         class FeatureSystemStatusGlueScreen final : public ServerPacket
         {
         public:
-            FeatureSystemStatusGlueScreen() : ServerPacket(SMSG_FEATURE_SYSTEM_STATUS_GLUE_SCREEN, 1) { }
+            FeatureSystemStatusGlueScreen() : ServerPacket(SMSG_FEATURE_SYSTEM_STATUS_GLUE_SCREEN, 64) { }
 
             WorldPacket const* Write() override;
 
@@ -180,7 +193,6 @@ namespace WorldPackets
             Optional<EuropaTicketConfig> EuropaTicketSystemStatus;
             std::vector<int32> LiveRegionCharacterCopySourceRegions;
             uint32 TokenPollTimeSeconds              = 0;     // NYI
-            uint32 PollTimeSeconds                   = 0;     // NYI
             int64 TokenBalanceAmount                 = 0;     // NYI
             int32 MaxCharactersPerRealm              = 0;
             uint32 BpayStoreProductDeliveryDelay     = 0;     // NYI
@@ -189,7 +201,8 @@ namespace WorldPackets
             int32 MinimumExpansionLevel              = 0;
             int32 MaximumExpansionLevel              = 0;
             uint32 KioskSessionMinutes               = 0;
-            int32 ActiveSeason = 0;     // Currently active Classic season
+            int32 ActiveSeason                       = 0;     // Currently active Classic season
+            std::vector<GameRuleValuePair> GameRuleValues;
             int16 MaxPlayerNameQueriesPerPacket = 50;
             int16 PlayerNameQueryTelemetryInterval = 600;
             Optional<int32> LaunchETA;

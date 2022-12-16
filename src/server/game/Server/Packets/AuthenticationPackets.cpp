@@ -22,7 +22,6 @@
 #include "HMAC.h"
 #include "ObjectMgr.h"
 #include "RSA.h"
-#include "Util.h"
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Auth::VirtualRealmNameInfo const& virtualRealmInfo)
 {
@@ -53,7 +52,7 @@ bool WorldPackets::Auth::EarlyProcessClientPacket::ReadNoThrow()
         Read();
         return true;
     }
-    catch (ByteBufferPositionException const& /*ex*/)
+    catch (ByteBufferException const& /*ex*/)
     {
     }
 
@@ -112,8 +111,8 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Auth::AuthWaitInfo const&
 WorldPacket const* WorldPackets::Auth::AuthResponse::Write()
 {
     _worldPacket << uint32(Result);
-    _worldPacket.WriteBit(SuccessInfo.is_initialized());
-    _worldPacket.WriteBit(WaitInfo.is_initialized());
+    _worldPacket.WriteBit(SuccessInfo.has_value());
+    _worldPacket.WriteBit(WaitInfo.has_value());
     _worldPacket.FlushBits();
 
     if (SuccessInfo)
@@ -127,7 +126,7 @@ WorldPacket const* WorldPackets::Auth::AuthResponse::Write()
         _worldPacket << uint32(SuccessInfo->AvailableClasses->size());
         _worldPacket << uint32(SuccessInfo->Templates.size());
         _worldPacket << uint32(SuccessInfo->CurrencyID);
-        _worldPacket << int32(SuccessInfo->Time);
+        _worldPacket << SuccessInfo->Time;
 
         for (RaceClassAvailability const& raceClassAvailability : *SuccessInfo->AvailableClasses)
         {
@@ -144,9 +143,9 @@ WorldPacket const* WorldPackets::Auth::AuthResponse::Write()
 
         _worldPacket.WriteBit(SuccessInfo->IsExpansionTrial);
         _worldPacket.WriteBit(SuccessInfo->ForceCharacterTemplate);
-        _worldPacket.WriteBit(SuccessInfo->NumPlayersHorde.is_initialized());
-        _worldPacket.WriteBit(SuccessInfo->NumPlayersAlliance.is_initialized());
-        _worldPacket.WriteBit(SuccessInfo->ExpansionTrialExpiration.is_initialized());
+        _worldPacket.WriteBit(SuccessInfo->NumPlayersHorde.has_value());
+        _worldPacket.WriteBit(SuccessInfo->NumPlayersAlliance.has_value());
+        _worldPacket.WriteBit(SuccessInfo->ExpansionTrialExpiration.has_value());
         _worldPacket.FlushBits();
 
         {
@@ -182,8 +181,8 @@ WorldPacket const* WorldPackets::Auth::AuthResponse::Write()
                 _worldPacket << uint8(templateClass.FactionGroup);
             }
 
-            _worldPacket.WriteBits(templat->Name.length(), 8);
-            _worldPacket.WriteBits(templat->Description.length(), 8);
+            _worldPacket.WriteBits(templat->Name.length(), 7);
+            _worldPacket.WriteBits(templat->Description.length(), 10);
             _worldPacket.FlushBits();
 
             _worldPacket.WriteString(templat->Name);
@@ -249,8 +248,8 @@ std::unique_ptr<Trinity::Crypto::Ed25519> EnterEncryptedModeSigner;
 
 bool WorldPackets::Auth::ConnectTo::InitializeEncryption()
 {
-    std::unique_ptr<Trinity::Crypto::RSA> rsa = std::make_unique<Trinity::Crypto::RSA>();
-    if (!rsa->LoadFromString(RSAPrivateKey, Trinity::Crypto::RSA::PrivateKey{}))
+    std::unique_ptr<Trinity::Crypto::RsaSignature> rsa = std::make_unique<Trinity::Crypto::RsaSignature>();
+    if (!rsa->LoadKeyFromString(RSAPrivateKey))
         return false;
 
     ConnectToRSA = std::move(rsa);
@@ -260,10 +259,6 @@ bool WorldPackets::Auth::ConnectTo::InitializeEncryption()
 void WorldPackets::Auth::ConnectTo::ShutdownEncryption()
 {
     ConnectToRSA.reset();
-}
-
-WorldPackets::Auth::ConnectTo::ConnectTo() : ServerPacket(SMSG_CONNECT_TO, 256 + 1 + 16 + 2 + 4 + 1 + 8)
-{
 }
 
 WorldPackets::Auth::ConnectTo::ConnectTo() : ServerPacket(SMSG_CONNECT_TO, 256 + 1 + 16 + 2 + 4 + 1 + 8)
@@ -289,16 +284,17 @@ WorldPacket const* WorldPackets::Auth::ConnectTo::Write()
             break;
     }
 
-    uint32 type = Payload.Where.Type;
-    Trinity::Crypto::SHA256 hash;
-    hash.UpdateData(whereBuffer.contents(), whereBuffer.size());
-    hash.UpdateData(reinterpret_cast<uint8 const*>(&type), 4);
-    hash.UpdateData(reinterpret_cast<uint8 const*>(&Payload.Port), 2);
-    hash.Finalize();
+    ByteBuffer signBuffer;
+    signBuffer.append(whereBuffer);
+    signBuffer << uint32(Payload.Where.Type);
+    signBuffer << uint16(Payload.Port);
 
-    ConnectToRSA->Sign(hash.GetDigest(), Payload.Signature.data(), Trinity::Crypto::RSA::SHA256{});
+    Trinity::Crypto::RsaSignature rsa(*ConnectToRSA);
+    Trinity::Crypto::RsaSignature::SHA256 digestGenerator;
+    std::vector<uint8> signature;
+    rsa.Sign(signBuffer.contents(), signBuffer.size(), digestGenerator, signature);
 
-    _worldPacket.append(Payload.Signature.data(), Payload.Signature.size());
+    _worldPacket.append(signature.data(), signature.size());
     _worldPacket.append(whereBuffer);
     _worldPacket << uint16(Payload.Port);
     _worldPacket << uint32(Serial);

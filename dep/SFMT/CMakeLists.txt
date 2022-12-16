@@ -76,7 +76,7 @@ endif ()
 
 set_target_properties(sfmt PROPERTIES LINKER_LANGUAGE CXX)
 
-# inherit trinitycore generic build options (e.g. fPIC)
+# inherit azgathcore generic build options (e.g. fPIC)
 target_link_libraries(sfmt PRIVATE trinity-dependency-interface)
 
 set_target_properties(sfmt

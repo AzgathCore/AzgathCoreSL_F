@@ -16,7 +16,7 @@
  */
 
 #include "GitRevision.h"
-#include "src/genrev/CMakeFiles/revision_data.h"
+#include "revision_data.h"
 
 char const* GitRevision::GetHash()
 {
@@ -95,7 +95,7 @@ char const* GitRevision::GetHotfixesDatabase()
 
 char const* GitRevision::GetFullVersion()
 {
-  return "AzgathCore rev. " VER_PRODUCTVERSION_STR
+  return "TrinityCore rev. " VER_PRODUCTVERSION_STR
     " (" TRINITY_PLATFORM_STR ", " _BUILD_DIRECTIVE ", " TRINITY_LINKAGE_TYPE_STR ")";
 }
 

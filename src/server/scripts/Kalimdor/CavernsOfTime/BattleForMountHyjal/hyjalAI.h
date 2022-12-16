@@ -36,7 +36,11 @@ enum SpellIds
 
     //Thrall spells
     SPELL_CHAIN_LIGHTNING     = 31330,
-    SPELL_SUMMON_DIRE_WOLF    = 31331
+    SPELL_SUMMON_DIRE_WOLF    = 31331,
+
+    //Tyrande spells
+    SPELL_TRUESHOT_AURA       = 31519,
+    SPELL_STARFALL            = 20687
 };
 
 struct Wave
@@ -124,7 +128,7 @@ struct hyjalAI : public EscortAI
 
     void EnterEvadeMode(EvadeReason /*why*/ = EVADE_REASON_OTHER) override;    // Send creature back to spawn location and evade.
 
-    void EnterCombat(Unit* /*who*/) override;               // Used to reset cooldowns for our spells and to inform the raid that we're under attack
+    void JustEngagedWith(Unit* /*who*/) override;               // Used to reset cooldowns for our spells and to inform the raid that we're under attack
 
     void UpdateAI(uint32 diff) override;                    // Called to summon waves, check for boss deaths and to cast our spells.
 
@@ -143,7 +147,7 @@ struct hyjalAI : public EscortAI
     void SummonedCreatureDespawn(Creature* summoned) override;
     void HideNearPos(float x, float y);
     void RespawnNearPos(float x, float y);
-    void WaypointReached(uint32 waypointId) override;
+    void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override;
     void DoOverrun(uint32 faction, const uint32 diff);
     void MoveInLineOfSight(Unit* who) override;
 
@@ -203,6 +207,5 @@ struct hyjalAI : public EscortAI
 
     private:
         uint32 SpellTimer[3];
-        //std::list<uint64> CreatureList;
 };
 #endif

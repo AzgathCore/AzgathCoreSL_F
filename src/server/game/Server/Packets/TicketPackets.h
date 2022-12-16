@@ -32,6 +32,7 @@ namespace WorldPackets
             int32 MapID = 0;
             TaggedPosition<::Position::XYZ> Position;
             float Facing = 0.0f;
+            int32 Program = 0;
         };
 
         class GMTicketGetSystemStatus final : public ClientPacket
@@ -66,10 +67,10 @@ namespace WorldPackets
             struct GMTicketCase
             {
                 int32 CaseID = 0;
-                int32 CaseOpened = 0;
+                Timestamp<> CaseOpened;
                 int32 CaseStatus = 0;
-                int16 CfgRealmID = 0;
-                int64 CharacterID = 0;
+                uint16 CfgRealmID = 0;
+                uint64 CharacterID = 0;
                 int32 WaitTimeOverrideMinutes = 0;
                 std::string Url;
                 std::string WaitTimeOverrideMessage;
@@ -89,13 +90,14 @@ namespace WorldPackets
 
             void Read() override;
 
-            int32 CaseID;
+            int32 CaseID = 0;
         };
 
         class SubmitUserFeedback final : public ClientPacket
         {
         public:
             SubmitUserFeedback(WorldPacket&& packet) : ClientPacket(CMSG_SUBMIT_USER_FEEDBACK, std::move(packet)) { }
+
             void Read() override;
 
             SupportTicketHeader Header;
@@ -103,108 +105,114 @@ namespace WorldPackets
             bool IsSuggestion = false;
         };
 
+        struct SupportTicketChatLine
+        {
+            SupportTicketChatLine(ByteBuffer& data);
+            SupportTicketChatLine(time_t timestamp, std::string const& text);
+
+            WorldPackets::Timestamp<> Timestamp;
+            std::string Text;
+        };
+
+        struct SupportTicketChatLog
+        {
+            Array<SupportTicketChatLine, 255> Lines;
+            Optional<uint32> ReportLineIndex;
+        };
+
+        struct SupportTicketHorusChatLine
+        {
+            SupportTicketHorusChatLine(ByteBuffer& data);
+
+            struct SenderRealm
+            {
+                uint32 VirtualRealmAddress;
+                uint16 field_4;
+                uint8 field_6;
+            };
+
+            WorldPackets::Timestamp<> Timestamp;
+            ObjectGuid AuthorGUID;
+            Optional<uint64> ClubID;
+            Optional<ObjectGuid> ChannelGUID;
+            Optional<SenderRealm> RealmAddress;
+            Optional<int32> SlashCmd;
+            std::string Text;
+        };
+
+        struct SupportTicketHorusChatLog
+        {
+            Array<SupportTicketHorusChatLine, 255> Lines;
+        };
+
+        struct SupportTicketMailInfo
+        {
+            int32 MailID = 0;
+            std::string MailSubject;
+            std::string MailBody;
+        };
+
+        struct SupportTicketCalendarEventInfo
+        {
+            uint64 EventID = 0;
+            uint64 InviteID = 0;
+            std::string EventTitle;
+        };
+
+        struct SupportTicketPetInfo
+        {
+            ObjectGuid PetID;
+            std::string PetName;
+        };
+
+        struct SupportTicketGuildInfo
+        {
+            ObjectGuid GuildID;
+            std::string GuildName;
+        };
+
+        struct SupportTicketLFGListSearchResult
+        {
+            WorldPackets::LFG::RideTicket RideTicket;
+            uint32 GroupFinderActivityID = 0;
+            ObjectGuid LastTitleAuthorGuid;
+            ObjectGuid LastDescriptionAuthorGuid;
+            ObjectGuid LastVoiceChatAuthorGuid;
+            ObjectGuid ListingCreatorGuid;
+            ObjectGuid Unknown735;
+            std::string Title;
+            std::string Description;
+            std::string VoiceChat;
+        };
+
+        struct SupportTicketLFGListApplicant
+        {
+            WorldPackets::LFG::RideTicket RideTicket;
+            std::string Comment;
+        };
+
+        struct SupportTicketCommunityMessage
+        {
+            bool IsPlayerUsingVoice = false;
+        };
+
+        struct SupportTicketClubFinderResult
+        {
+            uint64 ClubFinderPostingID = 0;
+            uint64 ClubID = 0;
+            ObjectGuid ClubFinderGUID;
+            std::string ClubName;
+        };
+
+        struct SupportTicketUnused910
+        {
+            std::string field_0;
+            ObjectGuid field_104;
+        };
+
         class SupportTicketSubmitComplaint final : public ClientPacket
         {
         public:
-            struct SupportTicketChatLine
-            {
-                SupportTicketChatLine(ByteBuffer& data);
-                SupportTicketChatLine(uint32 timestamp, std::string const& text);
-
-                uint32 Timestamp = 0;
-                std::string Text;
-            };
-
-            struct SupportTicketChatLog
-            {
-                std::vector<SupportTicketChatLine> Lines;
-                Optional<uint32> ReportLineIndex;
-            };
-
-            struct SupportTicketHorusChatLine
-            {
-                SupportTicketHorusChatLine(ByteBuffer& data);
-
-                struct SenderRealm
-                {
-                    uint32 VirtualRealmAddress;
-                    uint16 field_4;
-                    uint8 field_6;
-                };
-
-                int32 Timestamp;
-                ObjectGuid AuthorGUID;
-                Optional<uint64> ClubID;
-                Optional<ObjectGuid> ChannelGUID;
-                Optional<SenderRealm> RealmAddress;
-                Optional<int32> SlashCmd;
-                std::string Text;
-            };
-
-            struct SupportTicketHorusChatLog
-            {
-                std::vector<SupportTicketHorusChatLine> Lines;
-            };
-
-            struct SupportTicketMailInfo
-            {
-                int32 MailID = 0;
-                std::string MailSubject;
-                std::string MailBody;
-            };
-
-            struct SupportTicketCalendarEventInfo
-            {
-                uint64 EventID;
-                uint64 InviteID;
-                std::string EventTitle;
-            };
-
-            struct SupportTicketPetInfo
-            {
-                ObjectGuid PetID;
-                std::string PetName;
-            };
-
-            struct SupportTicketGuildInfo
-            {
-                ObjectGuid GuildID;
-                std::string GuildName;
-            };
-
-            struct SupportTicketLFGListSearchResult
-            {
-                WorldPackets::LFG::RideTicket RideTicket;
-                uint32 GroupFinderActivityID = 0;
-                ObjectGuid LastTitleAuthorGuid;
-                ObjectGuid LastDescriptionAuthorGuid;
-                ObjectGuid LastVoiceChatAuthorGuid;
-                ObjectGuid ListingCreatorGuid;
-                ObjectGuid Unknown735;
-                std::string Title;
-                std::string Description;
-                std::string VoiceChat;
-            };
-
-            struct SupportTicketLFGListApplicant
-            {
-                WorldPackets::LFG::RideTicket RideTicket;
-                std::string Comment;
-            };
-
-            struct SupportTicketCommunityMessage
-            {
-                bool IsPlayerUsingVoice = false;
-            };
-
-            struct SupportTicketClubFinderResult
-            {
-                uint64 ClubFinderPostingID;
-                uint64 ClubID;
-                ObjectGuid ClubFinderGUID;
-                std::string ClubName;
-            };
-
             SupportTicketSubmitComplaint(WorldPacket&& packet) : ClientPacket(CMSG_SUPPORT_TICKET_SUBMIT_COMPLAINT, std::move(packet)) { }
 
             void Read() override;
@@ -212,7 +220,9 @@ namespace WorldPackets
             SupportTicketHeader Header;
             SupportTicketChatLog ChatLog;
             ObjectGuid TargetCharacterGUID;
-            uint8 ComplaintType = 0;
+            int32 ReportType = 0;
+            int32 MajorCategory = 0;
+            int32 MinorCategoryFlags = 0;
             SupportTicketHorusChatLog HorusChatLog;
             std::string Note;
             Optional<SupportTicketMailInfo> MailInfo;
@@ -223,6 +233,7 @@ namespace WorldPackets
             Optional<SupportTicketLFGListApplicant> LFGListApplicant;
             Optional<SupportTicketCommunityMessage> CommunityMessage;
             Optional<SupportTicketClubFinderResult> ClubFinderResult;
+            Optional<SupportTicketUnused910> Unused910;
         };
 
         class Complaint final : public ClientPacket
