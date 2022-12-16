@@ -18,6 +18,7 @@
 #ifndef _WORLDMODEL_H
 #define _WORLDMODEL_H
 
+#include <G3D/HashTrait.h>
 #include <G3D/Vector3.h>
 #include <G3D/AABox.h>
 #include <G3D/Ray.h>
@@ -116,14 +117,11 @@ namespace VMAP
             bool writeFile(const std::string &filename);
             bool readFile(const std::string &filename);
             void getGroupModels(std::vector<GroupModel>& outGroupModels);
-            std::string const& GetName() const { return name; }
-            void SetName(std::string newName) { name = std::move(newName); }
             uint32 Flags;
         protected:
             uint32 RootWMOID;
             std::vector<GroupModel> groupModels;
             BIH groupTree;
-            std::string name;
     };
 } // namespace VMAP
 

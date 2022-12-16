@@ -18,11 +18,15 @@
 #ifndef TrinityCore_Regex_h__
 #define TrinityCore_Regex_h__
 
-// std::wregex doesn't work with patterns provided in db2 files
-// so we have to use boost
+#ifndef TC_HAS_BROKEN_WSTRING_REGEX
+#include <regex>
+#define TC_REGEX_NAMESPACE std
+#else
 #include <boost/regex.hpp>
 #define TC_REGEX_NAMESPACE boost
+#endif
 
+// regex compatibility layer, required for clang building with libstdc++-4.9
 namespace Trinity
 {
     using regex = TC_REGEX_NAMESPACE :: regex;
