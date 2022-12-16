@@ -1,6 +1,6 @@
-###############################################
-# Trinity Core Auth Server configuration file #
-###############################################
+#########################################################
+# AzgathCore Shadowlands Auth Server configuration file #
+#########################################################
 [bnetserver]
 
 ###################################################################################################
@@ -39,7 +39,7 @@
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = "../logs"
 
 #
 #    MaxPingTime
@@ -230,12 +230,12 @@ AllowLoggingIPAddressesInDatabase = 1
 #                                                                 section my.ini)
 #                     ".;/path/to/unix_socket;username;password;database" - (use Unix sockets on
 #                                                                           Unix/Linux)
-#        Default:     "127.0.0.1;3306;trinity;trinity;auth"
+#        Default:     "127.0.0.1;3306;azgath;azgath;auth"
 #
 #    The SSL option will enable TLS when connecting to the specified database. If not provided or
 #    any value other than 'ssl' is set, TLS will not be used.
 
-LoginDatabaseInfo = "127.0.0.1;3306;trinity;trinity;auth"
+LoginDatabaseInfo = "127.0.0.1;3306;root;root;azsl_auth"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -403,8 +403,8 @@ Updates.CleanDeadRefMaxCount = 3
 #                         Example:  536870912 (512 MB)
 #
 
-Appender.Console=1,2,0
-Appender.Bnet=2,2,0,Bnet.log,w
+Appender.Console=1,2,0,13 11 9 5 3 1
+Appender.Bnet=2,1,2,Bnet.log,w
 
 #  Logger config values: Given a logger "name"
 #    Logger.name

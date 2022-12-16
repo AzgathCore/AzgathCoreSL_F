@@ -1049,7 +1049,7 @@ enum TrinityStrings
     LANG_COMMAND_TICKETLISTRESPONSE       = 2029, // 3.3.5 RESERVED
     LANG_COMMAND_TICKETCOMPLETED          = 2030, // 3.3.5 RESERVED
 
-    // Trinity strings                      5000-9999
+    // Azgath strings                      5000-9999
     LANG_COMMAND_FREEZE                   = 5000,
     LANG_COMMAND_FREEZE_ERROR             = 5001,
     LANG_COMMAND_FREEZE_WRONG             = 5002,
@@ -1149,7 +1149,7 @@ enum TrinityStrings
     LANG_NPCINFO_PHASE_IDS                = 5087,
     LANG_SCENARIO                         = 5088,
 
-    // Room for more Trinity strings        5089-6603
+    // Room for more Azgath strings        5089-6603
 
     // Level requirement notifications
     LANG_SAY_REQ                          = 6604,

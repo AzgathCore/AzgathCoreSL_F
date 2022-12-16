@@ -1,6 +1,6 @@
-################################################
-# Trinity Core World Server configuration file #
-################################################
+##########################################################
+# AzgathCore Shadowlands World Server configuration file #
+##########################################################
 [worldserver]
 
 ###################################################################################################
@@ -76,7 +76,7 @@ RealmID = 1
 #        Example:     "@prefix@/share/azgathcore"
 #        Default:     "."
 
-DataDir = "."
+DataDir = "../data"
 
 #
 #    LogsDir
@@ -85,7 +85,7 @@ DataDir = "."
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = "../logs"
 
 #
 #    LoginDatabaseInfo
@@ -99,10 +99,10 @@ LogsDir = ""
 #                                                                 section my.ini)
 #                     ".;/path/to/unix_socket;username;password;database" - (use Unix sockets on
 #                                                                           Unix/Linux)
-#        Default:     "127.0.0.1;3306;trinity;trinity;auth"       - (LoginDatabaseInfo)
-#                     "127.0.0.1;3306;trinity;trinity;world"      - (WorldDatabaseInfo)
-#                     "127.0.0.1;3306;trinity;trinity;characters" - (CharacterDatabaseInfo)
-#                     "127.0.0.1;3306;trinity;trinity;hotfixes"   - (HotfixDatabaseInfo)
+#        Default:     "127.0.0.1;3306;azgath;azgath;auth"       - (LoginDatabaseInfo)
+#                     "127.0.0.1;3306;azgath;azgath;world"      - (WorldDatabaseInfo)
+#                     "127.0.0.1;3306;azgath;azgath;characters" - (CharacterDatabaseInfo)
+#                     "127.0.0.1;3306;azgath;azgath;hotfixes"   - (HotfixDatabaseInfo)
 #
 #    Don't change hostname unless you are hosting MySQL on a different machine, if you need help
 #    with configuration allowing to connect from different machine than the one running server
@@ -112,10 +112,10 @@ LogsDir = ""
 #    The SSL option will enable TLS when connecting to the specified database. If not provided or
 #    any value other than 'ssl' is set, TLS will not be used.
 
-LoginDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;auth"
-WorldDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;world"
-CharacterDatabaseInfo = "127.0.0.1;3306;trinity;trinity;characters"
-HotfixDatabaseInfo    = "127.0.0.1;3306;trinity;trinity;hotfixes"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;root;azsl_auth"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;root;azsl_world"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;root;azsl_characters"
+HotfixDatabaseInfo    = "127.0.0.1;3306;root;root;azsl_hotfixes"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -1289,10 +1289,10 @@ FlashAtStart = 1
 #
 #    Motd
 #        Description: Message of the Day, displayed at login. Use '@' for a newline.
-#        Example:     "Welcome to John's Server!@This server is proud to be powered by Trinity Core."
-#        Default:     "Welcome to a Trinity Core server."
+#        Example:     "Welcome to John's Server!@This server is proud to be powered by AzgathCore."
+#        Default:     "Welcome to a AzgathCore server."
 
-Motd = "Welcome to a Trinity Core server."
+Motd = "Welcome to AzgathCore 9.2.7 server."
 
 #
 #    Server.LoginInfo
@@ -4087,10 +4087,10 @@ BlackMarket.UpdatePeriod = 24
 #                         Example:  536870912 (512 MB)
 #
 
-Appender.Console=1,3,0
-Appender.Server=2,2,0,Server.log,w
+Appender.Console=1,3,0,13 11 9 5 3 1
+Appender.Server=2,0,0,Server.log,w
 Appender.GM=2,2,1,GM.log
-Appender.DBErrors=2,2,0,DBErrors.log
+Appender.DBErrors=2,0,0,DBErrors.log
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
