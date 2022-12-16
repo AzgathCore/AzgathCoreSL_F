@@ -15,17 +15,30 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OptionalFwd_h__
-#define OptionalFwd_h__
+#ifndef SFMTRand_h__
+#define SFMTRand_h__
 
-namespace boost
-{
-    template <class T>
-    class optional;
-}
+#include "Define.h"
+#include <SFMT.h>
+#include <new>
 
-//! Optional helper class to wrap optional values within.
-template <class T>
-using Optional = boost::optional<T>;
+/*
+ * C++ Wrapper for SFMT
+ */
+class SFMTRand {
+public:
+    SFMTRand();
+    uint32 RandomUInt32(); // Output random bits
+    void* operator new(size_t size, std::nothrow_t const&);
+    void operator delete(void* ptr, std::nothrow_t const&);
+    void* operator new(size_t size);
+    void operator delete(void* ptr);
+    void* operator new[](size_t size, std::nothrow_t const&);
+    void operator delete[](void* ptr, std::nothrow_t const&);
+    void* operator new[](size_t size);
+    void operator delete[](void* ptr);
+private:
+    sfmt_t _state;
+};
 
-#endif // OptionalFwd_h__
+#endif // SFMTRand_h__
