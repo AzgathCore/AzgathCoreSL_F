@@ -331,6 +331,8 @@ WorldPacket const* WorldPackets::Battleground::RatedPvpInfo::Write()
         _worldPacket << uint32(info.BestRatingOfSeason);
         _worldPacket << uint32(info.Ranking);
         _worldPacket << uint32(info.WeekWins);
+        _worldPacket << uint32(info.Unused4);
+        _worldPacket << uint32(info.Rank);
     }
 
     return &_worldPacket;

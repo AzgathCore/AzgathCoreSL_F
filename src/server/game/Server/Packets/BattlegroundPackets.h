@@ -458,6 +458,8 @@ namespace WorldPackets
             uint32 SeasonGames;
             uint32 ProjectedConquestCap;
             uint32 Ranking;
+            int32 Unused4 = 0;
+            int32 Rank = 0;
         };
 
         class RatedPvpInfo final : public ServerPacket

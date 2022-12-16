@@ -132,6 +132,8 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Inspect::PVPBracketData c
     data << int32(bracket.Unk710);
     data << int32(bracket.Unk801_1);
     data.WriteBit(bracket.Unk801_2);
+    data << int32(bracket.Unused1);
+    data << int32(bracket.Unused2);
     data.FlushBits();
 
     return data;

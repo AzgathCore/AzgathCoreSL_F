@@ -104,6 +104,8 @@ namespace WorldPackets
             int32 WeeklyBestRating = 0;
             int32 Unk710           = 0;
             int32 Unk801_1         = 0;
+            int32 Unused1          = 0;
+            int32 Unused2          = 0;
             uint8 Bracket          = 0;
             bool Unk801_2          = false;
         };
