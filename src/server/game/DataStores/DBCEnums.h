@@ -190,7 +190,7 @@ enum AzeriteTierUnlockSetFlags
     AZERITE_TIER_UNLOCK_SET_FLAG_DEFAULT = 0x1
 };
 
-#define BATTLE_PET_SPECIES_MAX_ID 3084
+#define BATTLE_PET_SPECIES_MAX_ID 3189
 enum BattlePetSpeciesSourceType
 {
     BATTLE_PET_SPECIES_SOURCE_LOOT          = 0,

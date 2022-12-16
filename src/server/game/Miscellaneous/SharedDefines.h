@@ -1381,6 +1381,12 @@ enum SpellEffectName
     SPELL_EFFECT_LEARN_SOULBIND_CONDUIT             = 281,
     SPELL_EFFECT_CONVERT_ITEMS_TO_CURRENCY          = 282,
     SPELL_EFFECT_283                                = 283,
+    SPELL_EFFECT_SEND_CHAT_MESSAGE                  = 284, // MiscValue[0] = BroadcastTextID, MiscValue[1] = ChatType
+    SPELL_EFFECT_MODIFY_KEYSTONE_2                  = 285,
+    SPELL_EFFECT_GRANT_BATTLEPET_EXPERIENCE         = 286,
+    SPELL_EFFECT_SET_GARRISON_FOLLOWER_LEVEL        = 287,
+    SPELL_EFFECT_288                                = 288,
+    SPELL_EFFECT_289                                = 289,
     TOTAL_SPELL_EFFECTS
 };
 

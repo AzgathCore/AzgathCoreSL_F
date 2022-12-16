@@ -1679,7 +1679,7 @@ bool CriteriaHandler::ModifierSatisfied(ModifierTreeEntry const* modifier, uint6
 {
     uint32 reqValue = modifier->Asset;
     uint32 secondaryAsset = modifier->SecondaryAsset;
-    uint32 tertiaryAsset = modifier->TertiaryAsset;
+    int32 tertiaryAsset = modifier->TertiaryAsset;
 
     switch (CriteriaAdditionalCondition(modifier->Type))
     {
