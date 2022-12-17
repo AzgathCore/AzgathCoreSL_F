@@ -80,8 +80,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void SetDisplayId(uint32 displayId, float displayScale = 1.f) override;
         void SetDisplayFromModel(uint32 modelIdx);
 
-        void DisappearAndDie() { ForcedDespawn(0); }
-
         bool Create(ObjectGuid::LowType guidlow, Map* map, uint32 entry, Position const& pos, CreatureData const* data, uint32 vehId, bool dynamic = false);
 
         static Creature* CreateCreature(uint32 entry, Map* map, Position const& pos, uint32 vehId = 0);
@@ -373,6 +371,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         bool CanGiveExperience() const;
 
+        void ForcedDespawn(uint32 timeMSToDespawn = 0, Seconds const& forceRespawnTimer = Seconds(0));
+
         bool IsEngaged() const override;
         void AtEngage(Unit* target) override;
         void AtDisengage() override;
@@ -441,6 +441,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
     private:
         void ForcedDespawn(uint32 timeMSToDespawn = 0, Seconds forceRespawnTimer = 0s);
+        void DespawnOrUnsummon(uint32 msTimeToDespawn = 0, Seconds const& forceRespawnTime = Seconds(0));
+        void DespawnOrUnsummon(Milliseconds const& time, Seconds const& forceRespawnTime = Seconds(0)) { DespawnOrUnsummon(uint32(time.count()), forceRespawnTime); }
         bool CheckNoGrayAggroConfig(uint32 playerLevel, uint32 creatureLevel) const; // No aggro from gray creatures
 
         // Waypoint path
