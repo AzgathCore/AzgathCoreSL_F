@@ -1,4 +1,4 @@
-# ![logo](AzgathSL.png) Az'gathCore Shadowlands 9.2.7.45745
+# ![logo](AzgathSL.png) Az'gathCore Shadowlands 9.2.7.45745 (Without Content)
 
 * [Requirements](#requirements)
 * [Discord](#discord)

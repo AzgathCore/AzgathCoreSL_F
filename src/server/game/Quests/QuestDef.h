@@ -652,9 +652,6 @@ class TC_GAME_API Quest
         std::vector<uint32> DependentBreadcrumbQuests;
         std::array<WorldPacket, TOTAL_LOCALES> QueryData;
 
-    public:
-        uint32 ID = 0;
-
     private:
         uint32 _rewChoiceItemsCount = 0;
         uint32 _rewItemsCount = 0;
