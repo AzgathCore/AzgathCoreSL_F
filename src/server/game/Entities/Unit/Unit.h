@@ -21,6 +21,7 @@
 #include "Object.h"
 #include "CombatManager.h"
 #include "SpellAuraDefines.h"
+#include "TaskScheduler.h"
 #include "ThreatManager.h"
 #include "Timer.h"
 #include "UnitDefines.h"
@@ -1886,6 +1887,8 @@ class TC_GAME_API Unit : public WorldObject
 
         UF::UpdateField<UF::UnitData, 0, TYPEID_UNIT> m_unitData;
 
+        TaskScheduler& GetScheduler() { return _scheduler; }
+
     protected:
         explicit Unit (bool isWorldObject);
 
@@ -2065,6 +2068,8 @@ class TC_GAME_API Unit : public WorldObject
 
         std::unique_ptr<MovementForces> _movementForces;
         PositionUpdateInfo _positionUpdateInfo;
+
+        TaskScheduler _scheduler;
 
         bool _isCombatDisallowed;
 };
